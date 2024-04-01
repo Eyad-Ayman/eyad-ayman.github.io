@@ -2291,10 +2291,10 @@ figcaption {
 
 .container {
   width: 100%;
-  max-width: 1200px;
+  max-width: 5200px;
   margin-left: auto;
   margin-right: auto;
-  padding: 2em;
+  padding: 0em;
   position: relative;
 }
 
@@ -3296,7 +3296,7 @@ figcaption {
   grid-column-gap: 12px;
   grid-row-gap: 12px;
   flex-direction: column;
-  align-items: flex-end;
+  align-items: flex-start;
   display: flex;
 }
 
@@ -3305,7 +3305,7 @@ figcaption {
   grid-column-gap: 0px;
   grid-row-gap: 0px;
   flex-direction: column;
-  align-items: flex-end;
+  align-items: flex-start;
   display: flex;
 }
 
@@ -3317,10 +3317,10 @@ figcaption {
 
 .about-me-title {
   color: var(--accent-color);
-  letter-spacing: -6px;
+  letter-spacing: +1px;
   text-transform: uppercase;
-  margin-bottom: 30px;
-  font-size: 100px;
+  margin-bottom: 0px;
+  font-size: 50px;
   font-weight: 700;
   line-height: .9;
   position: relative;
@@ -3342,7 +3342,7 @@ figcaption {
 }
 
 .about-me-image-wrapper._01 {
-  width: 71%;
+  width: 100%;
 }
 
 .about-me-image-wrapper._02, .about-me-image, .about-me-image._01 {
