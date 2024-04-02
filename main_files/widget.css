@@ -2193,7 +2193,7 @@ ul, ol {
 
 li {
   padding-top: 4px;
-  padding-bottom: 4px;
+  padding-bottom: 0px;
   font-family: Montserrat, sans-serif;
   font-size: 18px;
   font-weight: 500;
@@ -2547,7 +2547,7 @@ figcaption {
   margin-top: 40px;
   margin-bottom: 40px;
   padding-top: 55px;
-  padding-bottom: 55px;
+  padding-bottom: 0px;
 }
 
 .checked-list-holder {
@@ -2568,7 +2568,7 @@ figcaption {
   justify-content: center;
   align-items: center;
   padding-top: 75px;
-  padding-bottom: 32px;
+  padding-bottom: 0px;
   display: flex;
   position: relative;
 }
@@ -2577,7 +2577,7 @@ figcaption {
   grid-column-gap: 30px;
   flex-direction: row;
   padding-top: 13px;
-  padding-bottom: 13px;
+  padding-bottom: 0px;
 }
 
 .error-message {
@@ -2653,7 +2653,7 @@ figcaption {
   grid-row-gap: 36px;
   flex-direction: column;
   padding-top: 100px;
-  padding-bottom: 100px;
+  padding-bottom: 0px;
   display: flex;
 }
 
@@ -2736,7 +2736,7 @@ figcaption {
 .full-width-image-holder {
   width: 100%;
   padding-top: 8px;
-  padding-bottom: 8px;
+  padding-bottom: 0px;
 }
 
 .full-width-image {
@@ -2818,7 +2818,7 @@ figcaption {
 
 .reviews-logos-holder {
   align-items: center;
-  padding-bottom: 8em;
+  padding-bottom: 0px;
   display: flex;
   overflow: hidden;
 }
@@ -2852,7 +2852,7 @@ figcaption {
 
 .data-collection-tab-holder {
   padding-top: 58px;
-  padding-bottom: 58px;
+  padding-bottom: 0px;
 }
 
 .hero-card {
@@ -2954,7 +2954,7 @@ figcaption {
   background-repeat: no-repeat;
   background-size: 7px;
   margin-top: 12px;
-  padding-bottom: 12px;
+  padding-bottom: 0px;
   font-weight: 600;
 }
 
@@ -3051,8 +3051,8 @@ figcaption {
   grid-row-gap: 30px;
   flex-direction: column;
   align-items: center;
-  padding-top: 60px;
-  padding-bottom: 20px;
+  padding-top: 0px;
+  padding-bottom: 0px;
   display: flex;
 }
 
@@ -3130,7 +3130,7 @@ figcaption {
   grid-column-gap: 40px;
   grid-row-gap: 40px;
   flex-direction: column;
-  padding-bottom: 30px;
+  padding-bottom: 0px;
   display: flex;
 }
 
@@ -3147,7 +3147,7 @@ figcaption {
   flex-direction: row;
   justify-content: flex-start;
   align-items: center;
-  padding-bottom: 0;
+  padding-bottom: 0px;
   display: flex;
 }
 
@@ -3669,7 +3669,7 @@ figcaption {
     flex-direction: column;
     justify-content: center;
     padding-top: 17px;
-    padding-bottom: 17px;
+    padding-bottom: 0px;
   }
 
   .work-item {
@@ -3872,7 +3872,7 @@ figcaption {
 
   .section-paddings {
     padding-top: 20px;
-    padding-bottom: 20px;
+    padding-bottom: 0px;
   }
 
   .hero-section-small-text {
@@ -3935,7 +3935,7 @@ figcaption {
   .colors-buttons {
     flex-direction: column;
     padding-top: 29px;
-    padding-bottom: 29px;
+    padding-bottom: 0px;
   }
 
   ._8-col-grid {
@@ -3959,7 +3959,7 @@ figcaption {
 
   .pricing-list-holder {
     padding-top: 24px;
-    padding-bottom: 24px;
+    padding-bottom: 0px;
   }
 
   .pricing-footer-holder {
@@ -3998,7 +3998,7 @@ figcaption {
   }
 
   .nav-wrapper {
-    padding-bottom: 30px;
+    padding-bottom: 0px;
   }
 
   .black-line-text-container {
@@ -4026,7 +4026,7 @@ figcaption {
     grid-row-gap: 30px;
     flex-direction: column;
     padding-top: 40px;
-    padding-bottom: 40px;
+    padding-bottom: 0px;
     display: flex;
   }
 
@@ -4075,8 +4075,8 @@ figcaption {
   }
 
   .about-me-section {
-    padding-top: 60px;
-    padding-bottom: 60px;
+    padding-top: 0px;
+    padding-bottom: 0px;
   }
 
   .about-me-title {
