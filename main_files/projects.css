@@ -2179,7 +2179,7 @@ p {
 
 a {
   font-family: var(--paragraph);
-  color: #000;
+  color: var(--accent-color)
   font-size: 18px;
   font-weight: 600;
   text-decoration: none;
@@ -3316,7 +3316,7 @@ figcaption {
 }
 
 .about-me-title {
-  color: var(--accent-color);
+  color: #000000;
   letter-spacing: +1px;
   text-transform: uppercase;
   margin-bottom: 0px;
