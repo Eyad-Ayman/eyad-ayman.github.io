@@ -101,6 +101,10 @@ code, kbd, pre, samp {
   font-size: 1em;
 }
 
+a.footer-gta {
+    color: #f00;
+}
+
 button, input, optgroup, select, textarea {
   color: inherit;
   font: inherit;
