@@ -2624,6 +2624,10 @@ figcaption {
   position: relative;
 }
 
+footer-gta {
+    color: #f00;
+}
+
 .help-content-holder {
   grid-row-gap: 30px;
   flex-direction: column;
