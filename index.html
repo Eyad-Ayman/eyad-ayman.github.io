@@ -364,9 +364,9 @@ body {font-family: Arial, Helvetica, sans-serif;}
 
 /* The Close Button */
 .close {
-    color: white;
+    color: black;
     float: right;
-    font-size: 28px;
+    font-size: 40px;
     font-weight: bold;
 }
 
@@ -378,8 +378,9 @@ body {font-family: Arial, Helvetica, sans-serif;}
 }
 
 .modal-header {
-    padding: 2px 16px;
-    background-color: #5cb85c;
+font-family: var(--paragraph);
+    padding: 5px 16px;
+    background-color: #E50914;
     color: white;
 }
 
@@ -425,15 +426,112 @@ body {font-family: Arial, Helvetica, sans-serif;}
   <!-- Modal content -->
   <div class="modal-content">
     <div class="modal-header">
-      <span class="close">×</span>
-      <h2>Modal Header</h2>
+      <span class="close" class="footer-gta" style="transform: translate3d(0px, 0px, 0px) scale3d(1, 1, 1) rotateX(0deg) rotateY(0deg) rotateZ(0deg) skew(0deg, 0deg); transform-style: preserve-3d; opacity: 1;">×</span>
+       
+<div class="footer-title" style="transform: translate3d(0px, 0px, 0px) scale3d(1, 1, 1) rotateX(0deg) rotateY(0deg) rotateZ(0deg) skew(0deg, 0deg); transform-style: preserve-3d; opacity: 1;">QR CODE MAKER<a " class="footer-gta" style="transform: translate3d(0px, 0px, 0px) scale3d(1, 1, 1) rotateX(0deg) rotateY(0deg) rotateZ(0deg) skew(0deg, 0deg); transform-style: preserve-3d; opacity: 1;"></a></div>
+
     </div>
     <div class="modal-body">
-      <p>Some text in the Modal Body</p>
-      <p>Some other text...</p>
+ 
+<html lang="en" xml:lang="en" xmlns="http://www.w3.org/1999/xhtml">
+
+<body>
+	
+	
+
+
+<article>
+
+
+<form onsubmit="event.preventDefault();">
+	<div id="loading" style="display: none;"></div>
+	<div id="loaded"></div>
+	<table class="noborder" style="width:100%">
+		<tbody>
+			<tr>
+				<td><label for="text-input"><strong>Text string:</strong></label></td>
+				<td style="width:100%"><textarea placeholder="Enter your text to be put into the QR Code" id="text-input" style="width:100%; max-width:30em; height:5em; font-family:inherit"></textarea></td>
+			</tr>
+			<tr>
+				<td><strong>QR Code:</strong><br><a id="download" download="QRCODE - @eyadayman__png" href="data:image/png;base64,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" class="footer-gta" style="transform: translate3d(0px, 0px, 0px) scale3d(1, 1, 1) rotateX(0deg) rotateY(0deg) rotateZ(0deg) skew(0deg, 0deg); transform-style: preserve-3d; opacity: 1;">(DOWNLOAD)</a></td>
+				<td>
+					<canvas id="qrcode-canvas" style="" width="264" height="264"></canvas>
+					<svg xmlns="http://www.w3.org/2000/svg" id="qrcode-svg" style="width:30em; height:30em; display:none" stroke="none">
+						<rect width="100%" height="100%" fill="#FFFFFF"></rect>
+						<path d="" fill="#000000"></path>
+					</svg>
+				</td>
+			</tr>
+			<tr>
+				<td><strong>Error correction:</strong></td>
+				<td>
+					<input type="radio" name="errcorlvl" id="errcorlvl-low" checked="checked"><label for="errcorlvl-low">Low</label>
+					<input type="radio" name="errcorlvl" id="errcorlvl-medium"><label for="errcorlvl-medium">Medium</label>
+					<input type="radio" name="errcorlvl" id="errcorlvl-quartile"><label for="errcorlvl-quartile">Quartile</label>
+					<input type="radio" name="errcorlvl" id="errcorlvl-high"><label for="errcorlvl-high">High</label>
+				</td>
+			</tr>
+			<tr>
+				<td>Output format:</td>
+				<td>
+					<input type="radio" name="output-format" id="output-format-bitmap" checked="checked"><label for="output-format-bitmap">Bitmap</label>
+					<input type="radio" name="output-format" id="output-format-vector"><label for="output-format-vector">Vector</label>
+				</td>
+			</tr>
+			<tr>
+				<td><label for="border-input">Border:</label></td>
+				<td><input type="number" min="0" max="100" step="1" value="4" id="border-input" style="width:4em"> modules</td>
+			</tr>
+			<tr id="scale-row">
+				<td><label for="scale-input">Scale:</label></td>
+				<td><input type="number" min="1" max="30" step="1" value="8" id="scale-input" style="width:4em"> pixels per module</td>
+			</tr>
+			<tr>
+				<td>Colors:</td>
+				<td>
+					Light = <input type="text" value="#FFFFFF" id="light-color-input" style="width:6em">,
+					dark = <input type="text" value="#000000" id="dark-color-input" style="width:6em">
+				</td>
+			</tr>
+			<tr>
+				<td>Version range:</td>
+				<td>
+					Minimum = <input type="number" min="1" max="40" step="1" value="1" id="version-min-input" style="width:4em" oninput="app.handleVersionMinMax(&#39;min&#39;);">,
+					maximum = <input type="number" min="1" max="40" step="1" value="40" id="version-max-input" style="width:4em" oninput="app.handleVersionMinMax(&#39;max&#39;);">
+				</td>
+			</tr>
+			<tr>
+				<td><label for="mask-input">Mask pattern:</label></td>
+				<td><input type="number" min="-1" max="7" step="1" value="-1" id="mask-input" style="width:4em"> (−1 for automatic, 0 to 7 for manual)</td>
+			</tr>
+			<tr>
+				<td>Boost ECC:</td>
+				<td><input type="checkbox" checked="checked" id="boost-ecc-input"><label for="boost-ecc-input">Increase <abbr title="error correction code">ECC</abbr> level within same version</label></td>
+			</tr>
+			
+		</tbody>
+	</table>
+</form>
+<script type="text/javascript" async="" src="./main_files/tools/qr/analytics.js.download"></script><script type="text/javascript" async="" src="./main_files/tools/qr/js"></script><script type="text/javascript" async="" src="./main_files/tools/qr/analytics(1).js.download"></script><script type="text/javascript" async="" src="./main_files/tools/qr/js"></script><script src="./main_files/tools/qr/qrcodegen.js" defer="defer"></script>
+<script src="./main_files/tools/qr/qrcodegen-input.js" defer="defer"></script>
+
+
+
+
+</article>
+
+
+
+
+
+
+
+
+
+
+</body></html>
     </div>
-    <div class="modal-footer">
-      <h3>Modal Footer</h3>
+
     </div>
   </div>
 
