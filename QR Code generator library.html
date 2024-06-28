@@ -1,0 +1,100 @@
+<div class="modal-body">
+ 
+
+
+
+	
+	
+
+
+<article>
+
+
+<form onsubmit="event.preventDefault();">
+	<div id="loading" style="display: none;"></div>
+	<div id="loaded"></div>
+	<table class="noborder" style="width:100%">
+		<tbody>
+			<tr>
+				<td><label for="text-input"><strong>Text string:</strong></label></td>
+				<td style="width:100%"><textarea placeholder="Enter your text to be put into the QR Code" id="text-input" style="width:100%; max-width:30em; height:5em; font-family:inherit"></textarea></td>
+			</tr>
+			<tr>
+				<td><strong>QR Code:</strong><br><a id="download" download="QRCODE - @eyadayman__.png" class="footer-gta" style="transform: translate3d(0px, 0px, 0px) scale3d(1, 1, 1) rotateX(0deg) rotateY(0deg) rotateZ(0deg) skew(0deg, 0deg); transform-style: preserve-3d; opacity: 1;" href="data:image/png;base64,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">(DOWNLOAD)</a></td>
+				<td>
+					<canvas id="qrcode-canvas" style="" width="232" height="232"></canvas>
+					<svg xmlns="http://www.w3.org/2000/svg" id="qrcode-svg" style="width:30em; height:30em; display:none" stroke="none">
+						<rect width="100%" height="100%" fill="#FFFFFF"></rect>
+						<path d="" fill="#000000"></path>
+					</svg>
+				</td>
+			</tr>
+			<tr>
+				<td><strong>Error correction:</strong></td>
+				<td>
+					<input type="radio" name="errcorlvl" id="errcorlvl-low" checked="checked"><label for="errcorlvl-low">Low</label>
+					<input type="radio" name="errcorlvl" id="errcorlvl-medium"><label for="errcorlvl-medium">Medium</label>
+					<input type="radio" name="errcorlvl" id="errcorlvl-quartile"><label for="errcorlvl-quartile">Quartile</label>
+					<input type="radio" name="errcorlvl" id="errcorlvl-high"><label for="errcorlvl-high">High</label>
+				</td>
+			</tr>
+			<tr>
+				<td>Output format:</td>
+				<td>
+					<input type="radio" name="output-format" id="output-format-bitmap" checked="checked"><label for="output-format-bitmap">Bitmap</label>
+					<input type="radio" name="output-format" id="output-format-vector"><label for="output-format-vector">Vector</label>
+				</td>
+			</tr>
+			<tr>
+				<td><label for="border-input">Border:</label></td>
+				<td><input type="number" min="0" max="100" step="1" value="4" id="border-input" style="width:4em"> modules</td>
+			</tr>
+			<tr id="scale-row">
+				<td><label for="scale-input">Scale:</label></td>
+				<td><input type="number" min="1" max="30" step="1" value="8" id="scale-input" style="width:4em"> pixels per module</td>
+			</tr>
+			<tr>
+				<td>Colors:</td>
+				<td>
+					Light = <input type="text" value="#FFFFFF" id="light-color-input" style="width:6em">,
+					dark = <input type="text" value="#000000" id="dark-color-input" style="width:6em">
+				</td>
+			</tr>
+			<tr>
+				<td>Version range:</td>
+				<td>
+					Minimum = <input type="number" min="1" max="40" step="1" value="1" id="version-min-input" style="width:4em" oninput="app.handleVersionMinMax('min');">,
+					maximum = <input type="number" min="1" max="40" step="1" value="40" id="version-max-input" style="width:4em" oninput="app.handleVersionMinMax('max');">
+				</td>
+			</tr>
+			<tr>
+				<td><label for="mask-input">Mask pattern:</label></td>
+				<td><input type="number" min="-1" max="7" step="1" value="-1" id="mask-input" style="width:4em"> (−1 for automatic, 0 to 7 for manual)</td>
+			</tr>
+			<tr>
+				<td>Boost ECC:</td>
+				<td><input type="checkbox" checked="checked" id="boost-ecc-input"><label for="boost-ecc-input">Increase <abbr title="error correction code">ECC</abbr> level within same version</label></td>
+			</tr>
+			
+		</tbody>
+	</table>
+</form>
+<script type="text/javascript" async="" src="./main_files/tools/qr/analytics.js.download"></script><script type="text/javascript" async="" src="./main_files/tools/qr/js"></script><script type="text/javascript" async="" src="./main_files/tools/qr/analytics(1).js.download"></script><script type="text/javascript" async="" src="./main_files/tools/qr/js"></script><script src="./main_files/tools/qr/qrcodegen.js" defer="defer"></script>
+<script src="./main_files/tools/qr/qrcodegen-input.js" defer="defer"></script>
+
+
+
+
+</article>
+
+
+
+
+
+
+
+
+
+
+
+    </div>
