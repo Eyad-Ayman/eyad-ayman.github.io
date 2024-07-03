@@ -1,0 +1,66 @@
+body{font-family:Roboto,sans-serif;line-height:22px;color:#4d6466;-webkit-font-smoothing:subpixel-antialiased;overflow-x:hidden;-webkit-text-size-adjust:100%;-webkit-tap-highlight-color:transparent}
+*,::after,::before{box-sizing:border-box;padding:0;margin:0;outline:0;-webkit-font-smoothing:subpixel-antialiased;-webkit-text-stroke:1px transparent}
+:focus{outline:0}
+::-moz-focus-inner{border:0}
+a,a:hover{text-decoration:none}
+a,a img{outline:0;border:0}
+ul{list-style:none}
+.svg{position:absolute;opacity:0;pointer-events:none;width:1px;height:1px;overflow:hidden}
+#page{min-height:calc(100vh - 100px);width:100%;max-width:1190px;margin:0 auto;display:flex;align-items:center;padding-top:1.5em;flex-direction:column}
+.link{color:#28772E;transition:.5s ease all;text-decoration:underline}
+.link:hover{opacity:.8}
+.container{width:100%;display:flex;justify-content:center;border-bottom:1px solid rgba(0,0,0,.2);background:#fff}
+.data{display:flex;max-width:1190px;width:100%;margin:16px 20px;justify-content:space-between;overflow:hidden}
+#logo{display:inline-flex}
+#linksTop{display:inline-flex;align-items:center}
+#linksTop a,.menuBG a{font-size:11pt;margin-left:20px;transition:.5s ease all;color:#454545}
+#linksTop a:hover,.menuBG a:hover{color:#848486}
+.menuBG a{margin-bottom:16px;display:block}
+#content{margin:20px;text-align:justify;font-size:12pt}
+h1{font-size:26pt;font-weight:500;margin:20px 20px 60px;text-align:center;line-height:30px}
+#h1Span{position:relative;display:inline-block}
+#h1Span::after,#h2Span::after{content:"";border-right:2px solid #007C86;border-top:2px solid #007C86;width:14px;height:14px;position:absolute;right:-10px;top:-10px}
+#h1Span::before,#h2Span::before{content:"";border-left:2px solid #007C86;border-bottom:2px solid #007C86;width:14px;height:14px;position:absolute;left:-10px;bottom:-10px}
+#h2Span::after,#h2Span::before{border-color:#fff}
+#h2Span{position:relative;user-select:none}
+#footer{background:#007C86;display:flex;margin-top:40px;position:relative;justify-content:center;padding:30px 0}
+#footer::after{content:"";position:absolute;left:0;top:-4px;width:100%;height:2px;background:#007C86}
+.shareIcon{fill:#befbff;width:30px;height:30px}
+.shareLink{margin:10px;display:inline-block;transition:.5s ease all}
+.shareLink:hover{opacity:.8}
+#CR{font-size:11pt;color:#fff;margin-top:30px}
+.menuBG{background:#fff;transition:.3s ease;top:0;right:-250px;height:100%;position:fixed;z-index:30;width:200px;box-shadow:0 5px 30px -2px rgba(255,255,255,.8);padding:80px 0 0 20px}
+.menuOpen{right:0}
+.ham{cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform 400ms;user-select:none;display:none;position:absolute;top:0;right:0;z-index:100}
+.ham.active{transform:rotate(45deg);position:fixed}
+.ham .top{stroke-dasharray:40 139}
+.ham .bottom{stroke-dasharray:40 180}
+.ham.active .top{stroke-dashoffset:-98px}
+.ham.active .bottom{stroke-dashoffset:-138px}
+.line{fill:none;transition:stroke-dasharray 400ms,stroke-dashoffset 400ms;stroke:#017c87;stroke-width:5.5;stroke-linecap:round}
+#shareWrap{flex-direction:column;align-items:center;display:flex}
+#footerLinks{display:flex;flex:1;justify-content:center}
+#footerLinks div{display:flex;flex-direction:column}
+#footerLinks a{color:#befbff;transition:.5s ease all;margin-bottom:6px;font-size:11pt}
+#footerLinks a:hover{opacity:.8}
+#footerWrap{max-width:1190px;display:flex;margin:0 20px;color:#fff}
+#company{flex:1}
+#company img{margin-bottom:10px}
+#companyInfo{background:#027079;padding:10px;font-size:11pt}
+h4{font-size:16pt;font-weight:500;color:#fff;margin-bottom:10px}
+#mask{background:rgba(0,0,0,.7);position:fixed;top:0;left:0;bottom:0;right:0;transition:.5s ease-in-out all;z-index:20;display:none}
+#trustPilot{border-radius:10px;border:1px solid #00b579;overflow:hidden;display:inline-block}
+#rating{margin-top:10px;display:flex}
+#rating a{margin:10px}
+@media (max-width:960px){#linksTop{display:flex;position:absolute;z-index:30;top:100px;right:60px;flex-direction:column;align-items:flex-start;transition:.3s ease all;transform:scale(0);opacity:0}
+#linksTop a{margin:10px}
+.ham{display:block}
+#menuLinksCont{height:100%;overflow:auto}}
+@media (max-width:641px){#footer,#footerLinks{justify-content:flex-start}
+#shareWrap{align-items:flex-start;margin:20px 0}
+#footerWrap{flex-direction:column}
+#rating{flex-direction:column}
+#company{order:1}}
+@media (max-width:480px){h1{font-size:20pt}}
+@media (max-width:320px){h1{font-size:12pt}}
+@media (max-width: 1024px) {#footerLinks a{line-height:48px;color:#fff;text-decoration:underline}}
