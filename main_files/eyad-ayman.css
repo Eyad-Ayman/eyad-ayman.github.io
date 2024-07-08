@@ -357,6 +357,8 @@ pre.w-code-block code {
   transform: none;
 }
 
+
+
 .w-webflow-badge {
   white-space: nowrap;
   cursor: pointer;
@@ -444,6 +446,85 @@ blockquote {
   font-size: 18px;
   line-height: 22px;
 }
+.name {
+  color: #f74a53;
+  font-variation-settings: "wdth"125, "wght"900;
+  text-transform: uppercase;
+  margin-top: 0;
+}
+
+.summery {
+  width: 100%;
+  height: 100%;
+  -webkit-backdrop-filter: blur(42px);
+  backdrop-filter: blur(42px);
+  text-transform: uppercase;
+  background-color: rgba(255, 255, 255, .3);
+  border: 2px solid #d9d9d9;
+  padding-right: 0;
+  position: relative;
+}
+
+.social-media-link-holder {
+  border: 1px solid #d6d6d6;
+  justify-content: center;
+  align-items: center;
+  padding: 20px 9px;
+  transition: border-color .3s, background-color .4s;
+  display: flex;
+}
+
+.social-media-link-holder:hover {
+  background-color: #f1f1f1;
+  border-color: #f74a53;
+}
+
+.social-media-link-holder.red {
+  background-color: rgba(255, 255, 255, .4);
+}
+
+.social-media-link {
+  width: 33px;
+  padding-left: 6px;
+  padding-right: 6px;
+}
+
+.social-name {
+  text-transform: none;
+
+  overflow: hidden;
+}
+
+.summery-block {
+  width: 12px;
+  height: 12px;
+  background-color: #fff;
+  border: 2px solid #f74a53;
+  position: absolute;
+  top: -7px;
+  bottom: auto;
+  left: -5px;
+  right: auto;
+}
+
+.summery-block._02 {
+  top: -8px;
+  left: auto;
+  right: -7px;
+}
+
+.summery-block._03 {
+  top: auto;
+  bottom: -4px;
+}
+
+.summery-block._04 {
+  top: auto;
+  bottom: -5px;
+  left: auto;
+  right: -7px;
+}
+
 
 figure {
   margin: 0 0 10px;
@@ -2334,6 +2415,40 @@ figcaption {
   padding: 20px;
   display: flex;
 }
+.tools {
+  border: 1px solid #d6d6d6;
+  justify-content: center;
+  align-items: center;
+  padding: 8px 3px;
+   color: #f00;
+  transition: border-color .3s, background-color .4s;
+  display: flex;
+}
+
+.social-media-link-holder {
+  border: 1px solid #d6d6d6;
+  justify-content: center;
+  align-items: center;
+  padding: 25px 9px;
+  transition: border-color .3s, background-color .4s;
+  display: flex;
+}
+
+
+.social-media-link-holder:hover {
+  background-color: #f1f1f1;
+  border-color: #f74a53;
+}
+
+.social-media-link-holder.red {
+  background-color: rgba(255, 255, 255, .4);
+}
+
+.social-media-link {
+  width: 33px;
+  padding-left: 6px;
+  padding-right: 6px;
+}
 
 .button {
   font-family: var(--headings);
@@ -3333,6 +3448,16 @@ footer-gta {
   text-transform: uppercase;
   margin-bottom: 30px;
   font-size: 100px;
+  font-weight: 700;
+  line-height: .9;
+  position: relative;
+}
+.mylinks {
+  color: var(--accent-color);
+  letter-spacing: -3px;
+  text-transform: uppercase;
+  margin-bottom: 30px;
+  font-size: 50px;
   font-weight: 700;
   line-height: .9;
   position: relative;

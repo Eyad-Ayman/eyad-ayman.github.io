@@ -1457,6 +1457,17 @@
 
 a.footer-gta {
     color: #f00;
+
+}
+.social-media-holder {
+  grid-column-gap: 18px;
+  margin-top: 32px;
+  display: flex;
+}
+.social-media-holder {
+  grid-column-gap: 18px;
+  margin-top: 32px;
+  display: flex;
 }
 
 /* latin */
