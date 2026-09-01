@@ -12,7 +12,7 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const OUT_PATH = path.join(__dirname, "..", "data", "instagram.json");
-const POST_LIMIT = 8;
+const POST_LIMIT = 50;
 
 const token = process.env.IG_ACCESS_TOKEN;
 if (!token) {

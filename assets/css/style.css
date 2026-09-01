@@ -5127,9 +5127,11 @@ html {
 }
 .project-caption {
   display: flex;
-  align-items: baseline;
-  gap: 8px;
-  margin-top: 10px;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(0, 0, 0, .14);
 }
 .project-name {
   font-family: var(--headings);
@@ -5140,9 +5142,72 @@ html {
   color: #000;
 }
 .project-index {
-  font-family: var(--headings);
-  font-size: 11px;
+  font-family: "Courier New", ui-monospace, monospace;
+  font-size: 10px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
   color: #888;
+}
+
+/* Magazine-style masthead strip above the gallery grid */
+.gallery-masthead {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 10px 24px;
+  font-family: "Courier New", ui-monospace, monospace;
+  font-size: 11px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: #555;
+  padding: 14px 0;
+  margin-bottom: 30px;
+  border-top: 1px solid rgba(0, 0, 0, .2);
+  border-bottom: 1px solid rgba(0, 0, 0, .2);
+}
+@media screen and (max-width: 600px) {
+  .gallery-masthead { font-size: 10px; gap: 6px 16px; }
+}
+
+/* Full-bleed spreads through the mixed gallery — fashion-editorial pacing,
+   a big color plate every few tiles instead of one uniform grayscale grid */
+.project-grid .project-tile.tile-hero {
+  column-span: all;
+  margin-bottom: 50px;
+  position: relative;
+}
+.project-grid .project-tile.tile-hero .project-photo {
+  position: relative;
+}
+.project-grid .project-tile.tile-hero .project-photo img {
+  max-height: 82vh;
+  object-fit: cover;
+  width: 100%;
+  filter: grayscale(0%) contrast(102%);
+}
+.project-grid .project-tile.tile-hero:hover .project-photo img {
+  filter: grayscale(0%) contrast(100%);
+}
+.project-grid .project-tile.tile-hero .project-photo::before {
+  content: attr(data-tile-number);
+  position: absolute;
+  left: 20px;
+  bottom: -6px;
+  font-family: "Courier New", ui-monospace, monospace;
+  font-weight: 700;
+  font-size: clamp(70px, 14vw, 190px);
+  line-height: 1;
+  color: #f3ede1;
+  mix-blend-mode: difference;
+  opacity: .85;
+  pointer-events: none;
+  z-index: 2;
+}
+.project-grid .project-tile.tile-hero .project-caption {
+  max-width: 480px;
+}
+@media screen and (max-width: 767px) {
+  .project-grid .project-tile.tile-hero .project-photo::before { font-size: 90px; left: 12px; }
 }
 .project-grid a:hover img,
 .project-grid .project-tile:hover img {
