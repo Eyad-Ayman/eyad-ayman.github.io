@@ -2729,8 +2729,30 @@ textarea.w-input, textarea.w-select {
 :root {
   --headings: Oswald, sans-serif;
   --paragraph: Inter, sans-serif;
-  --accent-color: #000;
+  --accent-color: #d02b2a;
   --main-color: #000;
+}
+
+/* Fixed live-clock readout, bottom-left */
+.site-readout {
+  position: fixed;
+  left: 18px;
+  bottom: 16px;
+  z-index: 15;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: "Courier New", ui-monospace, monospace;
+  font-size: 11px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: #000;
+  mix-blend-mode: difference;
+  pointer-events: none;
+}
+.site-readout span:nth-child(2) { color: #999; }
+@media screen and (max-width: 767px) {
+  .site-readout { display: none; }
 }
 
 .w-layout-grid {
@@ -2745,7 +2767,7 @@ textarea.w-input, textarea.w-select {
 body {
   font-family: var(--headings);
   color: #000;
-  background-color: #ffffff;
+  background-color: #f3ede1;
   font-size: 14px;
   font-weight: 400;
   line-height: 1.2;
@@ -3490,17 +3512,14 @@ footer-gta {
 }
 
 .menu-button {
-  width: auto;
-  height: auto;
-  min-height: 0;
-  min-width: 0;
+  width: 52px;
+  height: 52px;
+  min-height: 52px;
+  min-width: 52px;
   justify-content: center;
   align-items: center;
-  padding: 10px 22px;
-  background-color: #000;
-  border-radius: 999px;
+  padding: 0;
 }
-.menu-button .menu-text { color: #fff; font-size: 13px; }
 
 .menu-button.w--open {
   z-index: 20;
@@ -3736,31 +3755,6 @@ footer-gta {
   font-size: 40px;
   font-weight: 700;
 }
-
-.footer-linkrow {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px 24px;
-  width: 100%;
-  padding: 18px 0;
-  border-top: 1px solid rgba(0, 0, 0, .2);
-  font-family: "Courier New", ui-monospace, monospace;
-  font-size: 11px;
-  letter-spacing: .06em;
-  text-transform: uppercase;
-}
-.footer-linkrow-dash {
-  color: #999;
-  margin-right: auto;
-}
-.footer-linkrow a {
-  color: #000;
-  text-decoration: none;
-  opacity: .65;
-  transition: opacity .18s ease;
-}
-.footer-linkrow a:hover { opacity: 1; }
 
 .footer-holder {
   grid-column-gap: 30px;
@@ -4032,7 +4026,7 @@ footer-gta {
   font-weight: 700;
   font-size: 30px;
   color: var(--accent-color);
-  background-color: #fafafa;
+  background-color: #f6f1e6;
   padding: 2px 14px;
   transform: rotate(-6deg);
   pointer-events: none;
@@ -4091,12 +4085,12 @@ footer-gta {
 
 .about-me-title {
   color: var(--accent-color);
-  letter-spacing: -2px;
+  letter-spacing: -6px;
   text-transform: uppercase;
   margin-bottom: 30px;
   font-size: 100px;
-  font-weight: 500;
-  line-height: .95;
+  font-weight: 700;
+  line-height: .9;
   position: relative;
 }
 .mylinks {
@@ -4131,6 +4125,33 @@ footer-gta {
 
 .about-me-image-wrapper._02, .about-me-image, .about-me-image._01 {
   width: 100%;
+}
+
+.color-palette-holder {
+  margin-bottom: 24px;
+  display: flex;
+}
+
+.color-palette {
+  width: 23px;
+  height: 23px;
+  background-color: #79020e;
+}
+
+.color-palette._02 {
+  background-color: #c10606;
+}
+
+.color-palette._03 {
+  background-color: #930303;
+}
+
+.color-palette._01 {
+  background-color: #e51328;
+}
+
+.color-palette._05 {
+  background-color: #5b0202;
 }
 
 .project-grid-wrapper {
@@ -4280,7 +4301,7 @@ footer-gta {
   z-index: 100000;
   width: 100vw;
   height: 100vh;
-  opacity: .3;
+  opacity: .85;
   pointer-events: none;
   flex-direction: column;
   justify-content: center;
@@ -5019,7 +5040,7 @@ html {
   max-height: 760px;
   display: flex;
   flex-direction: column;
-  background-color: #fafafa;
+  background-color: #f6f1e6;
   border: 1px solid #000;
 }
 .tools-modal-header {
@@ -5103,60 +5124,28 @@ html {
   .tools-modal-content { max-width: 100%; height: 92vh; max-height: none; }
 }
 
-/* Project grid — 12-column grid with an asymmetric large/small tile
-   rhythm (full-bleed row, then alternating large+small pairs), matching
-   the irregular masonry pacing of the themidnightclub.com reference
-   grid instead of a plain even-column layout. Tile widths are set via
-   inline grid-column spans from gallery-feed.js. */
+/* Project grid (inline, replaces the old broken iframe) */
 .project-grid {
-  display: grid;
-  grid-template-columns: repeat(12, 1fr);
-  gap: 26px 24px;
+  columns: 4 220px;
+  column-gap: 28px;
   width: 100%;
 }
 .project-grid a,
 .project-grid .project-tile {
   display: block;
-  grid-column: span 4;
+  break-inside: avoid;
+  margin-bottom: 34px;
   text-decoration: none;
 }
 .project-photo {
   overflow: hidden;
-  position: relative;
 }
 .project-grid img {
   width: 100%;
   height: auto;
   display: block;
-  filter: contrast(102%);
-  transition: transform .5s ease;
-}
-.project-grid a:hover img,
-.project-grid .project-tile:hover img {
-  transform: scale(1.035);
-}
-.project-see-more {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%) scale(.9);
-  padding: 10px 22px;
-  background: #fff;
-  color: #000;
-  font-family: "Courier New", ui-monospace, monospace;
-  font-size: 12px;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-  border-radius: 999px;
-  opacity: 0;
-  transition: opacity .25s ease, transform .25s ease;
-  pointer-events: none;
-  white-space: nowrap;
-}
-.project-grid a:hover .project-see-more,
-.project-grid .project-tile:hover .project-see-more {
-  opacity: 1;
-  transform: translate(-50%, -50%) scale(1);
+  filter: grayscale(100%) contrast(105%);
+  transition: filter .3s ease;
 }
 .project-caption {
   display: flex;
@@ -5182,10 +5171,31 @@ html {
   color: #888;
 }
 
+/* Magazine-style masthead strip above the gallery grid */
+.gallery-masthead {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 10px 24px;
+  font-family: "Courier New", ui-monospace, monospace;
+  font-size: 11px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: #555;
+  padding: 14px 0;
+  margin-bottom: 30px;
+  border-top: 1px solid rgba(0, 0, 0, .2);
+  border-bottom: 1px solid rgba(0, 0, 0, .2);
+}
+@media screen and (max-width: 600px) {
+  .gallery-masthead { font-size: 10px; gap: 6px 16px; }
+}
 
 /* Full-bleed spreads through the mixed gallery — fashion-editorial pacing,
    a big color plate every few tiles instead of one uniform grayscale grid */
 .project-grid .project-tile.tile-hero {
+  column-span: all;
+  margin-bottom: 50px;
   position: relative;
 }
 .project-grid .project-tile.tile-hero .project-photo {
@@ -5209,7 +5219,7 @@ html {
   font-weight: 700;
   font-size: clamp(70px, 14vw, 190px);
   line-height: 1;
-  color: #ffffff;
+  color: #f3ede1;
   mix-blend-mode: difference;
   opacity: .85;
   pointer-events: none;
@@ -5235,16 +5245,52 @@ html {
 }
 @media screen and (max-width: 767px) {
   .project-grid {
-    grid-template-columns: 1fr;
-    gap: 22px;
+    columns: 2 150px;
+    column-gap: 18px;
   }
-  .project-grid .project-tile,
-  .project-grid .project-tile.tile-hero {
-    grid-column: 1 / -1 !important;
-  }
+  .project-grid .project-tile { margin-bottom: 22px; }
+}
+
+/* Instagram call-to-action (replaces the paid Elfsight embed + branding) */
+.instagram-cta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 48px;
+  background-color: var(--main-color);
+  color: #fff;
+}
+.instagram-cta-text .about-me-title {
+  color: #fff;
+  margin-bottom: 8px;
+}
+.instagram-cta-text p {
+  font-family: var(--paragraph);
+  color: #c8c8c8;
+  margin: 0;
+}
+.instagram-cta .social-media-link-holder {
+  border-color: #333;
+}
+.instagram-cta .social-media-link-holder:hover {
+  background-color: #1a1a1a;
+  border-color: var(--accent-color);
+}
+.instagram-cta .social-name {
+  color: #fff;
 }
 
 /* Artistic touches */
+.section-kicker {
+  font-family: var(--headings);
+  color: var(--accent-color);
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  font-size: 13px;
+  margin-bottom: 6px;
+}
 .hero-section-images-holder._01 img,
 video.hero-section-images._02 {
   filter: grayscale(100%) contrast(105%);
@@ -5296,7 +5342,7 @@ video.hero-section-images._02 {
   right: 0;
   bottom: 0;
   padding: 7px 10px;
-  background-color: #fafafa;
+  background-color: #f6f1e6;
   border-top: 1px solid #000;
   color: #000;
   font-family: var(--headings);
@@ -5310,7 +5356,7 @@ video.hero-section-images._02 {
   top: 8px;
   left: 10px;
   padding: 2px 6px;
-  background-color: #fafafa;
+  background-color: #f6f1e6;
   border: 1px solid #000;
   color: #000;
   font-family: var(--headings);
@@ -5323,56 +5369,80 @@ video.hero-section-images._02 {
 
 /* Section eyebrow numbering ("01 — ABOUT" style) */
 .section-number {
-  font-family: "Courier New", ui-monospace, monospace;
+  font-family: var(--headings);
   color: var(--accent-color);
-  font-size: 13px;
-  letter-spacing: 2px;
-  text-transform: uppercase;
+  font-size: 14px;
+  letter-spacing: 3px;
   margin-bottom: 8px;
   display: block;
 }
 
-/* Fixed technical readout, bottom-left — magazine/editorial site chrome */
-.site-readout {
-  position: fixed;
-  left: 18px;
-  bottom: 16px;
-  z-index: 15;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-family: "Courier New", ui-monospace, monospace;
-  font-size: 11px;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-  color: #000;
-  mix-blend-mode: difference;
-  pointer-events: none;
+/* Instagram gallery grid (replaces plain CTA band) */
+.insta-gallery {
+  position: relative;
+  background: none;
+  padding: 0 40px;
 }
-.site-readout span:nth-child(2) { color: #999; }
-@media screen and (max-width: 767px) {
-  .site-readout { display: none; }
+.insta-gallery .eapps-instagram-feed-posts-grid-load-more {
+  background-color: var(--main-color) !important;
+  color: #fff !important;
+  border: none !important;
+  border-radius: 0 !important;
+  font-family: var(--headings) !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: .5px !important;
+  box-shadow: none !important;
+  transition: background-color .18s ease !important;
 }
-
-/* Reusable masthead strip — used to give every major section the same
-   magazine-page-header treatment as the Gallery of Work grid */
-.section-masthead {
+.insta-gallery .eapps-instagram-feed-posts-grid-load-more:hover {
+  background-color: var(--accent-color) !important;
+}
+.insta-gallery-lede {
+  font-family: var(--paragraph);
+  font-size: 15px;
+  color: #555;
+  max-width: 60ch;
+  margin: 0 0 24px;
+}
+.insta-gallery-head {
   display: flex;
   flex-wrap: wrap;
+  align-items: flex-end;
   justify-content: space-between;
-  gap: 10px 24px;
-  font-family: "Courier New", ui-monospace, monospace;
-  font-size: 11px;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-  color: #555;
-  padding: 14px 0;
-  margin: 22px 0 30px;
-  border-top: 1px solid rgba(0, 0, 0, .2);
-  border-bottom: 1px solid rgba(0, 0, 0, .2);
+  gap: 20px;
+  margin-bottom: 28px;
 }
-@media screen and (max-width: 600px) {
-  .section-masthead { font-size: 10px; gap: 6px 16px; }
+.insta-gallery-head .about-me-title {
+  color: #fff;
+  margin: 0;
+}
+.insta-gallery-head p {
+  font-family: var(--paragraph);
+  color: #999;
+  margin: 4px 0 0;
+}
+.insta-gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 3px;
+}
+.insta-gallery-grid .gallery-tile {
+  aspect-ratio: 1 / 1;
+}
+.insta-gallery-grid img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: grayscale(100%) contrast(105%);
+  transition: filter .3s ease;
+}
+.insta-gallery-grid .gallery-tile:hover img {
+  filter: grayscale(0%) contrast(100%);
+}
+@media screen and (max-width: 767px) {
+  .insta-gallery { padding: 40px 20px; }
+  .insta-gallery-grid { grid-template-columns: repeat(2, 1fr); }
 }
 
 /* Tools launcher cards — bordered, fills black with a sliding arrow on hover */
@@ -5902,6 +5972,24 @@ video.hero-section-images._02 {
   filter: grayscale(0%) contrast(100%);
 }
 
+/* Elfsight Instagram embed (free-tier fallback until the official API is configured) */
+.insta-gallery-grid:has(.elfsight-app-8608f34f-cf85-4a1c-aa52-e7d4a5e0d546) {
+  display: block;
+  min-height: 700px;
+}
+
+.insta-loading-placeholder {
+  min-height: 400px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--headings);
+  font-size: 13px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: #666;
+}
+
 .work-exp-head {
   display: flex;
   align-items: baseline;
@@ -6061,48 +6149,6 @@ video.hero-section-images._02 {
   .auto-slideshow { height: 60vh; }
 }
 
-/* Scrolling black marquee — an editorial statement band between Home and
-   the Gallery, the kind of loud/confident beat a creative studio site uses
-   to break the white space up before the grid. */
-.marquee {
-  width: 100%;
-  overflow: hidden;
-  background-color: #000;
-  padding: 16px 0;
-  white-space: nowrap;
-}
-.marquee-track {
-  display: inline-flex;
-  width: max-content;
-  animation: marquee-scroll 22s linear infinite;
-}
-.marquee-track span {
-  font-family: "Courier New", ui-monospace, monospace;
-  font-weight: 700;
-  font-size: 18px;
-  letter-spacing: .04em;
-  color: #fff;
-  text-transform: uppercase;
-  padding-right: 0;
-}
-.marquee-track em {
-  font-style: normal;
-  font-size: 12px;
-  vertical-align: 2px;
-  opacity: .5;
-  margin: 0 4px;
-}
-@keyframes marquee-scroll {
-  from { transform: translateX(0); }
-  to   { transform: translateX(-50%); }
-}
-@media (prefers-reduced-motion: reduce) {
-  .marquee-track { animation: none; }
-}
-@media screen and (max-width: 767px) {
-  .marquee-track span { font-size: 14px; }
-}
-
 /* ==========================================================================
    Full-bleed photo break — the work fills the whole screen, magazine-style
    ========================================================================== */
@@ -6132,18 +6178,6 @@ video.hero-section-images._02 {
   font-weight: 700;
   text-transform: uppercase;
   line-height: 1.25;
-  text-shadow: 0 2px 10px rgba(0,0,0,.6);
-}
-.full-bleed-tag {
-  position: absolute;
-  top: 24px;
-  right: 32px;
-  z-index: 2;
-  color: #fff;
-  font-family: "Courier New", ui-monospace, monospace;
-  font-size: 12px;
-  letter-spacing: .1em;
-  text-transform: uppercase;
   text-shadow: 0 2px 10px rgba(0,0,0,.6);
 }
 .full-bleed-note.handwritten-note {
@@ -6341,7 +6375,7 @@ video.hero-section-images._02 {
 .game-modal-content {
   width: 100%;
   max-width: 460px;
-  background-color: #fafafa;
+  background-color: #f6f1e6;
   border: 2px solid #000;
   box-shadow: 0 14px 36px rgba(0,0,0,.22);
 }
@@ -6462,6 +6496,49 @@ video.hero-section-images._02 {
   .tools-side-photo:hover img { filter: grayscale(0%); }
 }
 
+/* Gallery of Work — tab switcher between Projects and Instagram panels */
+.gallery-tabs {
+  display: flex;
+  gap: 10px;
+  margin: 20px 0 0;
+}
+.gallery-tab {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  font-family: var(--headings);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  font-size: 14px;
+  color: #888;
+  padding: 6px 2px;
+  cursor: pointer;
+  transition: color .18s ease, border-color .18s ease;
+}
+.gallery-tab:hover { color: #000; }
+.gallery-tab.is-active {
+  color: var(--accent-color);
+  border-bottom-color: var(--accent-color);
+}
+.gallery-tab-panel[hidden] { display: none; }
+.gallery-tab-panel {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.gallery-tab-panel .project-grid {
+  columns: 5 260px;
+}
+.gallery-tab-panel .insta-gallery-grid {
+  align-self: stretch;
+}
+@media screen and (max-width: 767px) {
+  .gallery-tab-panel { min-height: 0; }
+  .gallery-tab-panel .project-grid { columns: 2 150px; }
+}
+
 /* Work Experience — clean timeline list */
 .process-detail-wrapper {
   display: flex;
@@ -6543,13 +6620,13 @@ video.hero-section-images._02 {
    ========================================================================== */
 html {
   scrollbar-width: thin;
-  scrollbar-color: var(--main-color) #ffffff;
+  scrollbar-color: var(--main-color) #f3ede1;
 }
 ::-webkit-scrollbar { width: 10px; height: 10px; }
-::-webkit-scrollbar-track { background: #ffffff; }
+::-webkit-scrollbar-track { background: #f3ede1; }
 ::-webkit-scrollbar-thumb {
   background: var(--main-color);
-  border: 2px solid #ffffff;
+  border: 2px solid #f3ede1;
   border-radius: 6px;
 }
 ::-webkit-scrollbar-thumb:hover { background: var(--accent-color); }

@@ -27,6 +27,41 @@
     setInterval(updateClock, 15000);
   }
 
+  // ---- Opening splash (once per browser session) ------------------------
+  var intro = document.getElementById("intro-overlay");
+  if (intro) {
+    var seen = false;
+    try { seen = sessionStorage.getItem("introSeen") === "1"; } catch (e) {}
+
+    if (seen) {
+      intro.remove();
+    } else {
+      var dismissed = false;
+
+      // Film-leader style frame counter ticking up while the sequence plays.
+      var counterEl = document.getElementById("intro-frame-counter");
+      var counterTimer = null;
+      if (counterEl) {
+        var frame = 1;
+        counterTimer = setInterval(function () {
+          frame += Math.floor(Math.random() * 4) + 1;
+          counterEl.textContent = String(frame).padStart(3, "0");
+        }, 90);
+      }
+
+      function dismissIntro() {
+        if (dismissed) return;
+        dismissed = true;
+        if (counterTimer) clearInterval(counterTimer);
+        try { sessionStorage.setItem("introSeen", "1"); } catch (e) {}
+        intro.classList.add("intro-hidden");
+        setTimeout(function () { intro.remove(); }, 750);
+      }
+      intro.addEventListener("click", dismissIntro);
+      setTimeout(dismissIntro, 2400);
+    }
+  }
+
   // ---- Scroll-reveal motion (one-time fade/rise per element) -------------
   var revealEls = Array.prototype.slice.call(document.querySelectorAll(".reveal"));
   if (revealEls.length && "IntersectionObserver" in window) {
