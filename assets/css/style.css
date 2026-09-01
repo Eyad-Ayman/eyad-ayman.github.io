@@ -2729,7 +2729,7 @@ textarea.w-input, textarea.w-select {
 :root {
   --headings: Oswald, sans-serif;
   --paragraph: Inter, sans-serif;
-  --accent-color: #d02b2a;
+  --accent-color: #000;
   --main-color: #000;
 }
 
@@ -4091,12 +4091,12 @@ footer-gta {
 
 .about-me-title {
   color: var(--accent-color);
-  letter-spacing: -6px;
+  letter-spacing: -2px;
   text-transform: uppercase;
   margin-bottom: 30px;
   font-size: 100px;
-  font-weight: 700;
-  line-height: .9;
+  font-weight: 500;
+  line-height: .95;
   position: relative;
 }
 .mylinks {
