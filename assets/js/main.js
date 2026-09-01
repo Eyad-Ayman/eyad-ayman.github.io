@@ -143,6 +143,19 @@
     });
   }
 
+  // ---- Gallery of Work — both panels shown; tabs just jump-scroll ---------
+  var galleryTabs = document.querySelectorAll("[data-gallery-tab]");
+  galleryTabs.forEach(function (tab) {
+    tab.addEventListener("click", function () {
+      var target = tab.getAttribute("data-gallery-tab");
+      galleryTabs.forEach(function (t) {
+        t.classList.toggle("is-active", t === tab);
+      });
+      var panel = document.querySelector('[data-gallery-panel="' + target + '"]');
+      if (panel) panel.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  });
+
   // ---- Custom cursor (desktop / fine-pointer only) -----------------------
   if (window.matchMedia && window.matchMedia("(pointer: fine)").matches) {
     var cursorDot = document.getElementById("cursor-dot");

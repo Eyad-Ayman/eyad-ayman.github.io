@@ -72,13 +72,10 @@
           var index = String(i + 1).padStart(2, "0");
           var title = item.caption.replace(/"/g, "&quot;");
           var badge = item.type === "instagram" ? "Instagram" : "Behance";
-          // Full-bleed spread every few tiles, fashion-editorial style —
-          // not just a single hero at the top of the whole gallery.
-          var heroClass = i % 7 === 0 ? " tile-hero" : "";
           return (
-            '<a href="' + item.url + '" target="_blank" rel="noopener" title="' + title + ' — View on ' + badge + '" class="project-tile gallery-tile gallery-tile-' + item.type + heroClass + '">' +
-              '<div class="project-photo"' + (heroClass ? ' data-tile-number="' + index + '"' : "") + '><img src="' + item.image + '" loading="lazy" alt="' + title + '"></div>' +
-              '<div class="project-caption"><span class="project-index">N&deg;' + index + " &mdash; " + badge.toUpperCase() + '</span><span class="project-name">' + title + '</span></div>' +
+            '<a href="' + item.url + '" target="_blank" rel="noopener" title="' + title + ' — View on ' + badge + '" class="project-tile gallery-tile gallery-tile-' + item.type + '">' +
+              '<div class="project-photo"><img src="' + item.image + '" loading="lazy" alt="' + title + '"></div>' +
+              '<div class="project-caption"><span class="project-name">' + title + '</span><span class="project-index">[' + item.type + " · " + index + ']</span></div>' +
             "</a>"
           );
         })
