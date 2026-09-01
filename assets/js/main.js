@@ -12,6 +12,21 @@
     );
   } catch (e) {}
 
+  // ---- Live Giza local time in the corner readout -------------------------
+  var clockEl = document.getElementById("site-readout-clock");
+  if (clockEl) {
+    var updateClock = function () {
+      var time = new Date().toLocaleTimeString("en-GB", {
+        timeZone: "Africa/Cairo",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+      clockEl.textContent = "—— GIZA, EG " + time;
+    };
+    updateClock();
+    setInterval(updateClock, 15000);
+  }
+
   // ---- Scroll-reveal motion (one-time fade/rise per element) -------------
   var revealEls = Array.prototype.slice.call(document.querySelectorAll(".reveal"));
   if (revealEls.length && "IntersectionObserver" in window) {

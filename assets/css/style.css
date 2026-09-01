@@ -6061,6 +6061,48 @@ video.hero-section-images._02 {
   .auto-slideshow { height: 60vh; }
 }
 
+/* Scrolling black marquee — an editorial statement band between Home and
+   the Gallery, the kind of loud/confident beat a creative studio site uses
+   to break the white space up before the grid. */
+.marquee {
+  width: 100%;
+  overflow: hidden;
+  background-color: #000;
+  padding: 16px 0;
+  white-space: nowrap;
+}
+.marquee-track {
+  display: inline-flex;
+  width: max-content;
+  animation: marquee-scroll 22s linear infinite;
+}
+.marquee-track span {
+  font-family: "Courier New", ui-monospace, monospace;
+  font-weight: 700;
+  font-size: 18px;
+  letter-spacing: .04em;
+  color: #fff;
+  text-transform: uppercase;
+  padding-right: 0;
+}
+.marquee-track em {
+  font-style: normal;
+  font-size: 12px;
+  vertical-align: 2px;
+  opacity: .5;
+  margin: 0 4px;
+}
+@keyframes marquee-scroll {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .marquee-track { animation: none; }
+}
+@media screen and (max-width: 767px) {
+  .marquee-track span { font-size: 14px; }
+}
+
 /* ==========================================================================
    Full-bleed photo break — the work fills the whole screen, magazine-style
    ========================================================================== */
