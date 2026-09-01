@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Project Manager — Eyad Ayman Tools</title>
+<meta name="viewport" content="width=device-width, height=device-height, initial-scale=1, minimum-scale=1, maximum-scale=5">
+<style>
+  :root { --accent: #d02b2a; --ink: #000; }
+  * { box-sizing: border-box; }
+  body { font-family: Inter, Arial, Helvetica, sans-serif; margin: 0; padding: 20px; color: #222; position: relative; background-color: #f6f1e6; }
+  .tool-header { margin-bottom: 16px; padding-bottom: 12px; border-bottom: 2px solid var(--ink); }
+  .tool-header h1 { font-size: 18px; margin: 0 0 4px; letter-spacing: .5px; }
+  .tool-header p { font-size: 13px; color: #555; margin: 0; max-width: 62ch; }
+
+  .toolbar { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 18px; }
+  button, .file-btn { font-family: inherit; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; padding: 10px 18px; border: 2px solid #000; background: #fff; color: #000; cursor: pointer; transition: background-color .15s ease, color .15s ease; }
+  button:hover, .file-btn:hover { background: #000; color: #fff; }
+  button.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  button.primary:hover { background: #000; border-color: #000; }
+  input[type="file"] { display: none; }
+
+  .status { font-size: 12px; padding: 8px 12px; border: 1px solid #000; background: #fff; margin-bottom: 16px; display: none; }
+  .status.show { display: block; }
+  .status.ok { border-color: #2a7a2a; color: #2a7a2a; }
+  .status.err { border-color: #b00000; color: #b00000; }
+
+  .project-list { display: flex; flex-direction: column; gap: 12px; }
+  .project-row { display: grid; grid-template-columns: 70px 1fr auto; gap: 12px; align-items: start; border: 1px solid #000; background: #fff; padding: 12px; }
+  .thumb { width: 70px; height: 70px; object-fit: cover; border: 1px solid #ccc; background: #eee; display: block; }
+  .thumb-fallback { width: 70px; height: 70px; display: flex; align-items: center; justify-content: center; font-size: 10px; color: #999; text-align: center; border: 1px dashed #ccc; }
+  .fields { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .fields .full { grid-column: 1 / -1; }
+  label { display: block; font-size: 10px; text-transform: uppercase; letter-spacing: .5px; color: #888; margin-bottom: 3px; }
+  input[type="text"] { width: 100%; border: 1px solid #ccc; padding: 7px 8px; font-family: inherit; font-size: 13px; background: #fafafa; }
+  input[type="text"]:focus { outline: none; border-color: var(--accent); background: #fff; }
+  .row-actions { display: flex; flex-direction: column; gap: 6px; }
+  .row-actions button { padding: 6px 10px; font-size: 11px; }
+  .row-actions button.danger:hover { background: #b00000; border-color: #b00000; }
+
+  .add-row { margin-top: 16px; padding: 16px; border: 2px dashed #000; text-align: center; }
+
+  .hint { font-size: 12px; color: #666; margin-top: 24px; line-height: 1.6; background: #fff; border: 1px solid #ccc; padding: 14px 16px; }
+  .hint code { background: #f0ece0; padding: 1px 5px; font-family: monospace; }
+
+  /* Self-hosted animated film-grain, matching the main site */
+  .noise-wrap { position: fixed; inset: 0; z-index: 100000; opacity: .85; pointer-events: none; overflow: hidden; mix-blend-mode: overlay; }
+  .noise-texture { position: absolute; width: 300%; height: 300%; left: -100%; top: -100%; background-image: url("/assets/images/texture/grain.png"); background-size: 220px 220px; background-repeat: repeat; animation: grain-shift 0.5s steps(4) infinite; }
+  @keyframes grain-shift {
+    0%   { transform: translate(0%, 0%); }
+    25%  { transform: translate(-3%, 2%); }
+    50%  { transform: translate(2%, -3%); }
+    75%  { transform: translate(-2%, -2%); }
+    100% { transform: translate(0%, 0%); }
+  }
+</style>
+</head>
+<body>
+
+<div class="noise-wrap"><div class="noise-texture"></div></div>
+
+<div class="tool-header">
+  <h1>Project Manager</h1>
+  <p>Edit your Behance project list, then download the updated file and replace <code>data/behance.json</code> in the repo (or send it back to me to commit). This page can't save to GitHub by itself — GitHub Pages only serves files, it can't write them.</p>
+</div>
+
+<div class="toolbar">
+  <button type="button" id="load-live">Load Current Projects</button>
+  <label class="file-btn" for="file-input">Load JSON File&hellip;</label>
+  <input type="file" id="file-input" accept="application/json">
+  <button type="button" class="primary" id="download-btn">Download Updated behance.json</button>
+</div>
+
+<div class="status" id="status"></div>
+
+<div class="project-list" id="project-list"></div>
+
+<div class="add-row">
+  <button type="button" id="add-project">+ Add New Project</button>
+</div>
+
+<div class="hint">
+  <strong>How image files work:</strong> each project points at an image already sitting in <code>assets/images/behance/</code>. To add a brand-new project, first drop its exported image into that folder with the filename you type below (e.g. <code>27-my-new-project.jpg</code>), then fill in the fields here. Reordering, editing, and deleting existing projects needs no image work at all.
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var listEl = document.getElementById("project-list");
+  var statusEl = document.getElementById("status");
+  var projects = [];
+
+  function showStatus(msg, kind) {
+    statusEl.textContent = msg;
+    statusEl.className = "status show" + (kind ? " " + kind : "");
+  }
+
+  function slugId() {
+    return String(Date.now()).slice(-9);
+  }
+
+  function render() {
+    listEl.innerHTML = "";
+    projects.forEach(function (p, i) {
+      var row = document.createElement("div");
+      row.className = "project-row";
+
+      var thumbWrap = document.createElement("div");
+      var img = document.createElement("img");
+      img.className = "thumb";
+      img.src = "../../assets/images/behance/" + p.file;
+      img.alt = "";
+      img.onerror = function () {
+        thumbWrap.innerHTML = '<div class="thumb-fallback">no image found</div>';
+      };
+      thumbWrap.appendChild(img);
+
+      var fields = document.createElement("div");
+      fields.className = "fields";
+      fields.innerHTML =
+        '<div class="full"><label>Title</label><input type="text" data-field="title" data-i="' + i + '" value="' + (p.title || "").replace(/"/g, "&quot;") + '"></div>' +
+        '<div class="full"><label>Behance URL</label><input type="text" data-field="url" data-i="' + i + '" value="' + (p.url || "").replace(/"/g, "&quot;") + '"></div>' +
+        '<div><label>Image filename</label><input type="text" data-field="file" data-i="' + i + '" value="' + (p.file || "").replace(/"/g, "&quot;") + '"></div>' +
+        '<div><label>ID</label><input type="text" data-field="id" data-i="' + i + '" value="' + (p.id || "").replace(/"/g, "&quot;") + '"></div>';
+
+      var actions = document.createElement("div");
+      actions.className = "row-actions";
+      actions.innerHTML =
+        '<button type="button" data-act="up" data-i="' + i + '">&uarr; Up</button>' +
+        '<button type="button" data-act="down" data-i="' + i + '">&darr; Down</button>' +
+        '<button type="button" class="danger" data-act="remove" data-i="' + i + '">Remove</button>';
+
+      row.appendChild(thumbWrap);
+      row.appendChild(fields);
+      row.appendChild(actions);
+      listEl.appendChild(row);
+    });
+  }
+
+  listEl.addEventListener("input", function (e) {
+    var field = e.target.getAttribute("data-field");
+    var i = e.target.getAttribute("data-i");
+    if (field == null || i == null) return;
+    projects[+i][field] = e.target.value;
+  });
+
+  listEl.addEventListener("click", function (e) {
+    var act = e.target.getAttribute("data-act");
+    if (!act) return;
+    var i = +e.target.getAttribute("data-i");
+    if (act === "remove") {
+      projects.splice(i, 1);
+    } else if (act === "up" && i > 0) {
+      var tmp = projects[i - 1];
+      projects[i - 1] = projects[i];
+      projects[i] = tmp;
+    } else if (act === "down" && i < projects.length - 1) {
+      var tmp2 = projects[i + 1];
+      projects[i + 1] = projects[i];
+      projects[i] = tmp2;
+    }
+    render();
+  });
+
+  document.getElementById("add-project").addEventListener("click", function () {
+    projects.push({ id: slugId(), title: "New Project", url: "https://www.behance.net/", file: "new-project.jpg" });
+    render();
+    showStatus("Added a blank project — remember to drop its image into assets/images/behance/ before publishing.", "ok");
+  });
+
+  document.getElementById("load-live").addEventListener("click", function () {
+    fetch("../../data/behance.json", { cache: "no-store" })
+      .then(function (res) {
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        return res.json();
+      })
+      .then(function (data) {
+        projects = (data.projects || []).slice();
+        render();
+        showStatus("Loaded " + projects.length + " current projects from the live site.", "ok");
+      })
+      .catch(function (err) {
+        showStatus("Couldn't fetch data/behance.json directly (" + err.message + "). If you opened this file from your computer instead of the live site, use \"Load JSON File…\" below and pick data/behance.json from the repo.", "err");
+      });
+  });
+
+  document.getElementById("file-input").addEventListener("change", function (e) {
+    var file = e.target.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function () {
+      try {
+        var data = JSON.parse(reader.result);
+        projects = (data.projects || []).slice();
+        render();
+        showStatus("Loaded " + projects.length + " projects from " + file.name + ".", "ok");
+      } catch (err) {
+        showStatus("That file isn't valid JSON: " + err.message, "err");
+      }
+    };
+    reader.readAsText(file);
+  });
+
+  document.getElementById("download-btn").addEventListener("click", function () {
+    if (projects.length === 0) {
+      showStatus("Nothing to download yet — load your current projects first.", "err");
+      return;
+    }
+    var out = { updatedAt: new Date().toISOString(), projects: projects };
+    var blob = new Blob([JSON.stringify(out, null, 2) + "\n"], { type: "application/json" });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = "behance.json";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showStatus("Downloaded behance.json — replace data/behance.json in the repo with this file.", "ok");
+  });
+
+  // Try to load the live data automatically on open.
+  document.getElementById("load-live").click();
+})();
+</script>
+
+</body>
+</html>
