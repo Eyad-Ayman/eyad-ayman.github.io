@@ -6153,6 +6153,61 @@ video.hero-section-images._02 {
 }
 .editorial-break-text br { display: block; }
 
+/* Closing statement — replaces the plain "The End." footer title with a
+   bold black sign-off spread, matching the editorial-break beat higher
+   up the page. */
+.signoff-block {
+  width: 100%;
+  padding: 110px 2em 90px;
+  text-align: center;
+  background-color: var(--main-color);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 34px;
+}
+.signoff-headline {
+  font-family: var(--headings);
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #fff;
+  font-size: clamp(40px, 8vw, 96px);
+  line-height: 1.05;
+  letter-spacing: -2px;
+}
+.signoff-hand {
+  color: var(--accent-color);
+}
+.signoff-cta {
+  display: inline-block;
+  background-color: #fff;
+  color: #000;
+  font-family: var(--headings);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-size: 15px;
+  padding: 17px 36px;
+  border: 2px solid #fff;
+  text-decoration: none;
+  transition: background-color .18s ease, color .18s ease, border-color .18s ease;
+}
+.signoff-cta:hover {
+  background-color: var(--accent-color);
+  color: #fff;
+  border-color: var(--accent-color);
+}
+.signoff-readout {
+  font-family: "Courier New", ui-monospace, monospace;
+  font-size: 11px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: #888;
+}
+@media screen and (max-width: 600px) {
+  .signoff-block { padding: 80px 1.5em 60px; gap: 24px; }
+}
+
 /* ==========================================================================
    "Hire me" toast — playful, dismissible, once per session
    ========================================================================== */
