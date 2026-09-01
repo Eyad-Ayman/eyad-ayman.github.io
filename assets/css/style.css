@@ -5130,17 +5130,21 @@ html {
   .tools-modal-content { max-width: 100%; height: 92vh; max-height: none; }
 }
 
-/* Project grid (inline, replaces the old broken iframe) */
+/* Project grid — 12-column grid with an asymmetric large/small tile
+   rhythm (full-bleed row, then alternating large+small pairs), matching
+   the irregular masonry pacing of the themidnightclub.com reference
+   grid instead of a plain even-column layout. Tile widths are set via
+   inline grid-column spans from gallery-feed.js. */
 .project-grid {
-  columns: 4 220px;
-  column-gap: 28px;
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 26px 24px;
   width: 100%;
 }
 .project-grid a,
 .project-grid .project-tile {
   display: block;
-  break-inside: avoid;
-  margin-bottom: 34px;
+  grid-column: span 4;
   text-decoration: none;
 }
 .project-photo {
@@ -5209,8 +5213,6 @@ html {
 /* Full-bleed spreads through the mixed gallery — fashion-editorial pacing,
    a big color plate every few tiles instead of one uniform grayscale grid */
 .project-grid .project-tile.tile-hero {
-  column-span: all;
-  margin-bottom: 50px;
   position: relative;
 }
 .project-grid .project-tile.tile-hero .project-photo {
@@ -5260,10 +5262,13 @@ html {
 }
 @media screen and (max-width: 767px) {
   .project-grid {
-    columns: 2 150px;
-    column-gap: 18px;
+    grid-template-columns: 1fr;
+    gap: 22px;
   }
-  .project-grid .project-tile { margin-bottom: 22px; }
+  .project-grid .project-tile,
+  .project-grid .project-tile.tile-hero {
+    grid-column: 1 / -1 !important;
+  }
 }
 
 /* Instagram call-to-action (replaces the paid Elfsight embed + branding) */
@@ -6599,15 +6604,11 @@ video.hero-section-images._02 {
   flex-direction: column;
   justify-content: center;
 }
-.gallery-tab-panel .project-grid {
-  columns: 5 260px;
-}
 .gallery-tab-panel .insta-gallery-grid {
   align-self: stretch;
 }
 @media screen and (max-width: 767px) {
   .gallery-tab-panel { min-height: 0; }
-  .gallery-tab-panel .project-grid { columns: 2 150px; }
 }
 
 /* Work Experience — clean timeline list */
