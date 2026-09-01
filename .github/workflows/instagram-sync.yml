@@ -1,0 +1,59 @@
+name: Sync Instagram feed
+
+on:
+  schedule:
+    # Every 6 hours. GitHub may delay scheduled runs slightly under load.
+    - cron: "0 */6 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check secret is configured
+        run: |
+          if [ -z "${{ secrets.IG_ACCESS_TOKEN }}" ]; then
+            echo "::error::IG_ACCESS_TOKEN secret is not set. See INSTAGRAM_SETUP.md."
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Fetch latest posts
+        id: fetch
+        env:
+          IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
+        run: node scripts/fetch-instagram.mjs
+
+      # Optional: only runs if you've added a personal access token (with
+      # "repo" scope, so it can write secrets) as INSTAGRAM_SYNC_PAT. This
+      # lets the workflow keep itself alive indefinitely by rotating the
+      # long-lived Instagram token before it expires. Without this, the
+      # feed still updates every run, but you'll need to manually refresh
+      # IG_ACCESS_TOKEN roughly every ~55 days. See INSTAGRAM_SETUP.md.
+      - name: Rotate Instagram token
+        if: steps.fetch.outputs.new_token != ''
+        env:
+          GH_TOKEN: ${{ secrets.INSTAGRAM_SYNC_PAT }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "INSTAGRAM_SYNC_PAT not set — skipping automatic token rotation."
+            echo "Refresh IG_ACCESS_TOKEN manually before it expires (~60 days)."
+            exit 0
+          fi
+          echo "${{ steps.fetch.outputs.new_token }}" | gh secret set IG_ACCESS_TOKEN --repo "${{ github.repository }}"
+
+      - name: Commit updated feed data
+        run: |
+          git config user.name "instagram-sync-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add data/instagram.json
+          git diff --cached --quiet && echo "No changes." || git commit -m "chore: sync Instagram feed"
+          git push

@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Social Media Size Cheat Sheet — Eyad Ayman Tools</title>
+<meta name="viewport" content="width=device-width, height=device-height, initial-scale=1, minimum-scale=1, maximum-scale=5">
+<style>
+  :root { --accent: #d02b2a; --ink: #000; }
+  * { box-sizing: border-box; }
+  body { font-family: Inter, Arial, Helvetica, sans-serif; margin: 0; padding: 20px; color: #222; position: relative; background-color: #f6f1e6; }
+  .tool-header { margin-bottom: 16px; padding-bottom: 12px; border-bottom: 2px solid var(--ink); }
+  .tool-header h1 { font-size: 18px; margin: 0; letter-spacing: .5px; }
+
+  .platform-group { margin-bottom: 22px; }
+  .platform-group h2 { font-size: 14px; text-transform: uppercase; letter-spacing: .5px; color: var(--accent); margin: 0 0 10px; border-bottom: 1px solid #000; padding-bottom: 6px; }
+  .size-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
+  .size-card { border: 1px solid #000; background: #fff; padding: 12px; cursor: pointer; }
+  .size-card:hover { background: #f3f1eb; }
+  .size-card .name { font-weight: 700; font-size: 13px; }
+  .size-card .dims { font-family: monospace; font-size: 13px; color: var(--accent); margin-top: 4px; }
+  .size-card .ratio { font-size: 11px; color: #777; margin-top: 2px; }
+
+  .copy-hint { font-size: 13px; color: #666; margin-top: 4px; }
+  .copy-hint.flash { color: var(--accent); }
+
+  /* Self-hosted animated film-grain, matching the main site */
+  .noise-wrap { position: fixed; inset: 0; z-index: 100000; opacity: .85; pointer-events: none; overflow: hidden; mix-blend-mode: overlay; }
+  .noise-texture { position: absolute; width: 300%; height: 300%; left: -100%; top: -100%; background-image: url("/assets/images/texture/grain.png"); background-size: 220px 220px; background-repeat: repeat; animation: grain-shift 0.5s steps(4) infinite; }
+  @keyframes grain-shift {
+    0%   { transform: translate(0%, 0%); }
+    25%  { transform: translate(-3%, 2%); }
+    50%  { transform: translate(2%, -3%); }
+    75%  { transform: translate(-2%, -2%); }
+    100% { transform: translate(0%, 0%); }
+  }
+</style>
+</head>
+<body>
+
+<div class="noise-wrap"><div class="noise-texture"></div></div>
+
+<div class="tool-header">
+  <h1>Social Media Size Cheat Sheet</h1>
+</div>
+
+<p class="copy-hint" id="copy-hint">Click any card to copy its dimensions.</p>
+
+<div id="groups"></div>
+
+<script>
+(function () {
+  "use strict";
+  var data = {
+    "Instagram": [
+      { name: "Feed post (square)", w: 1080, h: 1080 },
+      { name: "Feed post (portrait)", w: 1080, h: 1350 },
+      { name: "Story / Reel", w: 1080, h: 1920 },
+      { name: "Profile picture", w: 320, h: 320 }
+    ],
+    "Facebook": [
+      { name: "Shared image", w: 1200, h: 630 },
+      { name: "Cover photo", w: 820, h: 312 },
+      { name: "Profile picture", w: 170, h: 170 },
+      { name: "Story", w: 1080, h: 1920 }
+    ],
+    "X / Twitter": [
+      { name: "In-stream image", w: 1600, h: 900 },
+      { name: "Header photo", w: 1500, h: 500 },
+      { name: "Profile picture", w: 400, h: 400 }
+    ],
+    "LinkedIn": [
+      { name: "Shared image", w: 1200, h: 627 },
+      { name: "Cover photo", w: 1584, h: 396 },
+      { name: "Profile picture", w: 400, h: 400 },
+      { name: "Company logo", w: 300, h: 300 }
+    ],
+    "YouTube": [
+      { name: "Thumbnail", w: 1280, h: 720 },
+      { name: "Channel banner", w: 2560, h: 1440 },
+      { name: "Shorts", w: 1080, h: 1920 }
+    ],
+    "Behance": [
+      { name: "Project cover", w: 1400, h: 1050 },
+      { name: "Module image (full)", w: 1400, h: 0 }
+    ]
+  };
+
+  function gcd(a, b) { return b === 0 ? a : gcd(b, a % b); }
+
+  var groups = document.getElementById("groups");
+  var hint = document.getElementById("copy-hint");
+
+  Object.keys(data).forEach(function (platform) {
+    var group = document.createElement("div");
+    group.className = "platform-group";
+    var heading = document.createElement("h2");
+    heading.textContent = platform;
+    group.appendChild(heading);
+
+    var grid = document.createElement("div");
+    grid.className = "size-grid";
+
+    data[platform].forEach(function (item) {
+      var card = document.createElement("div");
+      card.className = "size-card";
+      var ratioText = "";
+      if (item.h > 0) {
+        var d = gcd(item.w, item.h);
+        ratioText = (item.w / d) + ":" + (item.h / d);
+      }
+      var dimsText = item.h > 0 ? (item.w + " × " + item.h + " px") : (item.w + "px wide");
+      card.innerHTML =
+        '<div class="name">' + item.name + '</div>' +
+        '<div class="dims">' + dimsText + '</div>' +
+        (ratioText ? '<div class="ratio">' + ratioText + ' ratio</div>' : '');
+      card.addEventListener("click", function () {
+        if (navigator.clipboard) navigator.clipboard.writeText(dimsText).catch(function () {});
+        hint.textContent = "Copied: " + platform + " — " + item.name + " (" + dimsText + ")";
+        hint.classList.add("flash");
+        setTimeout(function () { hint.classList.remove("flash"); }, 900);
+      });
+      grid.appendChild(card);
+    });
+
+    group.appendChild(grid);
+    groups.appendChild(group);
+  });
+})();
+</script>
+
+</body>
+</html>

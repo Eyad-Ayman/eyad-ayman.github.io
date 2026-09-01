@@ -1,0 +1,15 @@
+{
+  "name": "eyad-ayman-portfolio",
+  "private": true,
+  "type": "module",
+  "description": "Build/sync scripts for eyad-ayman.github.io — the site itself is plain static HTML/CSS/JS.",
+  "scripts": {
+    "sync:behance": "node scripts/fetch-behance.mjs",
+    "sync:instagram": "node scripts/fetch-instagram.mjs"
+  },
+  "devDependencies": {
+    "playwright": "^1.48.0",
+    "playwright-extra": "^4.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2"
+  }
+}

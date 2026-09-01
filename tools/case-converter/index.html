@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Case Converter — Eyad Ayman Tools</title>
+<meta name="viewport" content="width=device-width, height=device-height, initial-scale=1, minimum-scale=1, maximum-scale=5">
+<style>
+  :root { --accent: #d02b2a; --ink: #000; }
+  * { box-sizing: border-box; }
+  body { font-family: Inter, Arial, Helvetica, sans-serif; margin: 0; padding: 20px; color: #222; position: relative; background-color: #f6f1e6; }
+  .tool-header { margin-bottom: 16px; padding-bottom: 12px; border-bottom: 2px solid var(--ink); }
+  .tool-header h1 { font-size: 18px; margin: 0; letter-spacing: .5px; }
+
+  textarea { width: 100%; min-height: 140px; border: 1px solid #000; padding: 14px; font-family: inherit; font-size: 15px; resize: vertical; background: #fff; margin-bottom: 16px; }
+
+  .btn-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+  .case-btn { border: 1px solid #000; background: #fff; padding: 12px 10px; font-family: inherit; font-size: 13px; cursor: pointer; text-align: left; }
+  .case-btn:hover { background: var(--ink); color: #fff; }
+  .case-btn .label { font-weight: 700; text-transform: uppercase; letter-spacing: .5px; display: block; margin-bottom: 2px; }
+  .case-btn .sample { font-size: 11px; color: #777; }
+  .case-btn:hover .sample { color: #ccc; }
+
+  .copy-hint { margin-top: 14px; font-size: 13px; color: #666; }
+  .copy-hint.flash { color: var(--accent); }
+
+  /* Self-hosted animated film-grain, matching the main site */
+  .noise-wrap { position: fixed; inset: 0; z-index: 100000; opacity: .85; pointer-events: none; overflow: hidden; mix-blend-mode: overlay; }
+  .noise-texture { position: absolute; width: 300%; height: 300%; left: -100%; top: -100%; background-image: url("/assets/images/texture/grain.png"); background-size: 220px 220px; background-repeat: repeat; animation: grain-shift 0.5s steps(4) infinite; }
+  @keyframes grain-shift {
+    0%   { transform: translate(0%, 0%); }
+    25%  { transform: translate(-3%, 2%); }
+    50%  { transform: translate(2%, -3%); }
+    75%  { transform: translate(-2%, -2%); }
+    100% { transform: translate(0%, 0%); }
+  }
+</style>
+</head>
+<body>
+
+<div class="noise-wrap"><div class="noise-texture"></div></div>
+
+<div class="tool-header">
+  <h1>Case Converter</h1>
+</div>
+
+<textarea id="text-input" placeholder="Type or paste text here&hellip;"></textarea>
+
+<div class="btn-grid" id="btn-grid"></div>
+<p class="copy-hint" id="copy-hint">Click a style to convert the text above and copy it.</p>
+
+<script>
+(function () {
+  "use strict";
+  var input = document.getElementById("text-input");
+  var hint = document.getElementById("copy-hint");
+  var grid = document.getElementById("btn-grid");
+
+  function toTitleCase(s) {
+    var small = /^(a|an|the|and|but|or|for|nor|as|at|by|in|of|on|per|to|vs|via)$/i;
+    var words = s.toLowerCase().split(/\s+/);
+    return words.map(function (w, i) {
+      if (i !== 0 && i !== words.length - 1 && small.test(w)) return w;
+      return w.charAt(0).toUpperCase() + w.slice(1);
+    }).join(" ");
+  }
+  function toSentenceCase(s) {
+    return s.toLowerCase().replace(/(^\s*\w|[.!?]\s*\w)/g, function (c) { return c.toUpperCase(); });
+  }
+  function toCamelCase(s) {
+    return s.trim().toLowerCase().replace(/[^a-z0-9]+(.)/g, function (m, c) { return c.toUpperCase(); });
+  }
+  function toPascalCase(s) {
+    var c = toCamelCase(s);
+    return c.charAt(0).toUpperCase() + c.slice(1);
+  }
+  function toSnakeCase(s) {
+    return s.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+  }
+  function toKebabCase(s) {
+    return s.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+  }
+  function toAlternating(s) {
+    return s.split("").map(function (c, i) { return i % 2 === 0 ? c.toLowerCase() : c.toUpperCase(); }).join("");
+  }
+
+  var styles = [
+    { label: "UPPERCASE", sample: "HELLO WORLD", fn: function (s) { return s.toUpperCase(); } },
+    { label: "lowercase", sample: "hello world", fn: function (s) { return s.toLowerCase(); } },
+    { label: "Title Case", sample: "Hello World", fn: toTitleCase },
+    { label: "Sentence case", sample: "Hello world", fn: toSentenceCase },
+    { label: "camelCase", sample: "helloWorld", fn: toCamelCase },
+    { label: "PascalCase", sample: "HelloWorld", fn: toPascalCase },
+    { label: "snake_case", sample: "hello_world", fn: toSnakeCase },
+    { label: "kebab-case", sample: "hello-world", fn: toKebabCase },
+    { label: "aLtErNaTiNg", sample: "hElLo WoRlD", fn: toAlternating }
+  ];
+
+  styles.forEach(function (style) {
+    var btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "case-btn";
+    btn.innerHTML = '<span class="label">' + style.label + '</span><span class="sample">' + style.sample + '</span>';
+    btn.addEventListener("click", function () {
+      var result = style.fn(input.value);
+      input.value = result;
+      if (navigator.clipboard) navigator.clipboard.writeText(result).catch(function () {});
+      hint.textContent = style.label + " applied — copied to clipboard.";
+      hint.classList.add("flash");
+      setTimeout(function () { hint.classList.remove("flash"); }, 900);
+    });
+    grid.appendChild(btn);
+  });
+})();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,17 @@
+{
+  "_comment": "Central place to swap the site's photos and videos without touching index.html. Change a path below, save, and reload the site — assets/js/media-loader.js applies these to every matching element automatically.",
+
+  "intro-bg": "./assets/images/hero/portrait.webp",
+  "hero-portrait": "./assets/images/hero/portrait.webp",
+  "hero-video": "./assets/images/hero/loop.webm",
+  "hero-video-poster": "./assets/images/hero/loop-poster.webp",
+
+  "fullbleed-video": "./assets/images/hero/loop.webm",
+  "fullbleed-video-poster": "./assets/images/hero/loop-poster.webp",
+
+  "slideshow-video": "./assets/images/hero/loop.webm",
+  "slideshow-video-poster": "./assets/images/hero/loop-poster.webp",
+  "slideshow-image-1": "./assets/images/behance/09-travis-scott-ft-ferrari-poster.jpg",
+  "slideshow-image-2": "./assets/images/behance/170245581-redbull-poster.jpg",
+  "slideshow-image-3": "./assets/images/behance/162440409-ibrahim-el-abyad-movie-unofficial-design.jpg"
+}

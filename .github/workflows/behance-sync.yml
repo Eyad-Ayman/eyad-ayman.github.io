@@ -1,0 +1,43 @@
+name: Sync Behance projects
+
+# Behance has no working public API or RSS feed (both discontinued), so
+# this checks your public profile with a real headless browser instead
+# and keeps assets/images/behance/ + data/behance.json in sync — adds
+# new projects, removes ones you've taken down. See BEHANCE_SETUP.md.
+
+on:
+  schedule:
+    - cron: "0 */8 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Install headless Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Check Behance profile for changes
+        env:
+          BEHANCE_USERNAME: ${{ vars.BEHANCE_USERNAME }}
+        run: npm run sync:behance
+
+      - name: Commit changes
+        run: |
+          git config user.name "behance-sync-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add data/behance.json assets/images/behance
+          git diff --cached --quiet && echo "No changes." || git commit -m "chore: sync Behance projects"
+          git push

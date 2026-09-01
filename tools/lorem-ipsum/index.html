@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Lorem Ipsum Generator — Eyad Ayman Tools</title>
+<meta name="viewport" content="width=device-width, height=device-height, initial-scale=1, minimum-scale=1, maximum-scale=5">
+<style>
+  :root { --accent: #d02b2a; --ink: #000; }
+  * { box-sizing: border-box; }
+  body { font-family: Inter, Arial, Helvetica, sans-serif; margin: 0; padding: 20px; color: #222; position: relative; background-color: #f6f1e6; }
+  .tool-header { margin-bottom: 16px; padding-bottom: 12px; border-bottom: 2px solid var(--ink); }
+  .tool-header h1 { font-size: 18px; margin: 0; letter-spacing: .5px; }
+
+  .controls { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; margin-bottom: 16px; }
+  .control { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+  .control input[type="number"] { width: 64px; border: 1px solid #ccc; padding: 6px 8px; font-family: inherit; }
+  .control select { border: 1px solid #ccc; padding: 6px 8px; font-family: inherit; }
+  .control label { font-weight: 700; }
+
+  .gen-btn, .copy-btn { border: 1px solid #000; background: #fff; padding: 10px 18px; font-family: inherit; font-size: 13px; cursor: pointer; }
+  .gen-btn { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .gen-btn:hover { opacity: .85; }
+  .copy-btn:hover { background: #000; color: #fff; }
+
+  .output { border: 1px solid #000; background: #fff; padding: 20px; margin-top: 16px; min-height: 160px; font-size: 15px; line-height: 1.6; }
+  .output p { margin: 0 0 14px; }
+  .output p:last-child { margin-bottom: 0; }
+
+  /* Self-hosted animated film-grain, matching the main site */
+  .noise-wrap { position: fixed; inset: 0; z-index: 100000; opacity: .85; pointer-events: none; overflow: hidden; mix-blend-mode: overlay; }
+  .noise-texture { position: absolute; width: 300%; height: 300%; left: -100%; top: -100%; background-image: url("/assets/images/texture/grain.png"); background-size: 220px 220px; background-repeat: repeat; animation: grain-shift 0.5s steps(4) infinite; }
+  @keyframes grain-shift {
+    0%   { transform: translate(0%, 0%); }
+    25%  { transform: translate(-3%, 2%); }
+    50%  { transform: translate(2%, -3%); }
+    75%  { transform: translate(-2%, -2%); }
+    100% { transform: translate(0%, 0%); }
+  }
+</style>
+</head>
+<body>
+
+<div class="noise-wrap"><div class="noise-texture"></div></div>
+
+<div class="tool-header">
+  <h1>Lorem Ipsum Generator</h1>
+</div>
+
+<div class="controls">
+  <div class="control">
+    <label for="count">Count:</label>
+    <input type="number" id="count" min="1" max="50" value="3">
+  </div>
+  <div class="control">
+    <select id="unit">
+      <option value="paragraphs">Paragraphs</option>
+      <option value="sentences">Sentences</option>
+      <option value="words">Words</option>
+    </select>
+  </div>
+  <button type="button" class="gen-btn" id="generate">Generate</button>
+  <button type="button" class="copy-btn" id="copy">Copy</button>
+</div>
+
+<div class="output" id="output"></div>
+
+<script>
+(function () {
+  "use strict";
+  var WORDS = ("lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore magna aliqua ut enim ad minim veniam quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur excepteur sint occaecat cupidatat non proident sunt in culpa qui officia deserunt mollit anim id est laborum").split(" ");
+
+  function randWord() { return WORDS[Math.floor(Math.random() * WORDS.length)]; }
+
+  function makeSentence(minWords, maxWords) {
+    var len = minWords + Math.floor(Math.random() * (maxWords - minWords + 1));
+    var words = [];
+    for (var i = 0; i < len; i++) words.push(randWord());
+    var s = words.join(" ");
+    return s.charAt(0).toUpperCase() + s.slice(1) + ".";
+  }
+
+  function makeParagraph(sentenceCount) {
+    var sentences = [];
+    for (var i = 0; i < sentenceCount; i++) sentences.push(makeSentence(6, 16));
+    return sentences.join(" ");
+  }
+
+  function generate() {
+    var count = Math.max(1, Math.min(50, parseInt(document.getElementById("count").value, 10) || 1));
+    var unit = document.getElementById("unit").value;
+    var output = document.getElementById("output");
+    output.innerHTML = "";
+
+    if (unit === "words") {
+      var words = [];
+      for (var i = 0; i < count; i++) words.push(randWord());
+      var text = words.join(" ");
+      text = text.charAt(0).toUpperCase() + text.slice(1) + ".";
+      var p = document.createElement("p");
+      p.textContent = text;
+      output.appendChild(p);
+    } else if (unit === "sentences") {
+      var p2 = document.createElement("p");
+      var parts = [];
+      for (var j = 0; j < count; j++) parts.push(makeSentence(6, 16));
+      p2.textContent = parts.join(" ");
+      output.appendChild(p2);
+    } else {
+      for (var k = 0; k < count; k++) {
+        var para = document.createElement("p");
+        para.textContent = makeParagraph(4 + Math.floor(Math.random() * 3));
+        output.appendChild(para);
+      }
+    }
+  }
+
+  document.getElementById("generate").addEventListener("click", generate);
+  document.getElementById("copy").addEventListener("click", function () {
+    var text = document.getElementById("output").innerText;
+    if (navigator.clipboard) navigator.clipboard.writeText(text).catch(function () {});
+  });
+
+  generate();
+})();
+</script>
+
+</body>
+</html>
