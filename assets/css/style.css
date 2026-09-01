@@ -4327,28 +4327,10 @@ footer-gta {
   left: -100%;
   top: -100%;
   background-image: url("../images/texture/grain.png");
-  background-size: 150px 150px;
+  background-size: 220px 220px;
   background-repeat: repeat;
   position: absolute;
   animation: grain-shift 0.5s steps(4) infinite;
-  filter: contrast(160%) brightness(95%);
-}
-
-/* A second, static (non-animated) grain layer sitting under the page
-   content itself rather than as a full-screen overlay — gives the
-   cream background real paper-like depth even where the animated
-   overlay above reads faint against a given section's own color. */
-body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  background-image: url("../images/texture/grain.png");
-  background-size: 260px 260px;
-  background-repeat: repeat;
-  opacity: .12;
-  mix-blend-mode: multiply;
 }
 
 @keyframes grain-shift {
