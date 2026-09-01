@@ -38,6 +38,10 @@ async function fetchMedia() {
     caption: (item.caption || "").split("\n")[0].slice(0, 140),
     // Videos don't expose a usable media_url for an <img>; use their thumbnail instead.
     image: item.media_type === "VIDEO" ? item.thumbnail_url : item.media_url,
+    // For videos, media_url is the actual playable file — kept separately
+    // so the gallery can render a real inline <video> instead of a static
+    // thumbnail that just links out to Instagram.
+    videoUrl: item.media_type === "VIDEO" ? item.media_url : null,
     permalink: item.permalink,
     timestamp: item.timestamp,
     isVideo: item.media_type === "VIDEO",

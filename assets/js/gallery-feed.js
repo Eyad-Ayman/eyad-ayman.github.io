@@ -55,6 +55,7 @@
             items.push({
               type: "instagram",
               image: post.image,
+              videoUrl: post.videoUrl || null,
               url: post.permalink,
               caption: post.caption || "@eyadayman__ on Instagram",
             });
@@ -83,9 +84,16 @@
           var index = String(i + 1).padStart(2, "0");
           var title = item.caption.replace(/"/g, "&quot;");
           var badge = item.type === "instagram" ? "Instagram" : "Behance";
+          // Real Instagram Reels get an actual inline, autoplaying preview
+          // instead of a static thumbnail — Behance covers stay images
+          // since the profile scrape only ever gives a cover photo, never
+          // the underlying video file.
+          var media = item.videoUrl
+            ? '<video src="' + item.videoUrl + '" poster="' + item.image + '" muted loop playsinline preload="metadata" onmouseover="this.play()" onmouseout="this.pause()"></video>'
+            : '<img src="' + item.image + '" loading="lazy" alt="' + title + '">';
           return (
             '<a href="' + item.url + '" target="_blank" rel="noopener" title="' + title + ' — View on ' + badge + '" class="project-tile gallery-tile gallery-tile-' + item.type + '">' +
-              '<div class="project-photo"><img src="' + item.image + '" loading="lazy" alt="' + title + '"></div>' +
+              '<div class="project-photo">' + media + "</div>" +
               '<div class="project-caption"><span class="project-name">' + title + '</span><span class="project-index">[' + item.type + " · " + index + ']</span></div>' +
             "</a>"
           );

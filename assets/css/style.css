@@ -4327,10 +4327,28 @@ footer-gta {
   left: -100%;
   top: -100%;
   background-image: url("../images/texture/grain.png");
-  background-size: 220px 220px;
+  background-size: 150px 150px;
   background-repeat: repeat;
   position: absolute;
   animation: grain-shift 0.5s steps(4) infinite;
+  filter: contrast(160%) brightness(95%);
+}
+
+/* A second, static (non-animated) grain layer sitting under the page
+   content itself rather than as a full-screen overlay — gives the
+   cream background real paper-like depth even where the animated
+   overlay above reads faint against a given section's own color. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image: url("../images/texture/grain.png");
+  background-size: 260px 260px;
+  background-repeat: repeat;
+  opacity: .12;
+  mix-blend-mode: multiply;
 }
 
 @keyframes grain-shift {
@@ -5144,12 +5162,18 @@ html {
 .project-photo {
   overflow: hidden;
 }
-.project-grid img {
+.project-grid img,
+.project-grid video {
   width: 100%;
   height: auto;
   display: block;
+  object-fit: cover;
   filter: grayscale(100%) contrast(105%);
   transition: filter .3s ease;
+}
+.project-grid video {
+  aspect-ratio: 4 / 5;
+  background: #000;
 }
 .project-caption {
   display: flex;
@@ -5171,7 +5195,9 @@ html {
   color: #888;
 }
 .project-grid a:hover img,
-.project-grid .project-tile:hover img {
+.project-grid .project-tile:hover img,
+.project-grid a:hover video,
+.project-grid .project-tile:hover video {
   filter: grayscale(0%) contrast(100%);
 }
 .project-grid .project-tile,
