@@ -5149,25 +5149,6 @@ html {
   color: #888;
 }
 
-/* Magazine-style masthead strip above the gallery grid */
-.gallery-masthead {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  gap: 10px 24px;
-  font-family: "Courier New", ui-monospace, monospace;
-  font-size: 11px;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-  color: #555;
-  padding: 14px 0;
-  margin-bottom: 30px;
-  border-top: 1px solid rgba(0, 0, 0, .2);
-  border-bottom: 1px solid rgba(0, 0, 0, .2);
-}
-@media screen and (max-width: 600px) {
-  .gallery-masthead { font-size: 10px; gap: 6px 16px; }
-}
 
 /* Full-bleed spreads through the mixed gallery — fashion-editorial pacing,
    a big color plate every few tiles instead of one uniform grayscale grid */
@@ -5347,12 +5328,56 @@ video.hero-section-images._02 {
 
 /* Section eyebrow numbering ("01 — ABOUT" style) */
 .section-number {
-  font-family: var(--headings);
+  font-family: "Courier New", ui-monospace, monospace;
   color: var(--accent-color);
-  font-size: 14px;
-  letter-spacing: 3px;
+  font-size: 13px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
   margin-bottom: 8px;
   display: block;
+}
+
+/* Fixed technical readout, bottom-left — magazine/editorial site chrome */
+.site-readout {
+  position: fixed;
+  left: 18px;
+  bottom: 16px;
+  z-index: 15;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: "Courier New", ui-monospace, monospace;
+  font-size: 11px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: #000;
+  mix-blend-mode: difference;
+  pointer-events: none;
+}
+.site-readout span:nth-child(2) { color: #999; }
+@media screen and (max-width: 767px) {
+  .site-readout { display: none; }
+}
+
+/* Reusable masthead strip — used to give every major section the same
+   magazine-page-header treatment as the Gallery of Work grid */
+.section-masthead {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 10px 24px;
+  font-family: "Courier New", ui-monospace, monospace;
+  font-size: 11px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: #555;
+  padding: 14px 0;
+  margin: 22px 0 30px;
+  border-top: 1px solid rgba(0, 0, 0, .2);
+  border-bottom: 1px solid rgba(0, 0, 0, .2);
+}
+@media screen and (max-width: 600px) {
+  .section-masthead { font-size: 10px; gap: 6px 16px; }
 }
 
 /* Instagram gallery grid (replaces plain CTA band) */
@@ -6156,6 +6181,18 @@ video.hero-section-images._02 {
   font-weight: 700;
   text-transform: uppercase;
   line-height: 1.25;
+  text-shadow: 0 2px 10px rgba(0,0,0,.6);
+}
+.full-bleed-tag {
+  position: absolute;
+  top: 24px;
+  right: 32px;
+  z-index: 2;
+  color: #fff;
+  font-family: "Courier New", ui-monospace, monospace;
+  font-size: 12px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
   text-shadow: 0 2px 10px rgba(0,0,0,.6);
 }
 .full-bleed-note.handwritten-note {
