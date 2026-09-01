@@ -73,12 +73,13 @@
           var index = String(i + 1).padStart(2, "0");
           var title = item.caption.replace(/"/g, "&quot;");
           var badge = item.type === "instagram" ? "Instagram" : "Behance";
-          // Real Instagram Reels get an actual inline, autoplaying preview
-          // instead of a static thumbnail — Behance covers stay images
-          // since the profile scrape only ever gives a cover photo, never
-          // the underlying video file.
+          // Real Instagram Reels play automatically right in the grid
+          // (muted + loop, same as Instagram/TikTok grid previews — browsers
+          // require muted for unattended autoplay) instead of sitting as a
+          // static thumbnail. Behance covers stay images since the profile
+          // scrape only ever gives a cover photo, never the video file.
           var media = item.videoUrl
-            ? '<video src="' + item.videoUrl + '" poster="' + item.image + '" muted loop playsinline preload="metadata" onmouseover="this.play()" onmouseout="this.pause()"></video>'
+            ? '<video src="' + item.videoUrl + '" poster="' + item.image + '" muted loop playsinline preload="metadata" data-autoplay-video></video>'
             : '<img src="' + item.image + '" loading="lazy" alt="' + title + '">';
           return (
             '<a href="' + item.url + '" target="_blank" rel="noopener" title="' + title + ' — View on ' + badge + '" class="project-tile gallery-tile gallery-tile-' + item.type + '">' +
@@ -88,6 +89,28 @@
           );
         })
         .join("");
+
+      // Auto-play every Reel once it scrolls into view instead of all of
+      // them at once on page load — same result (no hover/click needed),
+      // far less bandwidth/CPU if there end up being a lot of them.
+      var videos = grid.querySelectorAll("[data-autoplay-video]");
+      if (videos.length && "IntersectionObserver" in window) {
+        var playObserver = new IntersectionObserver(
+          function (entries) {
+            entries.forEach(function (entry) {
+              if (entry.isIntersecting) {
+                entry.target.play().catch(function () {});
+              } else {
+                entry.target.pause();
+              }
+            });
+          },
+          { threshold: 0.35 }
+        );
+        videos.forEach(function (v) { playObserver.observe(v); });
+      } else {
+        videos.forEach(function (v) { v.play().catch(function () {}); });
+      }
     }
   );
 })();
