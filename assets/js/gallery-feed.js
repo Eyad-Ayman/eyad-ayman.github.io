@@ -28,26 +28,37 @@
 
       var items = [];
 
+      // Gallery is scoped to banners and video work only. Behance has no
+      // project-type field to filter on (the profile scrape only gives
+      // title/url/image), so this matches on the title text itself —
+      // Instagram posts carry a real isVideo flag instead, so that's used
+      // directly rather than guessing from the caption.
+      var BANNER_VIDEO_RE = /banner|video|motion/i;
+
       if (behance && Array.isArray(behance.projects)) {
-        behance.projects.forEach(function (p) {
-          items.push({
-            type: "behance",
-            image: "./assets/images/behance/" + p.file,
-            url: p.url,
-            caption: p.title || "Untitled project",
+        behance.projects
+          .filter(function (p) { return BANNER_VIDEO_RE.test(p.title || ""); })
+          .forEach(function (p) {
+            items.push({
+              type: "behance",
+              image: "./assets/images/behance/" + p.file,
+              url: p.url,
+              caption: p.title || "Untitled project",
+            });
           });
-        });
       }
 
       if (instagram && Array.isArray(instagram.posts) && instagram.posts.length > 0) {
-        instagram.posts.forEach(function (post) {
-          items.push({
-            type: "instagram",
-            image: post.image,
-            url: post.permalink,
-            caption: post.caption || "@eyadayman__ on Instagram",
+        instagram.posts
+          .filter(function (post) { return post.isVideo; })
+          .forEach(function (post) {
+            items.push({
+              type: "instagram",
+              image: post.image,
+              url: post.permalink,
+              caption: post.caption || "@eyadayman__ on Instagram",
+            });
           });
-        });
       }
 
       if (items.length === 0) return; // keep the static Behance-only fallback
