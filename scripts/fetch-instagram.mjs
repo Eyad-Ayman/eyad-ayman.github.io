@@ -12,7 +12,10 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const OUT_PATH = path.join(__dirname, "..", "data", "instagram.json");
-const POST_LIMIT = 8;
+// Instagram caps each individual page at 100 regardless of what "limit" is
+// set to — this is just the page size, not a cap on total results. Every
+// post gets pulled by following paging.next until it runs out.
+const PAGE_SIZE = 100;
 
 const token = process.env.IG_ACCESS_TOKEN;
 if (!token) {
@@ -29,11 +32,8 @@ async function fetchJSON(url) {
   return body;
 }
 
-async function fetchMedia() {
-  const fields = "id,caption,media_type,media_url,thumbnail_url,permalink,timestamp";
-  const url = `https://graph.instagram.com/me/media?fields=${fields}&limit=${POST_LIMIT}&access_token=${token}`;
-  const data = await fetchJSON(url);
-  return (data.data || []).map((item) => ({
+function mapPost(item) {
+  return {
     id: item.id,
     caption: (item.caption || "").split("\n")[0].slice(0, 140),
     // Videos don't expose a usable media_url for an <img>; use their thumbnail instead.
@@ -45,7 +45,21 @@ async function fetchMedia() {
     permalink: item.permalink,
     timestamp: item.timestamp,
     isVideo: item.media_type === "VIDEO",
-  }));
+  };
+}
+
+async function fetchMedia() {
+  const fields = "id,caption,media_type,media_url,thumbnail_url,permalink,timestamp";
+  let url = `https://graph.instagram.com/me/media?fields=${fields}&limit=${PAGE_SIZE}&access_token=${token}`;
+  const posts = [];
+
+  while (url) {
+    const data = await fetchJSON(url);
+    (data.data || []).forEach((item) => posts.push(mapPost(item)));
+    url = data.paging && data.paging.next ? data.paging.next : null;
+  }
+
+  return posts;
 }
 
 // Long-lived tokens last 60 days and must be refreshed before they expire
