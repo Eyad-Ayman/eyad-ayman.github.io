@@ -5149,13 +5149,8 @@ html {
   width: 100%;
   height: auto;
   display: block;
-  object-fit: cover;
   filter: grayscale(100%) contrast(105%);
   transition: filter .3s ease;
-}
-.project-grid video {
-  aspect-ratio: 4 / 5;
-  background: #000;
 }
 .project-caption {
   display: flex;
