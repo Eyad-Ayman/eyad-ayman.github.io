@@ -77,7 +77,7 @@
           var heroClass = i % 7 === 0 ? " tile-hero" : "";
           return (
             '<a href="' + item.url + '" target="_blank" rel="noopener" title="' + title + ' — View on ' + badge + '" class="project-tile gallery-tile gallery-tile-' + item.type + heroClass + '">' +
-              '<div class="project-photo"' + (heroClass ? ' data-tile-number="' + index + '"' : "") + '><img src="' + item.image + '" loading="lazy" alt="' + title + '"></div>' +
+              '<div class="project-photo"' + (heroClass ? ' data-tile-number="' + index + '"' : "") + '><img src="' + item.image + '" loading="lazy" alt="' + title + '"><span class="project-see-more">See more &rarr;</span></div>' +
               '<div class="project-caption"><span class="project-index">N&deg;' + index + " &mdash; " + badge.toUpperCase() + '</span><span class="project-name">' + title + '</span></div>' +
             "</a>"
           );
