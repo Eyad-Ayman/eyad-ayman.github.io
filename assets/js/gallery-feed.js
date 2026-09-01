@@ -111,6 +111,16 @@
       } else {
         videos.forEach(function (v) { v.play().catch(function () {}); });
       }
+
+      // Moving the mouse off a tile stops that video immediately, on top
+      // of the scroll-based autoplay above.
+      videos.forEach(function (v) {
+        v.addEventListener("mouseleave", function () { v.pause(); });
+        v.addEventListener("mouseenter", function () {
+          var r = v.getBoundingClientRect();
+          if (r.top < window.innerHeight && r.bottom > 0) v.play().catch(function () {});
+        });
+      });
     }
   );
 })();
