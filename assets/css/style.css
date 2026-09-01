@@ -3737,6 +3737,31 @@ footer-gta {
   font-weight: 700;
 }
 
+.footer-linkrow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 24px;
+  width: 100%;
+  padding: 18px 0;
+  border-top: 1px solid rgba(0, 0, 0, .2);
+  font-family: "Courier New", ui-monospace, monospace;
+  font-size: 11px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+.footer-linkrow-dash {
+  color: #999;
+  margin-right: auto;
+}
+.footer-linkrow a {
+  color: #000;
+  text-decoration: none;
+  opacity: .65;
+  transition: opacity .18s ease;
+}
+.footer-linkrow a:hover { opacity: 1; }
+
 .footer-holder {
   grid-column-gap: 30px;
   grid-row-gap: 30px;
