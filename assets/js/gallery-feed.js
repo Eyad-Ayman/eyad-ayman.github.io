@@ -44,7 +44,6 @@
           items.push({
             type: "instagram",
             image: post.image,
-            isVideo: !!post.isVideo,
             videoUrl: post.isVideo ? (post.videoUrl || null) : null,
             url: post.permalink,
             caption: post.caption || "@eyadayman__ on Instagram",
@@ -82,21 +81,12 @@
           //
           // Some Instagram videos come back from the API with no direct
           // media_url at all (an Instagram-side inconsistency, not
-          // something we can request around) — those fall back to
-          // Instagram's own public embed player instead of a plain
-          // thumbnail, so every video still actually plays somewhere.
-          var media;
-          if (item.videoUrl) {
-            media = '<video src="' + item.videoUrl + '" poster="' + item.image + '" muted loop playsinline preload="metadata" data-autoplay-video></video>';
-          } else if (item.isVideo) {
-            var shortMatch = item.url.match(/\/(?:reel|p)\/([^/]+)/);
-            var shortcode = shortMatch ? shortMatch[1] : null;
-            media = shortcode
-              ? '<iframe class="ig-embed" src="https://www.instagram.com/reel/' + shortcode + '/embed" loading="lazy" allowfullscreen title="' + title + '"></iframe>'
-              : '<img src="' + item.image + '" loading="lazy" alt="' + title + '">';
-          } else {
-            media = '<img src="' + item.image + '" loading="lazy" alt="' + title + '">';
-          }
+          // something we can request around) — Instagram's own embed for
+          // those requires a click and drags in its own branded UI, which
+          // doesn't belong on this site, so those just stay a thumbnail.
+          var media = item.videoUrl
+            ? '<video src="' + item.videoUrl + '" poster="' + item.image + '" muted loop playsinline preload="metadata" data-autoplay-video></video>'
+            : '<img src="' + item.image + '" loading="lazy" alt="' + title + '">';
           return (
             '<a href="' + item.url + '" target="_blank" rel="noopener" title="' + title + ' — View on ' + badge + '" class="project-tile gallery-tile gallery-tile-' + item.type + '">' +
               '<div class="project-photo">' + media + "</div>" +
