@@ -4091,11 +4091,15 @@ footer-gta {
   color: var(--accent-color);
   letter-spacing: -6px;
   text-transform: uppercase;
+  margin-top: 0;
   margin-bottom: 30px;
   font-size: 100px;
   font-weight: 700;
   line-height: .9;
   position: relative;
+}
+.hero-text {
+  margin: 0;
 }
 .mylinks {
   color: var(--accent-color);
