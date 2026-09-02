@@ -26,6 +26,10 @@ jobs:
         with:
           node-version: 20
 
+      # sharp is needed to downscale the mirrored Instagram images.
+      - name: Install dependencies
+        run: npm install
+
       - name: Fetch latest posts
         id: fetch
         env:
@@ -54,6 +58,6 @@ jobs:
         run: |
           git config user.name "instagram-sync-bot"
           git config user.email "actions@users.noreply.github.com"
-          git add data/instagram.json
+          git add data/instagram.json assets/images/instagram
           git diff --cached --quiet && echo "No changes." || git commit -m "chore: sync Instagram feed"
           git push

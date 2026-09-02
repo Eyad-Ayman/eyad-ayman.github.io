@@ -6,12 +6,22 @@
 //
 // Required env var: IG_ACCESS_TOKEN (a long-lived Instagram user token)
 
-import { writeFile, mkdir } from "node:fs/promises";
+import { writeFile, mkdir, readFile, readdir, unlink, access } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import sharp from "sharp";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const OUT_PATH = path.join(__dirname, "..", "data", "instagram.json");
+const IMAGES_DIR = path.join(__dirname, "..", "assets", "images", "instagram");
+// Instagram's media_url serves the full-resolution original — measured at
+// 1-2 MB each, ~25 MB across the feed, which made the gallery crawl in on
+// a phone. Mirror them locally at a sane display size instead (the grid
+// never shows them wider than ~600px). This also removes a time bomb:
+// Instagram's CDN URLs are signed and expire, so linking them directly
+// meant the images would eventually break on their own.
+const IMAGE_MAX_WIDTH = 900;
+const IMAGE_QUALITY = 82;
 // Instagram caps each individual page at 100 regardless of what "limit" is
 // set to — this is just the page size, not a cap on total results. Every
 // post gets pulled by following paging.next until it runs out.
@@ -62,6 +72,63 @@ async function fetchMedia() {
   return posts;
 }
 
+async function exists(p) {
+  try {
+    await access(p);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// Pull each post's image down once and store a downscaled copy in the repo,
+// so the site serves small same-origin images instead of multi-megabyte
+// signed CDN originals. Already-downloaded posts are skipped on later runs.
+async function mirrorImages(posts) {
+  await mkdir(IMAGES_DIR, { recursive: true });
+  let downloaded = 0;
+
+  for (const post of posts) {
+    if (!post.image) continue;
+    const file = `${post.id}.jpg`;
+    const dest = path.join(IMAGES_DIR, file);
+    const localPath = `./assets/images/instagram/${file}`;
+
+    if (await exists(dest)) {
+      post.image = localPath;
+      continue;
+    }
+
+    try {
+      const res = await fetch(post.image);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const buf = Buffer.from(await res.arrayBuffer());
+      await sharp(buf)
+        .rotate()
+        .resize({ width: IMAGE_MAX_WIDTH, withoutEnlargement: true })
+        .jpeg({ quality: IMAGE_QUALITY, progressive: true })
+        .toFile(dest);
+      post.image = localPath;
+      downloaded++;
+    } catch (err) {
+      // Keep the remote URL for this one rather than dropping the post —
+      // a slow image beats a missing one.
+      console.warn(`Could not mirror image for ${post.id}: ${err.message}`);
+    }
+  }
+
+  // Drop images for posts that are no longer in the feed.
+  const keep = new Set(posts.map((p) => `${p.id}.jpg`));
+  for (const existing of await readdir(IMAGES_DIR)) {
+    if (!keep.has(existing)) {
+      await unlink(path.join(IMAGES_DIR, existing)).catch(() => {});
+      console.log("Removed image for deleted post:", existing);
+    }
+  }
+
+  console.log(`Mirrored ${downloaded} new image(s); ${posts.length} post(s) total.`);
+}
+
 // Long-lived tokens last 60 days and must be refreshed before they expire
 // (Instagram allows refreshing once the token is at least 24h old). We
 // always attempt this so the workflow can run indefinitely without manual
@@ -80,6 +147,7 @@ async function refreshToken() {
 
 async function main() {
   const posts = await fetchMedia();
+  await mirrorImages(posts);
   await mkdir(path.dirname(OUT_PATH), { recursive: true });
   await writeFile(
     OUT_PATH,
