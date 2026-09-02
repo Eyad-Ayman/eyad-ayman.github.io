@@ -44,6 +44,7 @@
           items.push({
             type: "instagram",
             image: post.image,
+            isVideo: !!post.isVideo,
             videoUrl: post.isVideo ? (post.videoUrl || null) : null,
             url: post.permalink,
             caption: post.caption || "@eyadayman__ on Instagram",
@@ -87,9 +88,16 @@
           var media = item.videoUrl
             ? '<video src="' + item.videoUrl + '" poster="' + item.image + '" muted loop playsinline preload="metadata" data-autoplay-video></video>'
             : '<img src="' + item.image + '" loading="lazy" alt="' + title + '">';
+          // Small play-icon badge marks any video post as a video even
+          // when it's just sitting as a thumbnail (no direct file from
+          // Instagram to actually play) — a quiet visual cue, not a fake
+          // "click to play" control.
+          var playBadge = item.isVideo && !item.videoUrl
+            ? '<span class="project-play-badge" aria-hidden="true"><svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></span>'
+            : "";
           return (
             '<a href="' + item.url + '" target="_blank" rel="noopener" title="' + title + ' — View on ' + badge + '" class="project-tile gallery-tile gallery-tile-' + item.type + '">' +
-              '<div class="project-photo">' + media + "</div>" +
+              '<div class="project-photo">' + media + playBadge + "</div>" +
               '<div class="project-caption"><span class="project-name">' + title + '</span><span class="project-index">[' + item.type + " · " + index + ']</span></div>' +
             "</a>"
           );
