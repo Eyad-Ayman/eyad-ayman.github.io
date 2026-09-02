@@ -27,6 +27,40 @@
     setInterval(updateClock, 15000);
   }
 
+  // ---- Below-the-fold background videos load only when scrolled to -------
+  // Three <video> elements on this page share the same loop.webm. Letting
+  // all three autoplay meant the file was fetched three times on load
+  // (~840KB of video for a 263KB file) for two clips you can't even see
+  // yet. These two now stay on their poster frame until they're near the
+  // viewport, then load and play.
+  var lazyVideos = Array.prototype.slice.call(document.querySelectorAll("[data-lazy-video]"));
+  if (lazyVideos.length) {
+    var startVideo = function (v) {
+      if (v.dataset.started) return;
+      v.dataset.started = "1";
+      v.preload = "auto";
+      v.load();
+      v.play().catch(function () {});
+    };
+    if ("IntersectionObserver" in window) {
+      var videoObserver = new IntersectionObserver(
+        function (entries) {
+          entries.forEach(function (entry) {
+            if (entry.isIntersecting) {
+              startVideo(entry.target);
+            } else if (entry.target.dataset.started) {
+              entry.target.pause();
+            }
+          });
+        },
+        { rootMargin: "200px 0px" }
+      );
+      lazyVideos.forEach(function (v) { videoObserver.observe(v); });
+    } else {
+      lazyVideos.forEach(startVideo);
+    }
+  }
+
   // ---- Opening splash (once per browser session) ------------------------
   var intro = document.getElementById("intro-overlay");
   if (intro) {
