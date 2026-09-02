@@ -92,9 +92,13 @@
           // something we can request around) — Instagram's own embed for
           // those requires a click and drags in its own branded UI, which
           // doesn't belong on this site, so those just stay a thumbnail.
+          // onload marks the image so CSS can drop the reserved placeholder
+          // ratio — without it a lazy image has zero height until it loads,
+          // collapsing its tile and making the masonry columns jump around
+          // as you scroll (very noticeable on a phone).
           var media = item.videoUrl
             ? '<video src="' + item.videoUrl + '" poster="' + item.image + '" muted loop playsinline preload="metadata" data-autoplay-video></video>'
-            : '<img src="' + item.image + '" loading="lazy" alt="' + title + '">';
+            : '<img src="' + item.image + '" loading="lazy" alt="' + title + '" onload="this.classList.add(\'is-loaded\')">';
           // Small play-icon badge marks every video post as a video —
           // both the ones playing live and the ones stuck as a thumbnail
           // (no direct file from Instagram to actually play) — same

@@ -5019,6 +5019,40 @@ html {
   .navbar.nav-open .w-nav-overlay {
     display: block;
   }
+  /* Inside the full-screen menu the links were still inheriting the slim
+     desktop bar's styling — 12px type at 60% opacity, rendering ~14px
+     tall. Unreadable and barely tappable on a phone. Stack them as a
+     proper large-type mobile menu with real tap heights. */
+  .navbar.nav-open .nav-wrapper {
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    height: 100%;
+  }
+  .navbar.nav-open .nav-menu-link-holder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+  }
+  .navbar.nav-open .nav-links {
+    width: 100%;
+  }
+  .navbar.nav-open .nav-link-big {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-height: 58px;
+    margin: 0;
+    padding: 0;
+    font-size: 30px;
+    font-weight: 500;
+    letter-spacing: 1px;
+    opacity: 1;
+    background-image: none;
+  }
   .menu-button {
     display: flex;
     cursor: pointer;
@@ -6634,4 +6668,67 @@ html {
   .cursor-dot.is-hover { width: 4px; height: 4px; }
   .cursor-ring.is-hover { width: 60px; height: 60px; }
   .cursor-dot.is-hidden, .cursor-ring.is-hidden { opacity: 0; }
+}
+
+/* ==========================================================================
+   Touch-device fixes — hit areas only, no visual change on desktop.
+   Audited at 320px/375px: several controls rendered 19-20px tall, well
+   under the 44px minimum a finger can reliably hit (the hire-toast close
+   button was the worst at 19x20). These expand the tappable area without
+   changing how anything looks on a mouse-driven screen.
+   ========================================================================== */
+@media (pointer: coarse) {
+  .hire-toast-close {
+    top: 2px;
+    right: 2px;
+    width: 44px;
+    height: 44px;
+    font-size: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .hire-toast-cta,
+  .egg-toast-cta,
+  .egg-toast-play {
+    padding-top: 12px;
+    padding-bottom: 12px;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+  }
+  .footer-link {
+    display: inline-block;
+    padding-top: 10px;
+    padding-bottom: 10px;
+    min-height: 44px;
+  }
+  .menu-button {
+    min-width: 44px;
+    min-height: 44px;
+  }
+  .contact-card,
+  .tools-launcher-card {
+    min-height: 44px;
+  }
+  /* The hire toast sits as a near-full-width fixed band at the bottom of a
+     phone screen; give the close button room so it never overlaps the text. */
+  .hire-toast {
+    padding-right: 52px;
+  }
+  /* 12px uppercase with letter-spacing is rough to read on a phone —
+     the Work Experience dates and the game's instruction line. */
+  .process-block .small-title,
+  .game-instructions {
+    font-size: 13px;
+  }
+}
+
+/* A lazy gallery image has no height until it loads, so its tile collapses
+   to just the caption and the masonry columns reflow as you scroll. Reserve
+   a placeholder box until each image is actually loaded, then hand back to
+   the image's own dimensions so real aspect ratios are preserved. */
+.project-grid img:not(.is-loaded) {
+  aspect-ratio: 4 / 5;
+  background-color: #e9e3d7;
 }
