@@ -52,7 +52,14 @@
         });
       }
 
-      if (items.length === 0) return; // keep the static Behance-only fallback
+      if (items.length === 0) {
+        // Keep the static Behance-only fallback markup as-is, but still
+        // reveal its tiles — they never get touched by the code below.
+        grid.querySelectorAll(".project-tile").forEach(function (t) {
+          t.classList.add("tile-visible");
+        });
+        return;
+      }
 
       // Interleave Instagram posts evenly through the Behance projects
       // instead of just concatenating, so it reads as one mixed set
@@ -104,6 +111,30 @@
           );
         })
         .join("");
+
+      // Tiles cascade in one at a time as they scroll into view, instead
+      // of the whole grid fading in as one flat block — a staggered delay
+      // based on each tile's position in the grid, capped so a big batch
+      // scrolling in at once doesn't take forever to finish revealing.
+      var tiles = grid.querySelectorAll(".project-tile");
+      if (tiles.length && "IntersectionObserver" in window) {
+        var revealObserver = new IntersectionObserver(
+          function (entries, observer) {
+            entries.forEach(function (entry) {
+              if (!entry.isIntersecting) return;
+              var i = Array.prototype.indexOf.call(tiles, entry.target);
+              var delay = Math.min(i % 6, 5) * 70;
+              entry.target.style.transitionDelay = delay + "ms";
+              entry.target.classList.add("tile-visible");
+              observer.unobserve(entry.target);
+            });
+          },
+          { threshold: 0.1, rootMargin: "0px 0px -40px 0px" }
+        );
+        tiles.forEach(function (t) { revealObserver.observe(t); });
+      } else {
+        tiles.forEach(function (t) { t.classList.add("tile-visible"); });
+      }
 
       // Auto-play every Reel once it scrolls into view instead of all of
       // them at once on page load — same result (no hover/click needed),

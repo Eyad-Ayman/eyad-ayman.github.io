@@ -5199,11 +5199,25 @@ html {
 }
 .project-grid .project-tile,
 .project-grid .project-tile .project-caption {
-  transition: filter .25s ease, opacity .25s ease;
+  transition: filter .25s ease, opacity .5s ease, transform .5s cubic-bezier(.16,1,.3,1);
 }
 .project-grid:hover .project-tile:not(:hover) {
   filter: blur(2px);
   opacity: .55;
+}
+
+/* Tiles cascade in one at a time as they scroll into view, instead of
+   the whole grid fading in as one flat block. */
+.project-grid .project-tile {
+  opacity: 0;
+  transform: translateY(24px);
+}
+.project-grid .project-tile.tile-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+@media (prefers-reduced-motion: reduce) {
+  .project-grid .project-tile { opacity: 1; transform: none; }
 }
 @media screen and (max-width: 767px) {
   .project-grid {
@@ -5337,74 +5351,6 @@ video.hero-section-images._02 {
   letter-spacing: 3px;
   margin-bottom: 8px;
   display: block;
-}
-
-/* Instagram gallery grid (replaces plain CTA band) */
-.insta-gallery {
-  position: relative;
-  background: none;
-  padding: 0 40px;
-}
-.insta-gallery .eapps-instagram-feed-posts-grid-load-more {
-  background-color: var(--main-color) !important;
-  color: #fff !important;
-  border: none !important;
-  border-radius: 0 !important;
-  font-family: var(--headings) !important;
-  font-weight: 700 !important;
-  text-transform: uppercase !important;
-  letter-spacing: .5px !important;
-  box-shadow: none !important;
-  transition: background-color .18s ease !important;
-}
-.insta-gallery .eapps-instagram-feed-posts-grid-load-more:hover {
-  background-color: var(--accent-color) !important;
-}
-.insta-gallery-lede {
-  font-family: var(--paragraph);
-  font-size: 15px;
-  color: #555;
-  max-width: 60ch;
-  margin: 0 0 24px;
-}
-.insta-gallery-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 20px;
-  margin-bottom: 28px;
-}
-.insta-gallery-head .about-me-title {
-  color: #fff;
-  margin: 0;
-}
-.insta-gallery-head p {
-  font-family: var(--paragraph);
-  color: #999;
-  margin: 4px 0 0;
-}
-.insta-gallery-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 3px;
-}
-.insta-gallery-grid .gallery-tile {
-  aspect-ratio: 1 / 1;
-}
-.insta-gallery-grid img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  filter: grayscale(100%) contrast(105%);
-  transition: filter .3s ease;
-}
-.insta-gallery-grid .gallery-tile:hover img {
-  filter: grayscale(0%) contrast(100%);
-}
-@media screen and (max-width: 767px) {
-  .insta-gallery { padding: 40px 20px; }
-  .insta-gallery-grid { grid-template-columns: repeat(2, 1fr); }
 }
 
 /* Tools launcher cards — bordered, fills black with a sliding arrow on hover */
@@ -5972,24 +5918,6 @@ video.hero-section-images._02 {
   filter: grayscale(0%) contrast(100%);
 }
 
-/* Elfsight Instagram embed (free-tier fallback until the official API is configured) */
-.insta-gallery-grid:has(.elfsight-app-8608f34f-cf85-4a1c-aa52-e7d4a5e0d546) {
-  display: block;
-  min-height: 700px;
-}
-
-.insta-loading-placeholder {
-  min-height: 400px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: var(--headings);
-  font-size: 13px;
-  letter-spacing: 1px;
-  text-transform: uppercase;
-  color: #666;
-}
-
 .work-exp-head {
   display: flex;
   align-items: baseline;
@@ -6551,32 +6479,7 @@ video.hero-section-images._02 {
   .tools-side-photo:hover img { filter: grayscale(0%); }
 }
 
-/* Gallery of Work — tab switcher between Projects and Instagram panels */
-.gallery-tabs {
-  display: flex;
-  gap: 10px;
-  margin: 20px 0 0;
-}
-.gallery-tab {
-  background: none;
-  border: none;
-  border-bottom: 2px solid transparent;
-  font-family: var(--headings);
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: .5px;
-  font-size: 14px;
-  color: #888;
-  padding: 6px 2px;
-  cursor: pointer;
-  transition: color .18s ease, border-color .18s ease;
-}
-.gallery-tab:hover { color: #000; }
-.gallery-tab.is-active {
-  color: var(--accent-color);
-  border-bottom-color: var(--accent-color);
-}
-.gallery-tab-panel[hidden] { display: none; }
+/* Gallery of Work grid wrapper — one continuous panel, wide masonry columns */
 .gallery-tab-panel {
   min-height: 100vh;
   display: flex;
@@ -6585,9 +6488,6 @@ video.hero-section-images._02 {
 }
 .gallery-tab-panel .project-grid {
   columns: 5 260px;
-}
-.gallery-tab-panel .insta-gallery-grid {
-  align-self: stretch;
 }
 @media screen and (max-width: 767px) {
   .gallery-tab-panel { min-height: 0; }
