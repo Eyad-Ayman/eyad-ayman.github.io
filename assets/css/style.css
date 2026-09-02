@@ -5152,6 +5152,13 @@ html {
   filter: grayscale(100%) contrast(105%);
   transition: filter .3s ease;
 }
+.project-grid iframe.ig-embed {
+  width: 100%;
+  height: 560px;
+  max-height: 80vh;
+  display: block;
+  border: 0;
+}
 .project-caption {
   display: flex;
   align-items: baseline;
