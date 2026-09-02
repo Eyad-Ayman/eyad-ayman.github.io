@@ -88,11 +88,12 @@
           var media = item.videoUrl
             ? '<video src="' + item.videoUrl + '" poster="' + item.image + '" muted loop playsinline preload="metadata" data-autoplay-video></video>'
             : '<img src="' + item.image + '" loading="lazy" alt="' + title + '">';
-          // Small play-icon badge marks any video post as a video even
-          // when it's just sitting as a thumbnail (no direct file from
-          // Instagram to actually play) — a quiet visual cue, not a fake
-          // "click to play" control.
-          var playBadge = item.isVideo && !item.videoUrl
+          // Small play-icon badge marks every video post as a video —
+          // both the ones playing live and the ones stuck as a thumbnail
+          // (no direct file from Instagram to actually play) — same
+          // convention Instagram's own grid uses. Not a fake "click to
+          // play" control, just a label.
+          var playBadge = item.isVideo
             ? '<span class="project-play-badge" aria-hidden="true"><svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></span>'
             : "";
           return (
