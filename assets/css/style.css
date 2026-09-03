@@ -4620,6 +4620,35 @@ body::after {
 }
 
 @media screen and (max-width: 767px) {
+  /* The About photo block is a row of two column-grids — fine on a wide
+     screen, but on a phone it kept that row and squeezed each grid to
+     ~136px, leaving the photos tiny and a dead cream gutter down the
+     left. Stack the two groups and let each use the full width. */
+  .about-me-section {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .about-me-grid {
+    align-items: stretch;
+  }
+  .about-me-image-wrapper,
+  .about-me-image-wrapper._01,
+  .about-me-image-wrapper._02 {
+    width: 100%;
+  }
+  .about-me-image,
+  .about-me-image._01 {
+    width: 100%;
+    height: auto;
+  }
+  /* The Arabic title is absolutely positioned off the bottom of its
+     holder; on a phone that pushed it off-screen behind the menu button. */
+  .about-me-title._02 {
+    position: static;
+    text-align: right;
+    margin-top: 8px;
+  }
+
   h1 {
     font-size: 60px;
   }

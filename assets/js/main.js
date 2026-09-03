@@ -108,7 +108,13 @@
           }
         });
       },
-      { threshold: 0.12, rootMargin: "0px 0px -60px 0px" }
+      // threshold must stay 0. A ratio threshold is a percentage of the
+      // ELEMENT, so anything taller than viewport/threshold can never
+      // reach it: the 6855px gallery on an 812px phone tops out at 11.85%
+      // and so stayed invisible forever behind the old 0.12. Firing on any
+      // intersection at all is height-independent; rootMargin still holds
+      // the reveal until the element is properly on screen.
+      { threshold: 0, rootMargin: "0px 0px -60px 0px" }
     );
     revealEls.forEach(function (el) { revealObserver.observe(el); });
   } else {
