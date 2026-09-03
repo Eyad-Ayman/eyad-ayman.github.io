@@ -6761,3 +6761,217 @@ html {
   aspect-ratio: 4 / 5;
   background-color: #e9e3d7;
 }
+
+/* ==========================================================================
+   Phone-only UI pass. Desktop is untouched — everything here is inside a
+   max-width: 767px query.
+   ========================================================================== */
+
+/* "That's Me" as one portrait cut into tiles. Each tile paints the same
+   image with a 200%/300% background so the six pieces reassemble into a
+   single photo, with the gaps reading as cuts. Replaces the four separate
+   desktop photos, which shrank to postage stamps on a phone. */
+.about-sliced { display: none; }
+
+@media screen and (max-width: 767px) {
+  .about-sliced {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    grid-template-rows: repeat(3, 1fr);
+    gap: 5px;
+    width: 100%;
+    aspect-ratio: 1000 / 1249;
+    margin-top: 14px;
+  }
+  .about-sliced span {
+    background-image: url("../images/about/photo-3.jpg");
+    background-size: 200% 300%;
+    background-repeat: no-repeat;
+    filter: grayscale(100%) contrast(106%);
+  }
+  .about-sliced span:nth-child(1) { background-position: 0%   0%; }
+  .about-sliced span:nth-child(2) { background-position: 100% 0%; }
+  .about-sliced span:nth-child(3) { background-position: 0%   50%; }
+  .about-sliced span:nth-child(4) { background-position: 100% 50%; }
+  .about-sliced span:nth-child(5) { background-position: 0%   100%; }
+  .about-sliced span:nth-child(6) { background-position: 100% 100%; }
+
+  /* Hide only the photo wrappers, not the grids — the Arabic caption is a
+     sibling inside one of them and needs to stay. */
+  .about-me-section .about-me-image-wrapper { display: none; }
+  .about-me-section .about-me-grid { gap: 0; }
+  .about-me-section .about-me-image-holder { min-height: 0; }
+
+  /* ---- Tighten the dead vertical space ---- */
+  .about-me-section { padding-top: 28px; padding-bottom: 32px; }
+  .container.footer-section { padding-top: 48px; padding-bottom: 24px; }
+  .section { padding-top: 0; }
+  .editorial-break { padding: 56px 1.25em; }
+  .signoff-block { padding: 64px 1.25em 52px; gap: 22px; }
+  .hey-there-layout { gap: 22px; }
+  .divider { margin-top: 18px; margin-bottom: 18px; }
+  .project-section-title-holder { margin-bottom: 14px; }
+  .about-me-title { margin-bottom: 16px; }
+  .full-bleed-break { height: 52vh; min-height: 300px; }
+  .auto-slideshow { height: 46vh; }
+
+  /* The hero role line ran edge to edge with no breathing room. */
+  .hero-text-wrapper { gap: 10px; }
+  .hero-section-text-holder .hero-text-wrapper { flex-wrap: wrap; }
+
+  /* Source order is: eyebrow, sliced photo, grid(heading), grid(caption).
+     Reorder so it reads heading -> photo -> caption on a phone, and pull
+     the heading back to the left edge (the desktop grid right-aligns it). */
+  /* nth-child, not nth-of-type: .about-sliced is itself the first div
+     child, so nth-of-type counted it and shifted both selectors by one. */
+  .about-me-section > .about-me-grid:nth-child(3) { order: 1; }
+  .about-sliced { order: 2; }
+  .about-me-section > .about-me-grid:nth-child(4) { order: 3; }
+  .about-me-section .about-me-image-holder,
+  .about-me-section .about-me-grid { align-items: flex-start; }
+  .about-me-section .about-me-title { text-align: left; }
+  .about-me-section .about-me-title._02 { text-align: right; width: 100%; margin-top: 10px; }
+
+}
+
+/* ==========================================================================
+   Phone UI — Apple-style pass. Frosted chrome, continuous corner radii,
+   spring easing, layered depth, safe-area awareness, and tap feedback.
+   Strictly phone-only; desktop is untouched.
+   ========================================================================== */
+@media screen and (max-width: 767px) {
+  :root {
+    --ios-spring: cubic-bezier(.32, .72, 0, 1);
+    --ios-radius: 18px;
+    --ios-radius-sm: 12px;
+  }
+
+  /* Respect notches / home indicator */
+  body {
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+
+  /* ---- Frosted, floating menu pill ---- */
+  .menu-button {
+    position: fixed;
+    top: calc(10px + env(safe-area-inset-top));
+    right: 14px;
+    padding: 11px 20px;
+    border-radius: 999px;
+    background-color: rgba(20, 18, 16, .62);
+    -webkit-backdrop-filter: saturate(180%) blur(20px);
+    backdrop-filter: saturate(180%) blur(20px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, .18);
+    transition: transform .32s var(--ios-spring), background-color .32s var(--ios-spring);
+  }
+  .menu-button:active { transform: scale(.94); }
+  .menu-button .menu-text {
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: .2px;
+    color: #fff;
+  }
+
+  /* Full-screen menu as a frosted sheet rather than flat black */
+  .navbar.nav-open .nav-menu-wrapper {
+    background-color: rgba(12, 11, 10, .78);
+    -webkit-backdrop-filter: saturate(180%) blur(28px);
+    backdrop-filter: saturate(180%) blur(28px);
+  }
+  .navbar.nav-open .nav-link-big {
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", system-ui, sans-serif;
+    font-weight: 600;
+    letter-spacing: -.4px;
+    transition: transform .3s var(--ios-spring), opacity .3s var(--ios-spring);
+  }
+  .navbar.nav-open .nav-link-big:active { transform: scale(.95); opacity: .7; }
+
+  /* ---- Continuous corners + depth on imagery ---- */
+  .about-sliced span { border-radius: 6px; }
+  .hero-section-images-holder._01,
+  .hero-section-images-holder._02 {
+    border-radius: var(--ios-radius);
+    overflow: hidden;
+  }
+  .project-photo,
+  .collage-tile,
+  .contact-map {
+    border-radius: var(--ios-radius-sm);
+    overflow: hidden;
+  }
+  .project-grid img,
+  .project-grid video { border-radius: var(--ios-radius-sm); }
+
+  /* ---- Cards: soft depth, springy tap feedback ---- */
+  .contact-card,
+  .tools-launcher-card,
+  .whatsapp-button,
+  .download-button,
+  .signoff-cta {
+    border-radius: var(--ios-radius-sm);
+    transition: transform .3s var(--ios-spring), background-color .25s ease, box-shadow .3s var(--ios-spring);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, .06);
+  }
+  .contact-card:active,
+  .tools-launcher-card:active,
+  .whatsapp-button:active,
+  .download-button:active,
+  .signoff-cta:active {
+    transform: scale(.97);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, .04);
+  }
+  .project-tile { transition: transform .35s var(--ios-spring), opacity .5s ease; }
+  .project-tile:active { transform: scale(.98); }
+
+  /* ---- Frosted toasts, iOS notification feel ---- */
+  .hire-toast,
+  .egg-toast {
+    border-radius: var(--ios-radius);
+    background-color: rgba(252, 250, 245, .82);
+    -webkit-backdrop-filter: saturate(180%) blur(22px);
+    backdrop-filter: saturate(180%) blur(22px);
+    box-shadow: 0 10px 34px rgba(0, 0, 0, .16);
+    bottom: calc(16px + env(safe-area-inset-bottom));
+  }
+  .egg-toast {
+    background-color: rgba(18, 17, 16, .84);
+  }
+
+  /* Tools modal as a bottom sheet with a grabber */
+  .tools-modal-content {
+    border-radius: var(--ios-radius) var(--ios-radius) 0 0;
+    overflow: hidden;
+  }
+  .tools-modal-header { position: relative; padding-top: 20px; }
+  .tools-modal-header::before {
+    content: "";
+    position: absolute;
+    top: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 38px;
+    height: 5px;
+    border-radius: 999px;
+    background-color: rgba(0, 0, 0, .18);
+  }
+
+  /* ---- Motion + scroll feel ---- */
+  .reveal {
+    transition: opacity .6s var(--ios-spring), transform .6s var(--ios-spring);
+  }
+  html { -webkit-overflow-scrolling: touch; }
+  body { overscroll-behavior-y: none; }
+}
+
+@media screen and (max-width: 767px) and (prefers-reduced-motion: reduce) {
+  .menu-button,
+  .contact-card,
+  .tools-launcher-card,
+  .whatsapp-button,
+  .download-button,
+  .signoff-cta,
+  .project-tile,
+  .reveal { transition: none; }
+}
