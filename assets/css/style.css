@@ -6237,6 +6237,93 @@ video.hero-section-images._02 {
 }
 
 /* ==========================================================================
+   Showreel strip — horizontal film-strip of real Instagram Reels, tucked
+   under the full-bleed hero video in the Motion section. Hidden until
+   showreel.js finds at least one real video post, so it never shows up
+   half-empty — the hero video above always carries the section on its own.
+   ========================================================================== */
+.showreel-strip-wrap {
+  display: none;
+  width: 100%;
+  background: #000;
+  padding: 26px 0 40px;
+}
+.showreel-strip-wrap.has-reels { display: block; }
+.showreel-strip-note {
+  margin: 0 0 14px;
+  padding: 0 32px;
+  color: rgba(255, 255, 255, .5);
+  font-family: var(--headings);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+}
+.showreel-strip {
+  display: flex;
+  gap: 14px;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  padding: 0 32px 6px;
+}
+.showreel-strip::-webkit-scrollbar { height: 6px; }
+.showreel-strip::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, .25); }
+.showreel-card {
+  position: relative;
+  flex: 0 0 auto;
+  width: 220px;
+  aspect-ratio: 9 / 16;
+  scroll-snap-align: start;
+  overflow: hidden;
+  background: #111;
+  border: 1px solid rgba(255, 255, 255, .15);
+  display: block;
+  text-decoration: none;
+}
+.showreel-card video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  filter: grayscale(60%) contrast(105%);
+  transition: filter .3s ease;
+}
+.showreel-card:hover video { filter: grayscale(0%) contrast(100%); }
+.showreel-reel-number {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 2;
+  font-family: var(--headings);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .5px;
+  text-transform: uppercase;
+  color: #fff;
+  background: rgba(0, 0, 0, .55);
+  padding: 4px 8px;
+}
+.showreel-caption {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 2;
+  padding: 20px 12px 12px;
+  background: linear-gradient(transparent, rgba(0, 0, 0, .85));
+  color: #fff;
+  font-family: var(--headings);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .3px;
+  line-height: 1.4;
+}
+@media screen and (max-width: 600px) {
+  .showreel-card { width: 68vw; }
+}
+
+/* ==========================================================================
    Editorial text break — a long-form pull-quote moment between sections
    ========================================================================== */
 .editorial-break {
@@ -7068,6 +7155,8 @@ html[data-theme="dark"] .intro-polaroid,
 html[data-theme="dark"] .tools-side-photo,
 html[data-theme="dark"] .auto-slide,
 html[data-theme="dark"] .full-bleed-break,
+html[data-theme="dark"] .showreel-strip-wrap,
+html[data-theme="dark"] .showreel-card,
 html[data-theme="dark"] .contact-map {
   filter: invert(1) hue-rotate(180deg);
 }
