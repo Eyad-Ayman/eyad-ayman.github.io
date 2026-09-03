@@ -6842,8 +6842,6 @@ html {
 @media screen and (max-width: 767px) {
   :root {
     --ios-spring: cubic-bezier(.32, .72, 0, 1);
-    --ios-radius: 18px;
-    --ios-radius-sm: 12px;
   }
 
   /* Respect notches / home indicator */
@@ -6852,13 +6850,13 @@ html {
     padding-right: env(safe-area-inset-right);
   }
 
-  /* ---- Frosted, floating menu pill ---- */
+  /* ---- Frosted floating menu, square to match the editorial style ---- */
   .menu-button {
     position: fixed;
     top: calc(10px + env(safe-area-inset-top));
     right: 14px;
     padding: 11px 20px;
-    border-radius: 999px;
+    border-radius: 0;
     background-color: rgba(20, 18, 16, .62);
     -webkit-backdrop-filter: saturate(180%) blur(20px);
     backdrop-filter: saturate(180%) blur(20px);
@@ -6888,31 +6886,33 @@ html {
   }
   .navbar.nav-open .nav-link-big:active { transform: scale(.95); opacity: .7; }
 
-  /* ---- Continuous corners + depth on imagery ---- */
-  .about-sliced span { border-radius: 6px; }
+  /* Everything stays square — the iOS layer here is motion and material
+     (blur, spring, depth), never shape. Sharp corners are the site's look. */
+  .about-sliced span,
   .hero-section-images-holder._01,
-  .hero-section-images-holder._02 {
-    border-radius: var(--ios-radius);
-    overflow: hidden;
-  }
+  .hero-section-images-holder._02,
   .project-photo,
   .collage-tile,
-  .contact-map {
-    border-radius: var(--ios-radius-sm);
-    overflow: hidden;
-  }
+  .contact-map,
   .project-grid img,
-  .project-grid video { border-radius: var(--ios-radius-sm); }
+  .project-grid video,
+  .contact-card,
+  .tools-launcher-card,
+  .whatsapp-button,
+  .download-button,
+  .signoff-cta,
+  .tools-modal-content,
+  .hire-toast,
+  .egg-toast,
+  .project-play-badge { border-radius: 0; }
 
-  /* ---- Cards: soft depth, springy tap feedback ---- */
+  /* ---- Cards: springy tap feedback ---- */
   .contact-card,
   .tools-launcher-card,
   .whatsapp-button,
   .download-button,
   .signoff-cta {
-    border-radius: var(--ios-radius-sm);
     transition: transform .3s var(--ios-spring), background-color .25s ease, box-shadow .3s var(--ios-spring);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, .06);
   }
   .contact-card:active,
   .tools-launcher-card:active,
@@ -6928,7 +6928,6 @@ html {
   /* ---- Frosted toasts, iOS notification feel ---- */
   .hire-toast,
   .egg-toast {
-    border-radius: var(--ios-radius);
     background-color: rgba(252, 250, 245, .82);
     -webkit-backdrop-filter: saturate(180%) blur(22px);
     backdrop-filter: saturate(180%) blur(22px);
@@ -6939,11 +6938,8 @@ html {
     background-color: rgba(18, 17, 16, .84);
   }
 
-  /* Tools modal as a bottom sheet with a grabber */
-  .tools-modal-content {
-    border-radius: var(--ios-radius) var(--ios-radius) 0 0;
-    overflow: hidden;
-  }
+  /* Tools modal as a bottom sheet — square, with a flat grabber bar */
+  .tools-modal-content { overflow: hidden; }
   .tools-modal-header { position: relative; padding-top: 20px; }
   .tools-modal-header::before {
     content: "";
@@ -6952,9 +6948,8 @@ html {
     left: 50%;
     transform: translateX(-50%);
     width: 38px;
-    height: 5px;
-    border-radius: 999px;
-    background-color: rgba(0, 0, 0, .18);
+    height: 4px;
+    background-color: rgba(0, 0, 0, .22);
   }
 
   /* ---- Motion + scroll feel ---- */
@@ -6963,6 +6958,35 @@ html {
   }
   html { -webkit-overflow-scrolling: touch; }
   body { overscroll-behavior-y: none; }
+
+  /* ---- Bigger sign-off GIF ---- */
+  .logo-container .logo-link img,
+  .logo-link img {
+    width: 132px !important;
+    height: 132px !important;
+    max-width: 100%;
+  }
+  .logo-container { gap: 10px; }
+
+  /* ---- Squeeze out the remaining dead space ---- */
+  .footer-holder { padding-top: 18px; padding-bottom: 8px; }
+  .footer-gird { grid-row-gap: 18px; gap: 18px; }
+  .footer-info-holder { gap: 10px; grid-row-gap: 10px; }
+  .footer-title-big { margin-bottom: 10px; }
+  .container.footer-section { padding-top: 28px; padding-bottom: 14px; }
+  .hey-there-layout { gap: 16px; margin-bottom: 0; }
+  .container-extra-small { padding-top: 0; padding-bottom: 0; }
+  .process-detail-wrapper { padding-top: 0; }
+  .process-block { padding-top: 14px; padding-bottom: 14px; }
+  .tools-container { padding-top: 0; padding-bottom: 0; }
+  .tools-launcher-grid { gap: 8px; }
+  .contact-grid { gap: 8px; margin-bottom: 18px; }
+  .contact-map { margin-bottom: 18px; }
+  .section-number { margin-bottom: 4px; }
+  .about-me-title { margin-bottom: 12px; }
+  .divider { margin-top: 14px; margin-bottom: 14px; }
+  #Home .container { padding-bottom: 0; }
+  .hero-section-images-wrapper { margin-bottom: 0; }
 }
 
 @media screen and (max-width: 767px) and (prefers-reduced-motion: reduce) {
