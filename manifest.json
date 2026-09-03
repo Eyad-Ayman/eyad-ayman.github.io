@@ -1,0 +1,36 @@
+{
+  "name": "Eyad Ayman — Graphic Designer & Video Editor",
+  "short_name": "Eyad Ayman",
+  "description": "Graphic design, video editing, and 3D art from Giza, Egypt.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f3ede1",
+  "theme_color": "#f3ede1",
+  "icons": [
+    {
+      "src": "./assets/images/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./assets/images/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./assets/images/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "./assets/images/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

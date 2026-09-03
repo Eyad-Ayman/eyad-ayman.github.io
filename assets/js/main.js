@@ -48,6 +48,17 @@
     });
   })();
 
+  // ---- Install-as-app support (PWA) ----------------------------------------
+  // Registers the offline/shell service worker so browsers offer "Add to
+  // Home Screen" / "Install app", and the site keeps working (from cache)
+  // with no signal. Same-origin script under the CSP's default-src 'self',
+  // no extra allowlist entry needed.
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", function () {
+      navigator.serviceWorker.register("./sw.js").catch(function () {});
+    });
+  }
+
   // ---- "Keep scrolling" hint while inside the Gallery of Work -------------
   var scrollHint = document.getElementById("gallery-scroll-hint");
   var workSection = document.getElementById("Work");
