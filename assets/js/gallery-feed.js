@@ -100,7 +100,6 @@
 
       grid.innerHTML = mixed
         .map(function (item, i) {
-          var index = String(i + 1).padStart(2, "0");
           var title = escapeHtml(item.caption);
           var linkUrl = safeUrl(item.url);
           var imgUrl = safeUrl(item.image);
@@ -135,7 +134,7 @@
           return (
             '<a href="' + linkUrl + '" target="_blank" rel="noopener noreferrer" title="' + title + ' — View on ' + badge + '" class="project-tile gallery-tile gallery-tile-' + item.type + '">' +
               '<div class="project-photo">' + media + playBadge + "</div>" +
-              '<div class="project-caption"><span class="project-name">' + title + '</span><span class="project-index">[' + item.type + " · " + index + ']</span></div>' +
+              '<div class="project-caption"><span class="project-name">' + title + '</span><span class="project-index">' + badge + "</span></div>" +
             "</a>"
           );
         })

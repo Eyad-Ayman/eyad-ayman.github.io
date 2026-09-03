@@ -5273,8 +5273,13 @@ html {
 }
 .project-index {
   font-family: var(--headings);
-  font-size: 11px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .5px;
+  text-transform: uppercase;
   color: #888;
+  margin-left: auto;
+  white-space: nowrap;
 }
 .project-grid a:hover img,
 .project-grid .project-tile:hover img,
