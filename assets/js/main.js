@@ -59,6 +59,42 @@
     });
   }
 
+  // ---- Hero portrait/video parallax (subtle depth while scrolling) --------
+  // The two hero images are deliberately oversized in CSS (height: 128%)
+  // so they have room to drift with scroll without ever exposing an edge
+  // inside their overflow:hidden holders. Each layer moves a different
+  // amount/direction so they read as sitting at different depths, not
+  // just sliding together — that's the actual "3D" part.
+  var reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var heroPortrait = document.querySelector(".hero-section-images._01");
+  var heroVideo = document.querySelector(".hero-section-images._02");
+  var heroSection = document.querySelector(".hero-section");
+  if (!reduceMotion && heroSection && (heroPortrait || heroVideo) && "requestAnimationFrame" in window) {
+    var parallaxTicking = false;
+    function applyHeroParallax() {
+      parallaxTicking = false;
+      var rect = heroSection.getBoundingClientRect();
+      // 0 when the hero's top is at the viewport top, growing as it
+      // scrolls up past it — only matters while the hero is on screen.
+      if (rect.bottom < 0 || rect.top > window.innerHeight) return;
+      var progress = -rect.top; // px scrolled since the hero hit the top
+      var clampedPortrait = Math.max(-22, Math.min(22, progress * 0.06));
+      var clampedVideo = Math.max(-22, Math.min(22, progress * -0.045));
+      if (heroPortrait) heroPortrait.style.setProperty("--parallax-y", clampedPortrait + "px");
+      if (heroVideo) heroVideo.style.setProperty("--parallax-y", clampedVideo + "px");
+    }
+    window.addEventListener(
+      "scroll",
+      function () {
+        if (parallaxTicking) return;
+        parallaxTicking = true;
+        requestAnimationFrame(applyHeroParallax);
+      },
+      { passive: true }
+    );
+    applyHeroParallax();
+  }
+
   // ---- "Keep scrolling" hint while inside the Gallery of Work -------------
   var scrollHint = document.getElementById("gallery-scroll-hint");
   var workSection = document.getElementById("Work");
