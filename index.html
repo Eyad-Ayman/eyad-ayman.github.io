@@ -2,6 +2,21 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<!-- Locked down as far as a static site (no server, so no real headers,
+     and frame-ancestors is a no-op via meta per spec — only an actual
+     X-Frame-Options/CSP response header can set that) can go: script-src
+     allows only this origin, no inline script and no eval anywhere.
+     style-src keeps 'unsafe-inline' because several real, legitimately-
+     dynamic styles (cursor position, confetti pieces, the scroll-reveal
+     stagger delay) are plain element.style writes, and CSP3 treats those
+     the same as a style="" attribute — rewriting all of that to a fixed
+     set of utility classes wasn't worth the trade for a portfolio site.
+     font-src's two extra entries are real, pre-existing dependencies from
+     the original Webflow export (a data-URI icon font, one @font-face
+     pulled straight from Webflow's asset host) confirmed by testing this
+     policy and watching what it actually blocked, not guessed in advance.
+     Everything else is a real allowlist, not a wildcard. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com https://assets.website-files.com; img-src 'self' data:; media-src 'self' https://*.cdninstagram.com https://*.fbcdn.net; frame-src 'self' https://maps.google.com https://www.google.com; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self';">
 <title>Eyad Ayman | Graphic Designer in Egypt — Video Editor & 3D Artist</title>
 <meta name="description" content="Eyad Ayman is a graphic designer in Giza, Egypt, working in branding, motion banners, video editing, and 3D art. Browse real client work and get in touch for freelance projects.">
 <link rel="canonical" href="https://eyad-ayman.github.io/">
@@ -138,6 +153,10 @@
 <div class="cursor-dot" id="cursor-dot"></div>
 <div class="cursor-ring" id="cursor-ring"></div>
 
+<button type="button" class="theme-toggle" id="theme-toggle" aria-label="Toggle dark mode">
+  <span id="theme-toggle-label">Dark</span>
+</button>
+
 <div class="site-readout" aria-hidden="true">
   <span>EA26</span>
   <span id="site-readout-clock">—— GIZA, EG</span>
@@ -177,7 +196,7 @@
           <div class="hero-section-small-text">- The Designer -</div>
         </div>
         <div class="perspective">
-          <h1 style="font-variation-settings: 'wght' 700;" class="hero-text">EYAD AYMAN</h1>
+          <h1 class="hero-text">EYAD AYMAN</h1>
         </div>
         <div class="perspective _100width">
           <div class="hero-text-wrapper">
@@ -209,7 +228,7 @@
             <div class="hero-section-small-text right-align">A CALM MIND IS<br>THE STRONGEST</div>
           </div>
         </div>
-        <div class="divider" style="width: 100%; height: 2px;"></div>
+        <div class="divider"></div>
       </div>
     </div>
   </div>
@@ -259,12 +278,12 @@
       </div>
       </div><!-- /.about-me-section -->
 
-      <div class="divider" style="width: 100%; height: 2px;"></div>
+      <div class="divider"></div>
 
       <div class="hey-there-layout">
         <div class="hey-there-text">
           <div class="reveal title-wrap-standard"><h3 class="about-me-title">Hey there!</h3></div>
-          <div class="footer-title reveal">
+          <div class="footer-title reveal" data-about-bio>
             I'm Eyad Ayman Hemdan, a 20-year-old from Giza, Egypt, deeply immersed in graphic design, video editing, and 3D art. My journey into the creative world began in 2017 when I first started learning Photoshop, and by 2019, I had officially started exploring graphic design and video editing.
             <br><br>
             Armed with Adobe's powerful tools like Photoshop, Illustrator, and Premiere Pro, I craft visuals and videos that captivate and inspire. Whether it's a striking graphic, a dynamic video edit, or pushing the boundaries of 3D art using Blender, my goal is always to create impactful experiences.
@@ -290,14 +309,14 @@
           </div>
         </div>
       </div>
-      <div class="divider" style="width: 100%; height: 2px;"></div>
+      <div class="divider"></div>
 
       <div class="container-extra-small">
         <div class="reveal title-wrap-standard work-exp-head">
           <h3 class="about-me-title">Work Experience</h3>
           <a href="https://www.linkedin.com/in/eyad-ayman/" target="_blank" rel="noopener" class="footer-link">View full history on LinkedIn &rarr;</a>
         </div>
-        <div class="process-detail-wrapper reveal">
+        <div class="process-detail-wrapper reveal" data-experience-list>
           <div class="process-block">
             <span class="process-icon process-icon-case" aria-hidden="true"></span>
             <div class="small-title">2018 — 2022</div>
@@ -346,11 +365,13 @@
             <p class="process-detail">Video Editing Leader · Ministry of Youth and Sports</p>
             <p class="process-desc">Lead editing operations and multimedia content production.</p>
           </div>
-          <div class="divider" style="width: 100%; height: 2px;"></div>
+          <div class="divider"></div>
         </div>
       </div>
     </div>
   </div>
+
+<div class="scroll-hint" id="gallery-scroll-hint" aria-hidden="true">Keep scrolling <span class="scroll-hint-arrow">&darr;</span></div>
 
 <div id="Work" class="section" data-nav-section>
   <div class="container">
@@ -396,7 +417,7 @@
       <a href="https://www.behance.net/gallery/162440409/ibrahim-el-abyad-movie-unofficial-design" target="_blank" rel="noopener" title="ibrahim el abyad movie unofficial design — View on Behance" class="project-tile gallery-tile"><span class="gallery-index">26</span><img src="./assets/images/behance/26-ibrahim-el-abyad-movie-unofficial-design.jpg" loading="lazy" alt="ibrahim el abyad movie unofficial design"><span class="gallery-caption">ibrahim el abyad movie unofficial design</span></a>
     </div>
 
-    <div class="reveal" style="margin-top:28px; text-align:center;">
+    <div class="reveal behance-cta-wrap">
       <a href="https://www.behance.net/eyad_ayman" target="_blank" rel="noopener" class="download-button w-button">See Full Portfolio on Behance &rarr;</a>
     </div>
     </div>
@@ -418,7 +439,7 @@
 
 <div id="tools" class="section" data-nav-section>
   <div class="container">
-    <div class="divider" style="width: 100%; height: 2px;"></div>
+    <div class="divider"></div>
     <div class="container-extra-small tools-container">
       <div class="tools-side-photo" aria-hidden="true">
         <img src="./assets/images/about/photo-4.jpg" alt="">
@@ -464,7 +485,7 @@
         </button>
       </div>
     </div>
-    <div class="divider" style="width: 100%; height: 2px;"></div>
+    <div class="divider"></div>
   </div>
 </div>
 
@@ -500,7 +521,7 @@
 
 <div id="mylinks" class="section" data-nav-section>
   <div class="container">
-    <div class="divider" style="width: 100%; height: 2px;"></div>
+    <div class="divider"></div>
     <span class="section-number reveal">05 — Get In Touch</span>
     <div class="reveal"><h2 class="about-me-title">Contact Me<span class="handwritten-inline">let's talk!</span></h2></div>
     <p class="contact-lede reveal">Have a project in mind, or just want to say hi? WhatsApp is the fastest way to reach me — or find me on any of these.</p>
@@ -537,7 +558,7 @@
       <iframe src="https://maps.google.com/maps?q=Giza,Egypt&z=11&output=embed" title="Map showing Giza, Egypt" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
       <span class="contact-map-tag">GIZA, EGYPT</span>
     </div>
-    <div class="divider" style="width: 100%; height: 2px;"></div>
+    <div class="divider"></div>
   </div>
 </div>
 
@@ -604,5 +625,6 @@
 <script src="./assets/js/media-loader.js"></script>
 <script src="./assets/js/mini-game.js"></script>
 <script src="./assets/js/gallery-feed.js"></script>
+<script src="./assets/js/content-loader.js"></script>
 </body>
 </html>

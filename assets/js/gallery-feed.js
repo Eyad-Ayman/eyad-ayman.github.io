@@ -15,6 +15,28 @@
   var grid = document.querySelector("[data-mixed-gallery]");
   if (!grid) return;
 
+  // Every value interpolated into the HTML template below comes from an
+  // external source (Instagram captions, Behance titles/URLs) rather than
+  // hand-written markup. Only escaping quotes (the old approach) still lets
+  // a caption containing "<" or "&" corrupt the DOM, or a crafted caption
+  // break out of an attribute and inject real HTML/script. Escape properly.
+  var escapeEl = document.createElement("div");
+  function escapeHtml(str) {
+    escapeEl.textContent = str == null ? "" : String(str);
+    return escapeEl.innerHTML;
+  }
+
+  // Only ever render a URL as an href/src if it's a real http(s) link or a
+  // relative path to our own assets — blocks a "javascript:" or "data:"
+  // scheme from a compromised/unexpected API response ever executing.
+  function safeUrl(str) {
+    var s = str == null ? "" : String(str);
+    if (/^(https?:)?\/\//i.test(s) || s.indexOf("./") === 0 || s.indexOf("/") === 0) {
+      return escapeHtml(s);
+    }
+    return "";
+  }
+
   function safeFetch(url) {
     return fetch(url, { cache: "no-store" })
       .then(function (res) { return res.ok ? res.json() : null; })
@@ -79,7 +101,10 @@
       grid.innerHTML = mixed
         .map(function (item, i) {
           var index = String(i + 1).padStart(2, "0");
-          var title = item.caption.replace(/"/g, "&quot;");
+          var title = escapeHtml(item.caption);
+          var linkUrl = safeUrl(item.url);
+          var imgUrl = safeUrl(item.image);
+          var vidUrl = item.videoUrl ? safeUrl(item.videoUrl) : "";
           var badge = item.type === "instagram" ? "Instagram" : "Behance";
           // Real Instagram Reels play automatically right in the grid
           // (muted + loop, same as Instagram/TikTok grid previews — browsers
@@ -96,9 +121,9 @@
           // ratio — without it a lazy image has zero height until it loads,
           // collapsing its tile and making the masonry columns jump around
           // as you scroll (very noticeable on a phone).
-          var media = item.videoUrl
-            ? '<video src="' + item.videoUrl + '" poster="' + item.image + '" muted loop playsinline preload="metadata" data-autoplay-video></video>'
-            : '<img src="' + item.image + '" loading="lazy" alt="' + title + '" onload="this.classList.add(\'is-loaded\')">';
+          var media = vidUrl
+            ? '<video src="' + vidUrl + '" poster="' + imgUrl + '" muted loop playsinline preload="metadata" data-autoplay-video></video>'
+            : '<img src="' + imgUrl + '" loading="lazy" alt="' + title + '" data-onload-reveal>';
           // Small play-icon badge marks every video post as a video —
           // both the ones playing live and the ones stuck as a thumbnail
           // (no direct file from Instagram to actually play) — same
@@ -108,13 +133,20 @@
             ? '<span class="project-play-badge" aria-hidden="true"><svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></span>'
             : "";
           return (
-            '<a href="' + item.url + '" target="_blank" rel="noopener" title="' + title + ' — View on ' + badge + '" class="project-tile gallery-tile gallery-tile-' + item.type + '">' +
+            '<a href="' + linkUrl + '" target="_blank" rel="noopener noreferrer" title="' + title + ' — View on ' + badge + '" class="project-tile gallery-tile gallery-tile-' + item.type + '">' +
               '<div class="project-photo">' + media + playBadge + "</div>" +
               '<div class="project-caption"><span class="project-name">' + title + '</span><span class="project-index">[' + item.type + " · " + index + ']</span></div>' +
             "</a>"
           );
         })
         .join("");
+
+      // Moved off an inline onload="..." attribute (inline event handlers
+      // are a real weak spot: they only work with 'unsafe-inline' allowed
+      // in a script-src CSP, which defeats most of the point of having one).
+      grid.querySelectorAll("[data-onload-reveal]").forEach(function (img) {
+        img.addEventListener("load", function () { img.classList.add("is-loaded"); });
+      });
 
       // Tiles cascade in one at a time as they scroll into view, instead
       // of the whole grid fading in as one flat block — a staggered delay

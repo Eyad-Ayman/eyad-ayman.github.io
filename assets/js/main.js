@@ -12,6 +12,63 @@
     );
   } catch (e) {}
 
+  // ---- Dark mode toggle ---------------------------------------------------
+  // Applied here (a script tag at the end of body) rather than an inline
+  // <script> in <head>, which is the usual way sites avoid a flash of the
+  // wrong theme on repeat visits — but that needs 'unsafe-inline' in the
+  // CSP's script-src, and this site keeps that locked to 'self' on purpose.
+  // A brief flash on a dark-mode return visit is the honest trade-off for
+  // not weakening that policy just for cosmetics.
+  (function () {
+    var root = document.documentElement;
+    var toggle = document.getElementById("theme-toggle");
+    var label = document.getElementById("theme-toggle-label");
+    if (!toggle) return;
+
+    var stored = null;
+    try { stored = localStorage.getItem("theme"); } catch (e) {}
+    var prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+    var theme = stored || (prefersDark ? "dark" : "light");
+
+    function apply(t) {
+      if (t === "dark") {
+        root.setAttribute("data-theme", "dark");
+        if (label) label.textContent = "Light";
+      } else {
+        root.removeAttribute("data-theme");
+        if (label) label.textContent = "Dark";
+      }
+    }
+    apply(theme);
+
+    toggle.addEventListener("click", function () {
+      theme = theme === "dark" ? "light" : "dark";
+      apply(theme);
+      try { localStorage.setItem("theme", theme); } catch (e) {}
+    });
+  })();
+
+  // ---- "Keep scrolling" hint while inside the Gallery of Work -------------
+  var scrollHint = document.getElementById("gallery-scroll-hint");
+  var workSection = document.getElementById("Work");
+  if (scrollHint && workSection && "IntersectionObserver" in window) {
+    // threshold must be 0, not a ratio like 0.15 — that's a percentage of
+    // the ELEMENT, and the Gallery section runs to several thousand
+    // pixels tall (49 tiles). On a ~800px phone screen the maximum
+    // reachable ratio is under 0.15, so a ratio threshold here would
+    // never fire at all — the exact bug already found and fixed once
+    // this session for the scroll-reveal system, not repeating it here.
+    var hintObserver = new IntersectionObserver(
+      function (entries) {
+        entries.forEach(function (entry) {
+          scrollHint.classList.toggle("is-active", entry.isIntersecting);
+        });
+      },
+      { threshold: 0 }
+    );
+    hintObserver.observe(workSection);
+  }
+
   // ---- Live Giza local time in the corner readout -------------------------
   var clockEl = document.getElementById("site-readout-clock");
   if (clockEl) {

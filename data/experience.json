@@ -1,0 +1,61 @@
+{
+  "_comment": "Edit this file to update your Work Experience timeline — no code needed. Add a new job by copying one of the blocks below (keep the commas between entries). Fields: 'period' is the date range shown, 'title' is the role/company line, 'desc' is the one-line description, 'icon' picks the little icon (one of: case, video, pen, star), 'current' (true/false) highlights it as your current role with the accent border. Save the file and refresh the page to see the change.",
+  "roles": [
+    {
+      "period": "2018 — 2022",
+      "title": "Freelance Graphic Designer & Video Editor",
+      "desc": "Delivered branding, print, social media, and video projects.",
+      "icon": "case",
+      "current": false
+    },
+    {
+      "period": "November 2022 — June 2023",
+      "title": "Graphic Designer & Video Editor · Ontrend ADV",
+      "desc": "Produced campaigns across digital and outdoor channels.",
+      "icon": "video",
+      "current": false
+    },
+    {
+      "period": "June 2023 — September 2024",
+      "title": "Lead Designer · Quicksupply Print",
+      "desc": "Led design team and reduced revision cycles by 30%.",
+      "icon": "pen",
+      "current": false
+    },
+    {
+      "period": "July 2024 — Present",
+      "title": "Graphic Designer · Ministry of Youth and Sports",
+      "desc": "Designed visual assets for national campaigns and communications.",
+      "icon": "pen",
+      "current": false
+    },
+    {
+      "period": "September 2024 — Present",
+      "title": "Graphic Designer · Transsion Holding Egypt",
+      "desc": "Develop and execute visual content across multiple Transsion brands.",
+      "icon": "pen",
+      "current": false
+    },
+    {
+      "period": "December 2024 — Present",
+      "title": "Graphic Designer · Infinix Egypt",
+      "desc": "Shape and maintain the visual identity of Infinix Egypt across digital and physical touchpoints.",
+      "icon": "pen",
+      "current": false
+    },
+    {
+      "period": "December 2024 — Present",
+      "title": "Vice President of Multimedia & Creative Director · Enactus Cairo University",
+      "desc": "Lead and manage 40+ photographers, video editors, scriptwriters, presenters, and content creators. Direct creative strategy, multimedia production, branding initiatives, and team development.",
+      "icon": "star",
+      "current": false
+    },
+    {
+      "period": "July 2025 — Present",
+      "title": "Video Editing Leader · Ministry of Youth and Sports",
+      "desc": "Lead editing operations and multimedia content production.",
+      "icon": "video",
+      "current": true
+    }
+  ]
+}

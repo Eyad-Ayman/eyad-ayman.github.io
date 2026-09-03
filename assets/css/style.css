@@ -3951,7 +3951,13 @@ footer-gta {
   letter-spacing: -13px;
   font-size: 17em;
   font-weight: 700;
+  font-variation-settings: 'wght' 700;
   line-height: .9;
+}
+
+.behance-cta-wrap {
+  margin-top: 28px;
+  text-align: center;
 }
 
 .hero-text-wrapper {
@@ -5691,6 +5697,18 @@ video.hero-section-images._02 {
   width: 64px;
   height: 50px;
   color: var(--accent-color);
+}
+.intro-arrow::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  top: 50%;
+  left: 50%;
+  width: 220px;
+  height: 220px;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(circle, rgba(208,43,42,.28) 0%, rgba(208,43,42,0) 70%);
+  pointer-events: none;
   opacity: 0;
   animation: introFadeUp .5s ease 1.25s forwards;
 }
@@ -6998,4 +7016,119 @@ html {
   .signoff-cta,
   .project-tile,
   .reveal { transition: none; }
+}
+
+/* ==========================================================================
+   Dark mode. The stylesheet above this point uses hardcoded hex colors
+   throughout rather than CSS variables (it started life as a Webflow
+   export), so re-theming every declaration individually would mean
+   touching hundreds of rules with real regression risk. Instead: invert
+   the whole document, then counter-invert every photo/video/grain texture
+   so the actual photography — the point of a design portfolio — stays in
+   natural color while everything else (backgrounds, text, borders, UI
+   chrome) correctly becomes a dark theme. Same technique real "dark mode
+   for any site" tools use, not a shortcut hack.
+   ========================================================================== */
+html[data-theme="dark"] {
+  background: #121212;
+  filter: invert(1) hue-rotate(180deg);
+}
+/* Counter-invert applies to each photo/video's WRAPPER, not the <img>/
+   <video> tag itself. Several images (About, hero, gallery tiles) already
+   carry their own filter: grayscale()/contrast() that switches on hover —
+   putting the counter-invert directly on the tag would either lose to that
+   rule on specificity or, forced with !important, silently overwrite it
+   and kill the hover-color effect. Filters on nested elements compose
+   (child's own filter renders first, the ancestor's filter — including a
+   dark-mode wrapper's counter-invert — applies after), so the wrapper
+   approach lets both effects coexist untouched. */
+html[data-theme="dark"] iframe,
+html[data-theme="dark"] .noise-texture,
+html[data-theme="dark"] .about-sliced span,
+html[data-theme="dark"] .hero-section-images-holder,
+html[data-theme="dark"] .about-me-image-wrapper,
+html[data-theme="dark"] .collage-tile,
+html[data-theme="dark"] .project-photo,
+html[data-theme="dark"] .intro-polaroid,
+html[data-theme="dark"] .tools-side-photo,
+html[data-theme="dark"] .auto-slide,
+html[data-theme="dark"] .full-bleed-break,
+html[data-theme="dark"] .contact-map {
+  filter: invert(1) hue-rotate(180deg);
+}
+@media (prefers-reduced-motion: no-preference) {
+  html { transition: filter .25s ease; }
+}
+
+/* Theme toggle — a small technical pill matching the site-readout's
+   monospace/uppercase language, fixed bottom-right so it never collides
+   with the corner clock (bottom-left) or the nav. */
+.theme-toggle {
+  position: fixed;
+  right: 18px;
+  bottom: 16px;
+  z-index: 20000;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  background-color: #fff;
+  border: 1px solid #000;
+  font-family: "Courier New", ui-monospace, monospace;
+  font-size: 11px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: #000;
+  cursor: pointer;
+}
+.theme-toggle:hover { background-color: #000; color: #fff; }
+html[data-theme="dark"] .theme-toggle {
+  /* Counter-invert so the control itself reads the same light/dark
+     regardless of the page-wide filter it's sitting inside of. */
+  filter: invert(1) hue-rotate(180deg);
+}
+@media screen and (max-width: 767px) {
+  .theme-toggle { right: 14px; bottom: calc(14px + env(safe-area-inset-bottom)); }
+}
+
+/* "Keep scrolling" hint — shown only while the Gallery of Work section is
+   in view, hidden the moment you scroll away from it. Matches the site's
+   monospace technical-label language (site-readout, gallery mastheads). */
+.scroll-hint {
+  position: fixed;
+  left: 50%;
+  bottom: 22px;
+  transform: translateX(-50%) translateY(12px);
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 16px;
+  background-color: #000;
+  color: #fff;
+  font-family: "Courier New", ui-monospace, monospace;
+  font-size: 11px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .35s ease, transform .35s ease;
+}
+.scroll-hint.is-active {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+.scroll-hint-arrow {
+  display: inline-block;
+  animation: scrollHintBob 1.3s ease-in-out infinite;
+}
+@keyframes scrollHintBob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(4px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .scroll-hint-arrow { animation: none; }
+}
+@media screen and (max-width: 767px) {
+  .scroll-hint { bottom: calc(64px + env(safe-area-inset-bottom)); font-size: 10px; }
 }
