@@ -11,7 +11,7 @@
 
   "slideshow-video": "./assets/images/hero/loop.webm",
   "slideshow-video-poster": "./assets/images/hero/loop-poster.webp",
-  "slideshow-image-1": "./assets/images/behance/09-travis-scott-ft-ferrari-poster.jpg",
-  "slideshow-image-2": "./assets/images/behance/170245581-redbull-poster.jpg",
-  "slideshow-image-3": "./assets/images/behance/162440409-ibrahim-el-abyad-movie-unofficial-design.jpg"
+  "slideshow-image-1": "./assets/images/behance/09-travis-scott-ft-ferrari-poster.webp",
+  "slideshow-image-2": "./assets/images/behance/170245581-redbull-poster.webp",
+  "slideshow-image-3": "./assets/images/behance/162440409-ibrahim-el-abyad-movie-unofficial-design.webp"
 }

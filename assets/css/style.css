@@ -5226,16 +5226,34 @@ html {
   .tools-modal-content { max-width: 100%; height: 92vh; max-height: none; }
 }
 
-/* Project grid (inline, replaces the old broken iframe) */
+/* Project grid (inline, replaces the old broken iframe).
+   This used to be CSS multi-column (columns: 4 220px) with break-inside:
+   avoid tiles. With 49 real tiles of very different aspect ratios,
+   getComputedStyle().height on that element reported a wildly different
+   number (~7600px) than its actual rendered box (~3600px) in some test
+   conditions — a real discrepancy between the CSS-reported and painted
+   height, though the exact conditions that turn it into a visible layout
+   gap for a real visitor (vs. just an inconsistent measurement) weren't
+   fully pinned down. Rather than rely on a multi-column balancing
+   algorithm that can produce that kind of mismatch at all, JS-built
+   column divs (see gallery-feed.js) sidestep the whole question: each
+   column is an ordinary block container whose height is just the real
+   sum of its own children. */
 .project-grid {
-  columns: 4 220px;
-  column-gap: 28px;
+  display: flex;
+  gap: 28px;
   width: 100%;
+  align-items: flex-start;
+}
+.project-grid-col {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
+  min-width: 0;
 }
 .project-grid a,
 .project-grid .project-tile {
   display: block;
-  break-inside: avoid;
   margin-bottom: 34px;
   text-decoration: none;
 }
@@ -5319,10 +5337,7 @@ html {
   .project-grid .project-tile { opacity: 1; transform: none; }
 }
 @media screen and (max-width: 767px) {
-  .project-grid {
-    columns: 2 150px;
-    column-gap: 18px;
-  }
+  .project-grid { gap: 18px; }
   .project-grid .project-tile { margin-bottom: 22px; }
 }
 
@@ -6678,19 +6693,15 @@ video.hero-section-images._02 {
   .tools-side-photo:hover img { filter: grayscale(0%); }
 }
 
-/* Gallery of Work grid wrapper — one continuous panel, wide masonry columns */
+/* Gallery of Work grid wrapper. The actual masonry-height bug (see the
+   long comment on .project-grid above) lived in the grid itself, not
+   here — this dropped display:flex too since it's not needed for a
+   simple vertical stack and removes one more variable from that fix. */
 .gallery-tab-panel {
   min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-}
-.gallery-tab-panel .project-grid {
-  columns: 5 260px;
 }
 @media screen and (max-width: 767px) {
   .gallery-tab-panel { min-height: 0; }
-  .gallery-tab-panel .project-grid { columns: 2 150px; }
 }
 
 /* Work Experience — clean timeline list */
@@ -7157,6 +7168,7 @@ html[data-theme="dark"] .auto-slide,
 html[data-theme="dark"] .full-bleed-break,
 html[data-theme="dark"] .showreel-strip-wrap,
 html[data-theme="dark"] .showreel-card,
+html[data-theme="dark"] .logo-link,
 html[data-theme="dark"] .contact-map {
   filter: invert(1) hue-rotate(180deg);
 }

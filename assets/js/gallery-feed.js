@@ -98,7 +98,7 @@
         if (ii < instaItems.length) mixed.push(instaItems[ii++]);
       }
 
-      grid.innerHTML = mixed
+      var tileHtml = mixed
         .map(function (item, i) {
           var title = escapeHtml(item.caption);
           var linkUrl = safeUrl(item.url);
@@ -137,7 +137,31 @@
               '<div class="project-caption"><span class="project-name">' + title + '</span><span class="project-index">' + badge + "</span></div>" +
             "</a>"
           );
-        })
+        });
+
+      // Split into N plain column divs and hand tiles out round-robin,
+      // instead of the CSS `columns:` multi-column layout this used to be.
+      // With 49 real tiles of very different aspect ratios, that element's
+      // getComputedStyle().height (~7600px) and its real rendered height
+      // (~3600px) disagreed under some test conditions — a genuine
+      // CSS-reported-vs-painted mismatch, whatever exactly triggers it.
+      // Plain column divs sidestep the question entirely: no balancing
+      // algorithm involved, so there's nothing to compute wrong — each
+      // column's height is just the real sum of its own children.
+      // Mirrors the two breakpoints the old columns: N Wpx rule used
+      // (5 260px desktop, 2 150px at <=767px) so the visual density stays
+      // the same as before.
+      var isMobile = window.innerWidth <= 767;
+      var colWidth = isMobile ? 150 : 260;
+      var colGap = isMobile ? 18 : 28;
+      var maxColumns = isMobile ? 2 : 5;
+      var gridWidth = grid.getBoundingClientRect().width || window.innerWidth;
+      var columnCount = Math.max(1, Math.min(maxColumns, Math.floor((gridWidth + colGap) / (colWidth + colGap))));
+      var columns = [];
+      for (var c = 0; c < columnCount; c++) columns.push([]);
+      tileHtml.forEach(function (html, i) { columns[i % columnCount].push(html); });
+      grid.innerHTML = columns
+        .map(function (colTiles) { return '<div class="project-grid-col">' + colTiles.join("") + "</div>"; })
         .join("");
 
       // Moved off an inline onload="..." attribute (inline event handlers

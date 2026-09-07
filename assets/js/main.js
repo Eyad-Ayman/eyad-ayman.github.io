@@ -25,10 +25,12 @@
     var label = document.getElementById("theme-toggle-label");
     if (!toggle) return;
 
+    // Light is always the default on a first visit, regardless of the
+    // visitor's system dark-mode setting — only an explicit click on the
+    // toggle switches it, and only then does it stick (via localStorage).
     var stored = null;
     try { stored = localStorage.getItem("theme"); } catch (e) {}
-    var prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
-    var theme = stored || (prefersDark ? "dark" : "light");
+    var theme = stored === "dark" ? "dark" : "light";
 
     function apply(t) {
       if (t === "dark") {
