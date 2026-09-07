@@ -6307,6 +6307,23 @@ video.hero-section-images._02 {
   transition: filter .3s ease;
 }
 .showreel-card:hover video { filter: grayscale(0%) contrast(100%); }
+/* Dark mode un-inverts this video with its OWN filter (combined into one
+   list) instead of composing through .showreel-card's wrapper filter like
+   every other counter-inverted element on the site. Live video playback
+   can end up on a different GPU compositing path than a static image, and
+   nested filters need the browser to rasterize an intermediate buffer for
+   the child before the parent's filter applies — that extra step is
+   exactly where this showed wrong colors during actual playback (not
+   guessed: the site's own maintainer reported it after the wrapper-based
+   fix, which measured correctly by every CSS-value check but still didn't
+   render right). One filter list on the element itself needs no
+   intermediate buffer, so there's nothing left for that bug to bite. */
+html[data-theme="dark"] .showreel-card video {
+  filter: invert(1) hue-rotate(180deg) grayscale(60%) contrast(105%);
+}
+html[data-theme="dark"] .showreel-card:hover video {
+  filter: invert(1) hue-rotate(180deg) grayscale(0%) contrast(100%);
+}
 .showreel-reel-number {
   position: absolute;
   top: 10px;
