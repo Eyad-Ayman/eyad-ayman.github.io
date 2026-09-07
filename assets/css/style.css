@@ -6276,6 +6276,7 @@ video.hero-section-images._02 {
 }
 .showreel-strip {
   display: flex;
+  align-items: flex-start;
   gap: 14px;
   overflow-x: auto;
   scroll-snap-type: x proximity;
@@ -6287,7 +6288,10 @@ video.hero-section-images._02 {
   position: relative;
   flex: 0 0 auto;
   width: 220px;
-  aspect-ratio: 9 / 16;
+  /* No forced aspect-ratio — Instagram posts aren't all 9:16 (this one is
+     actually ~4:3 landscape), and cropping every card to a fixed portrait
+     box was cutting real content off. height:auto on the video below lets
+     each card be exactly as tall as that post's own real proportions. */
   scroll-snap-align: start;
   overflow: hidden;
   background: #111;
@@ -6297,8 +6301,7 @@ video.hero-section-images._02 {
 }
 .showreel-card video {
   width: 100%;
-  height: 100%;
-  object-fit: cover;
+  height: auto;
   display: block;
   filter: grayscale(60%) contrast(105%);
   transition: filter .3s ease;
