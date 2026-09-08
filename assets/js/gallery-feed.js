@@ -155,7 +155,16 @@
       var colWidth = isMobile ? 150 : 260;
       var colGap = isMobile ? 18 : 28;
       var maxColumns = isMobile ? 2 : 5;
-      var gridWidth = grid.getBoundingClientRect().width || window.innerWidth;
+      // grid.getBoundingClientRect().width measured 0 (or near it) here on
+      // a real run despite window.innerWidth being a normal 1280 at the
+      // same instant — a real layout-timing race, not guessed: caught by
+      // checking gridCols after a live render and finding 1 instead of the
+      // expected 3+. window.innerWidth is available immediately with no
+      // dependency on this element's own layout having settled yet, so
+      // it's the primary source now; the grid's own width is only used
+      // when it's already sane (order of magnitude bigger than one column)
+      var measuredWidth = grid.getBoundingClientRect().width;
+      var gridWidth = measuredWidth > colWidth ? measuredWidth : window.innerWidth - 64;
       var columnCount = Math.max(1, Math.min(maxColumns, Math.floor((gridWidth + colGap) / (colWidth + colGap))));
       var columns = [];
       for (var c = 0; c < columnCount; c++) columns.push([]);

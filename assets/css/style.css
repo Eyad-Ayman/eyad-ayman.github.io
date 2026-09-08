@@ -5495,7 +5495,23 @@ video.hero-section-images._02 {
   position: relative;
   z-index: 1;
   transition: color .18s ease;
+  display: block;
 }
+.tools-launcher-desc {
+  display: block;
+  font-family: Inter, Arial, Helvetica, sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: normal;
+  color: #666;
+  margin-top: 6px;
+  line-height: 1.4;
+  position: relative;
+  z-index: 1;
+  transition: color .18s ease;
+}
+.tools-launcher-card:hover .tools-launcher-desc { color: rgba(255, 255, 255, .8); }
 .tools-launcher-card::after {
   content: "\2192";
   position: absolute;
