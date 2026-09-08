@@ -250,13 +250,16 @@
         try { sessionStorage.setItem("hireToastSeen", "1"); } catch (e) {}
       });
     }
-    // Its whole point is nudging toward Contact — once the visitor has
-    // actually scrolled past it into the closing sign-off/footer, it was
-    // just sitting fixed in the corner overlapping the "Thanks, see you
-    // around" text underneath it instead. Fade it out there instead of
-    // needing another manual dismiss.
-    var signoffBlock = document.querySelector(".signoff-block");
-    if (signoffBlock && "IntersectionObserver" in window) {
+    // Its whole point is nudging toward Contact — past that point it was
+    // just a fixed corner card in the way of the real thing. On mobile
+    // specifically it was sitting directly on top of the WhatsApp button
+    // in the Contact section itself, not just the closing sign-off/footer
+    // below it — found by actually scrolling a mobile viewport through the
+    // page, not guessed. Hiding it from the moment Contact starts covers
+    // both: the redundant overlap on the real CTA, and the footer text
+    // underneath it further down.
+    var contactSection = document.getElementById("mylinks");
+    if (contactSection && "IntersectionObserver" in window) {
       var signoffObserver = new IntersectionObserver(
         function (entries) {
           entries.forEach(function (entry) {
@@ -266,7 +269,7 @@
         },
         { threshold: 0 }
       );
-      signoffObserver.observe(signoffBlock);
+      signoffObserver.observe(contactSection);
     }
   }
 
