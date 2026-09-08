@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>AI Portrait Blur — Eyad Ayman Tools</title>
+<meta name="viewport" content="width=device-width, height=device-height, initial-scale=1, minimum-scale=1, maximum-scale=5">
+<!-- Scoped to this page only, same reasoning as tools/bg-remover. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; connect-src 'self' https://cdn.jsdelivr.net https://storage.googleapis.com; img-src 'self' data: blob:; object-src 'none'; base-uri 'self';">
+<style>
+  :root { --accent: #d02b2a; --ink: #000; }
+  * { box-sizing: border-box; }
+  body { font-family: Inter, Arial, Helvetica, sans-serif; margin: 0; padding: 20px; color: #222; position: relative; background-color: #f6f1e6; }
+  .tool-header { margin-bottom: 16px; padding-bottom: 12px; border-bottom: 2px solid var(--ink); }
+  .tool-header h1 { font-size: 18px; margin: 0 0 4px; letter-spacing: .5px; }
+  .tool-header p { font-size: 13px; color: #555; margin: 0 0 6px; max-width: 62ch; }
+  .tool-header .fine-print { font-size: 11px; color: #888; }
+
+  .drop-zone {
+    border: 2px dashed #000;
+    background: #fff;
+    padding: 36px 20px;
+    text-align: center;
+    cursor: pointer;
+    margin-bottom: 18px;
+  }
+  .drop-zone.is-drag { background: #efece5; }
+  .drop-zone p { margin: 0 0 10px; font-size: 14px; }
+  .drop-zone .browse-btn { font-family: inherit; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; padding: 10px 18px; border: 2px solid #000; background: #fff; color: #000; cursor: pointer; }
+  .drop-zone .browse-btn:hover { background: #000; color: #fff; }
+  input[type="file"] { display: none; }
+
+  .controls-row { display: none; flex-wrap: wrap; gap: 16px; align-items: center; margin-bottom: 18px; font-size: 13px; }
+  .controls-row.show { display: flex; }
+  .controls-row label { display: flex; align-items: center; gap: 8px; }
+  input[type="range"] { width: 160px; accent-color: var(--accent); }
+
+  .status-line { font-size: 13px; padding: 10px 12px; border: 1px solid #000; background: #fff; margin-bottom: 18px; display: none; align-items: center; gap: 10px; }
+  .status-line.show { display: flex; }
+  .status-line.err { border-color: #b00000; color: #b00000; }
+  .status-line.ok { border-color: #2a7a2a; color: #2a7a2a; }
+  .spinner { width: 14px; height: 14px; border: 2px solid #ccc; border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; flex-shrink: 0; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .result-area { display: none; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 18px; }
+  .result-area.show { display: grid; }
+  @media (max-width: 640px) { .result-area.show { grid-template-columns: 1fr; } }
+  .result-pane { border: 1px solid #000; background: #fff; padding: 10px; }
+  .result-pane h2 { font-size: 11px; text-transform: uppercase; letter-spacing: .5px; margin: 0 0 8px; color: #666; }
+  .result-pane .frame { width: 100%; aspect-ratio: 1; display: flex; align-items: center; justify-content: center; overflow: hidden; background: #eee; }
+  .result-pane img, .result-pane canvas { max-width: 100%; max-height: 100%; object-fit: contain; display: block; }
+
+  .actions-row { display: none; gap: 10px; flex-wrap: wrap; }
+  .actions-row.show { display: flex; }
+  button.primary { font-family: inherit; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; padding: 12px 22px; border: 2px solid var(--accent); background: var(--accent); color: #fff; cursor: pointer; }
+  button.primary:hover { background: #000; border-color: #000; }
+  button.secondary { font-family: inherit; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; padding: 12px 22px; border: 2px solid #000; background: #fff; color: #000; cursor: pointer; }
+  button.secondary:hover { background: #000; color: #fff; }
+
+  .hint { font-size: 12px; color: #666; margin-top: 20px; line-height: 1.6; background: #fff; border: 1px solid #ccc; padding: 12px 14px; }
+
+  .noise-wrap { position: fixed; inset: 0; z-index: 100000; opacity: .3; pointer-events: none; overflow: hidden; mix-blend-mode: overlay; }
+  .noise-texture { position: absolute; width: 300%; height: 300%; left: -100%; top: -100%; background-image: url("/assets/images/texture/grain.png"); background-size: 220px 220px; background-repeat: repeat; animation: grain-shift 0.5s steps(4) infinite; }
+  @keyframes grain-shift {
+    0%   { transform: translate(0%, 0%); }
+    25%  { transform: translate(-3%, 2%); }
+    50%  { transform: translate(2%, -3%); }
+    75%  { transform: translate(-2%, -2%); }
+    100% { transform: translate(0%, 0%); }
+  }
+</style>
+</head>
+<body>
+
+<div class="noise-wrap"><div class="noise-texture"></div></div>
+
+<div class="tool-header">
+  <h1>AI Portrait Blur</h1>
+  <p>Drop in a photo with a person in it and blur the background behind them — the "portrait mode" effect phone cameras do, applied after the fact to any photo.</p>
+  <p class="fine-print">Runs the same on-device model as the Background Remover (Google's MediaPipe Selfie Segmenter, ~250KB). No uploading, no account, free.</p>
+</div>
+
+<div class="drop-zone" id="drop-zone">
+  <p>Drag &amp; drop a photo here, or</p>
+  <button type="button" class="browse-btn" id="browse-btn">Choose Photo</button>
+  <input type="file" id="file-input" accept="image/*">
+</div>
+
+<div class="controls-row" id="controls-row">
+  <label>Blur strength: <input type="range" id="blur-amount" min="2" max="30" value="14"><span id="blur-val">14px</span></label>
+</div>
+
+<div class="status-line" id="status-line"><span class="spinner" id="status-spinner"></span><span id="status-text"></span></div>
+
+<div class="result-area" id="result-area">
+  <div class="result-pane">
+    <h2>Original</h2>
+    <div class="frame"><img id="preview-before" alt=""></div>
+  </div>
+  <div class="result-pane">
+    <h2>Blurred Background</h2>
+    <div class="frame"><canvas id="preview-after"></canvas></div>
+  </div>
+</div>
+
+<div class="actions-row" id="actions-row">
+  <button type="button" class="primary" id="download-btn">Download PNG</button>
+  <button type="button" class="secondary" id="clear-btn">Try Another Photo</button>
+</div>
+
+<div class="hint">
+  <strong>How it works:</strong> the same person-vs-background confidence mask the Background Remover uses gets used here to blend two versions of your photo — one blurred, one sharp — instead of cutting the background out entirely. Drag the slider and it re-blends instantly without re-running the model.
+</div>
+
+<script type="module" src="./app.js"></script>
+
+</body>
+</html>
