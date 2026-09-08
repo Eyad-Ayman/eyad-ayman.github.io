@@ -7196,35 +7196,21 @@ html[data-theme="dark"] .contact-map {
   html { transition: filter .25s ease; }
 }
 
-/* Theme toggle — a small technical pill matching the site-readout's
-   monospace/uppercase language, fixed bottom-right so it never collides
-   with the corner clock (bottom-left) or the nav. */
+/* Theme toggle — lives in the nav itself now, as a plain nav-link-big
+   button, instead of a fixed bottom-right pill. That fixed pill sat in
+   the exact same corner as the "still scrolling? I'm available for hire"
+   toast and visibly collided with it once both were on screen. Being a
+   real nav item means it's always reachable without floating over
+   anything, needs no z-index tug-of-war, and — since it's inside the
+   navbar's own mix-blend-mode: difference stacking context — no counter-
+   invert filter either; it just reads correctly against any background
+   the same way every other nav link already does. */
 .theme-toggle {
-  position: fixed;
-  right: 18px;
-  bottom: 16px;
-  z-index: 20000;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 7px 12px;
-  background-color: #fff;
-  border: 1px solid #000;
-  font-family: "Courier New", ui-monospace, monospace;
-  font-size: 11px;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-  color: #000;
+  background: none;
+  border: none;
+  padding: 0;
   cursor: pointer;
-}
-.theme-toggle:hover { background-color: #000; color: #fff; }
-html[data-theme="dark"] .theme-toggle {
-  /* Counter-invert so the control itself reads the same light/dark
-     regardless of the page-wide filter it's sitting inside of. */
-  filter: invert(1) hue-rotate(180deg);
-}
-@media screen and (max-width: 767px) {
-  .theme-toggle { right: 14px; bottom: calc(14px + env(safe-area-inset-bottom)); }
+  font-family: inherit;
 }
 
 /* "Keep scrolling" hint — shown only while the Gallery of Work section is
