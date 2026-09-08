@@ -250,6 +250,24 @@
         try { sessionStorage.setItem("hireToastSeen", "1"); } catch (e) {}
       });
     }
+    // Its whole point is nudging toward Contact — once the visitor has
+    // actually scrolled past it into the closing sign-off/footer, it was
+    // just sitting fixed in the corner overlapping the "Thanks, see you
+    // around" text underneath it instead. Fade it out there instead of
+    // needing another manual dismiss.
+    var signoffBlock = document.querySelector(".signoff-block");
+    if (signoffBlock && "IntersectionObserver" in window) {
+      var signoffObserver = new IntersectionObserver(
+        function (entries) {
+          entries.forEach(function (entry) {
+            if (entry.isIntersecting) hireToast.classList.add("is-past-footer");
+            else hireToast.classList.remove("is-past-footer");
+          });
+        },
+        { threshold: 0 }
+      );
+      signoffObserver.observe(signoffBlock);
+    }
   }
 
   // ---- Hidden easter egg: click the hero name fast enough for confetti ---
@@ -307,7 +325,7 @@
         cursorDot.classList.remove("is-hidden");
         cursorRing.classList.remove("is-hidden");
       });
-      var hoverTargets = "a, button, .gallery-tile, .project-tile, .tools-launcher-card, .contact-card, input, textarea, select";
+      var hoverTargets = "a, button, .gallery-tile, .project-tile, .tools-launcher-card, .contact-card, .faq-item summary, .service-card, input, textarea, select";
       document.addEventListener("mouseover", function (e) {
         if (e.target.closest && e.target.closest(hoverTargets)) {
           cursorDot.classList.add("is-hover");
@@ -360,12 +378,17 @@
     var sectionObserver = new IntersectionObserver(
       function (entries) {
         entries.forEach(function (entry) {
-          if (entry.isIntersecting) {
-            var id = entry.target.id;
-            navLinks.forEach(function (link) {
-              link.classList.toggle("is-current-section", link.getAttribute("href") === "#" + id);
-            });
-          }
+          if (!entry.isIntersecting) return;
+          var id = entry.target.id;
+          // Not every [data-nav-section] has a nav link (FAQ deliberately
+          // doesn't, to keep the nav from getting crowded) — without this
+          // check, scrolling into one of those cleared the highlight off
+          // whatever section was last actually shown instead of leaving it.
+          var hasMatch = navLinks.some(function (link) { return link.getAttribute("href") === "#" + id; });
+          if (!hasMatch) return;
+          navLinks.forEach(function (link) {
+            link.classList.toggle("is-current-section", link.getAttribute("href") === "#" + id);
+          });
         });
       },
       { rootMargin: "-45% 0px -45% 0px" }

@@ -6474,6 +6474,14 @@ html[data-theme="dark"] .showreel-card:hover video {
   opacity: 1;
   pointer-events: auto;
 }
+/* Its job is nudging toward Contact — past the closing sign-off it was
+   just overlapping the "Thanks, see you around" footer text underneath
+   it, so fade it out there instead (wins over .is-visible either way). */
+.hire-toast.is-past-footer {
+  transform: translateY(140%);
+  opacity: 0;
+  pointer-events: none;
+}
 .hire-toast-close {
   position: absolute;
   top: 8px;

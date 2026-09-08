@@ -1,7 +1,7 @@
 "use strict";
 
 // Bump this whenever the precached shell files change, so old caches get thrown away.
-var CACHE_NAME = "eyad-portfolio-v1";
+var CACHE_NAME = "eyad-portfolio-v2";
 
 var PRECACHE_URLS = [
   "./",
@@ -12,6 +12,7 @@ var PRECACHE_URLS = [
   "./assets/js/media-loader.js",
   "./assets/js/mini-game.js",
   "./assets/js/gallery-feed.js",
+  "./assets/js/showreel.js",
   "./assets/js/content-loader.js",
   "./data/about.json",
   "./data/experience.json",
