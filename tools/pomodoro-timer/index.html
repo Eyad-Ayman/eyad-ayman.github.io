@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Pomodoro Timer — Eyad Ayman Tools</title>
+<meta name="viewport" content="width=device-width, height=device-height, initial-scale=1, minimum-scale=1, maximum-scale=5">
+<style>
+  :root { --accent: #d02b2a; --ink: #000; }
+  * { box-sizing: border-box; }
+  body { font-family: Inter, Arial, Helvetica, sans-serif; margin: 0; padding: 20px; color: #222; position: relative; background-color: #f6f1e6; }
+  .tool-header { margin-bottom: 16px; padding-bottom: 12px; border-bottom: 2px solid var(--ink); }
+  .tool-header h1 { font-size: 18px; margin: 0 0 4px; letter-spacing: .5px; }
+  .tool-header p { font-size: 13px; color: #555; margin: 0; max-width: 62ch; }
+
+  .mode-row { display: flex; gap: 8px; margin: 20px 0; }
+  .mode-btn { flex: 1; font-family: inherit; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; padding: 10px; border: 2px solid #000; background: #fff; color: #000; cursor: pointer; }
+  .mode-btn.active { background: #000; color: #fff; }
+
+  .timer-display-wrap { display: flex; justify-content: center; margin: 24px 0; }
+  .timer-ring { position: relative; width: 240px; height: 240px; }
+  .timer-ring svg { transform: rotate(-90deg); }
+  .timer-ring circle { fill: none; stroke-width: 10; }
+  .ring-bg { stroke: #eee; }
+  .ring-progress { stroke: var(--accent); stroke-linecap: round; transition: stroke-dashoffset 1s linear; }
+  .timer-time { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 44px; font-weight: 700; font-family: "Courier New", ui-monospace, monospace; }
+
+  .controls-row { display: flex; gap: 10px; justify-content: center; margin-bottom: 24px; }
+  button.primary { font-family: inherit; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; padding: 14px 30px; border: 2px solid var(--accent); background: var(--accent); color: #fff; cursor: pointer; }
+  button.primary:hover { background: #000; border-color: #000; }
+  button.secondary { font-family: inherit; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; padding: 14px 24px; border: 2px solid #000; background: #fff; color: #000; cursor: pointer; }
+  button.secondary:hover { background: #000; color: #fff; }
+
+  .session-count { text-align: center; font-size: 13px; color: #666; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 20px; }
+
+  .hint { font-size: 12px; color: #666; margin-top: 20px; line-height: 1.6; background: #fff; border: 1px solid #ccc; padding: 12px 14px; }
+
+  .noise-wrap { position: fixed; inset: 0; z-index: 100000; opacity: .3; pointer-events: none; overflow: hidden; mix-blend-mode: overlay; }
+  .noise-texture { position: absolute; width: 300%; height: 300%; left: -100%; top: -100%; background-image: url("/assets/images/texture/grain.png"); background-size: 220px 220px; background-repeat: repeat; animation: grain-shift 0.5s steps(4) infinite; }
+  @keyframes grain-shift {
+    0%   { transform: translate(0%, 0%); }
+    25%  { transform: translate(-3%, 2%); }
+    50%  { transform: translate(2%, -3%); }
+    75%  { transform: translate(-2%, -2%); }
+    100% { transform: translate(0%, 0%); }
+  }
+</style>
+</head>
+<body>
+
+<div class="noise-wrap"><div class="noise-texture"></div></div>
+
+<div class="tool-header">
+  <h1>Pomodoro Timer</h1>
+  <p>25 minutes of focused work, then a short break — the Pomodoro technique. Runs right in this tab; keep it open while you work.</p>
+</div>
+
+<div class="mode-row">
+  <button type="button" class="mode-btn active" data-mode="focus" data-mins="25">Focus (25m)</button>
+  <button type="button" class="mode-btn" data-mode="short" data-mins="5">Short Break (5m)</button>
+  <button type="button" class="mode-btn" data-mode="long" data-mins="15">Long Break (15m)</button>
+</div>
+
+<div class="timer-display-wrap">
+  <div class="timer-ring">
+    <svg width="240" height="240">
+      <circle class="ring-bg" cx="120" cy="120" r="108"></circle>
+      <circle class="ring-progress" id="ring-progress" cx="120" cy="120" r="108"></circle>
+    </svg>
+    <div class="timer-time" id="timer-time">25:00</div>
+  </div>
+</div>
+
+<div class="session-count" id="session-count">0 focus sessions completed this visit</div>
+
+<div class="controls-row">
+  <button type="button" class="primary" id="start-pause-btn">Start</button>
+  <button type="button" class="secondary" id="reset-btn">Reset</button>
+</div>
+
+<div class="hint">
+  <strong>How it works:</strong> plays a short tone and flips the browser tab's title when a session ends, so you'll notice even if you've switched away. Nothing here is saved or sent anywhere — closing the tab resets it.
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var modeButtons = document.querySelectorAll(".mode-btn");
+  var timerTime = document.getElementById("timer-time");
+  var ringProgress = document.getElementById("ring-progress");
+  var startPauseBtn = document.getElementById("start-pause-btn");
+  var resetBtn = document.getElementById("reset-btn");
+  var sessionCountEl = document.getElementById("session-count");
+
+  var RADIUS = 108;
+  var CIRCUMFERENCE = 2 * Math.PI * RADIUS;
+  ringProgress.style.strokeDasharray = CIRCUMFERENCE;
+  ringProgress.style.strokeDashoffset = 0;
+
+  var totalSeconds = 25 * 60;
+  var remainingSeconds = totalSeconds;
+  var running = false;
+  var intervalId = null;
+  var focusSessions = 0;
+  var originalTitle = document.title;
+
+  function formatTime(s) {
+    var m = Math.floor(s / 60);
+    var sec = s % 60;
+    return (m < 10 ? "0" : "") + m + ":" + (sec < 10 ? "0" : "") + sec;
+  }
+
+  function render() {
+    timerTime.textContent = formatTime(remainingSeconds);
+    var progress = 1 - remainingSeconds / totalSeconds;
+    ringProgress.style.strokeDashoffset = CIRCUMFERENCE * (1 - progress);
+  }
+
+  function playChime() {
+    try {
+      var ctx = new (window.AudioContext || window.webkitAudioContext)();
+      var osc = ctx.createOscillator();
+      var gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.frequency.value = 880;
+      gain.gain.setValueAtTime(0.2, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.2);
+      osc.start();
+      osc.stop(ctx.currentTime + 1.2);
+    } catch (e) {}
+  }
+
+  function tick() {
+    remainingSeconds--;
+    if (remainingSeconds <= 0) {
+      remainingSeconds = 0;
+      render();
+      stop();
+      playChime();
+      document.title = "Time's up! — " + originalTitle;
+      if (getActiveMode() === "focus") {
+        focusSessions++;
+        sessionCountEl.textContent = focusSessions + " focus session" + (focusSessions === 1 ? "" : "s") + " completed this visit";
+      }
+      return;
+    }
+    render();
+  }
+
+  function getActiveMode() {
+    var active = document.querySelector(".mode-btn.active");
+    return active ? active.getAttribute("data-mode") : "focus";
+  }
+
+  function start() {
+    if (running) return;
+    running = true;
+    document.title = originalTitle;
+    startPauseBtn.textContent = "Pause";
+    intervalId = setInterval(tick, 1000);
+  }
+
+  function stop() {
+    running = false;
+    startPauseBtn.textContent = "Start";
+    if (intervalId) { clearInterval(intervalId); intervalId = null; }
+  }
+
+  function reset() {
+    stop();
+    document.title = originalTitle;
+    var active = document.querySelector(".mode-btn.active");
+    var mins = active ? +active.getAttribute("data-mins") : 25;
+    totalSeconds = mins * 60;
+    remainingSeconds = totalSeconds;
+    render();
+  }
+
+  modeButtons.forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      modeButtons.forEach(function (b) { b.classList.remove("active"); });
+      btn.classList.add("active");
+      reset();
+    });
+  });
+
+  startPauseBtn.addEventListener("click", function () {
+    if (running) stop(); else start();
+  });
+  resetBtn.addEventListener("click", reset);
+
+  render();
+})();
+</script>
+
+</body>
+</html>

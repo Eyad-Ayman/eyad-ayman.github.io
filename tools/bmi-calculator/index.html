@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>BMI Calculator — Eyad Ayman Tools</title>
+<meta name="viewport" content="width=device-width, height=device-height, initial-scale=1, minimum-scale=1, maximum-scale=5">
+<style>
+  :root { --accent: #d02b2a; --ink: #000; }
+  * { box-sizing: border-box; }
+  body { font-family: Inter, Arial, Helvetica, sans-serif; margin: 0; padding: 20px; color: #222; position: relative; background-color: #f6f1e6; }
+  .tool-header { margin-bottom: 16px; padding-bottom: 12px; border-bottom: 2px solid var(--ink); }
+  .tool-header h1 { font-size: 18px; margin: 0 0 4px; letter-spacing: .5px; }
+  .tool-header p { font-size: 13px; color: #555; margin: 0; max-width: 62ch; }
+
+  .unit-row { display: flex; gap: 8px; margin: 18px 0; }
+  .unit-btn { flex: 1; font-family: inherit; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; padding: 10px; border: 2px solid #000; background: #fff; color: #000; cursor: pointer; }
+  .unit-btn.active { background: #000; color: #fff; }
+
+  .fields-row { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 20px; }
+  .field { flex: 1; min-width: 140px; }
+  .field label { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: #666; margin-bottom: 6px; }
+  .field-inline { display: flex; gap: 8px; }
+  input[type="number"] { width: 100%; font-size: 15px; padding: 12px; border: 2px solid #000; background: #fff; font-family: inherit; }
+
+  .results { display: none; }
+  .results.show { display: block; }
+  .headline { text-align: center; border: 2px solid #000; background: #fff; padding: 24px; margin-bottom: 14px; }
+  .headline .num { font-size: 52px; font-weight: 700; line-height: 1; }
+  .headline .category { font-size: 15px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; margin-top: 8px; padding: 6px 14px; display: inline-block; }
+
+  .scale { display: flex; height: 10px; border: 1px solid #000; margin-bottom: 20px; position: relative; }
+  .scale-seg { flex: 1; }
+  .scale-marker { position: absolute; top: -6px; width: 3px; height: 22px; background: #000; transform: translateX(-1.5px); }
+
+  .hint { font-size: 12px; color: #666; margin-top: 20px; line-height: 1.6; background: #fff; border: 1px solid #ccc; padding: 12px 14px; }
+
+  .noise-wrap { position: fixed; inset: 0; z-index: 100000; opacity: .3; pointer-events: none; overflow: hidden; mix-blend-mode: overlay; }
+  .noise-texture { position: absolute; width: 300%; height: 300%; left: -100%; top: -100%; background-image: url("/assets/images/texture/grain.png"); background-size: 220px 220px; background-repeat: repeat; animation: grain-shift 0.5s steps(4) infinite; }
+  @keyframes grain-shift {
+    0%   { transform: translate(0%, 0%); }
+    25%  { transform: translate(-3%, 2%); }
+    50%  { transform: translate(2%, -3%); }
+    75%  { transform: translate(-2%, -2%); }
+    100% { transform: translate(0%, 0%); }
+  }
+</style>
+</head>
+<body>
+
+<div class="noise-wrap"><div class="noise-texture"></div></div>
+
+<div class="tool-header">
+  <h1>BMI Calculator</h1>
+  <p>Body Mass Index from your height and weight, metric or imperial, with the standard WHO weight-category ranges.</p>
+</div>
+
+<div class="unit-row">
+  <button type="button" class="unit-btn active" data-unit="metric">Metric (cm / kg)</button>
+  <button type="button" class="unit-btn" data-unit="imperial">Imperial (ft/in / lb)</button>
+</div>
+
+<div class="fields-row" id="fields-metric">
+  <div class="field">
+    <label for="height-cm">Height (cm)</label>
+    <input type="number" id="height-cm" min="0" step="0.1" placeholder="175">
+  </div>
+  <div class="field">
+    <label for="weight-kg">Weight (kg)</label>
+    <input type="number" id="weight-kg" min="0" step="0.1" placeholder="70">
+  </div>
+</div>
+
+<div class="fields-row" id="fields-imperial" style="display:none;">
+  <div class="field">
+    <label>Height (ft / in)</label>
+    <div class="field-inline">
+      <input type="number" id="height-ft" min="0" step="1" placeholder="5">
+      <input type="number" id="height-in" min="0" max="11" step="1" placeholder="9">
+    </div>
+  </div>
+  <div class="field">
+    <label for="weight-lb">Weight (lb)</label>
+    <input type="number" id="weight-lb" min="0" step="0.1" placeholder="154">
+  </div>
+</div>
+
+<div class="results" id="results">
+  <div class="headline">
+    <div class="num" id="bmi-num">—</div>
+    <div class="category" id="bmi-category">—</div>
+  </div>
+  <div class="scale">
+    <div class="scale-seg" style="background:#5b9bd5;"></div>
+    <div class="scale-seg" style="background:#2a7a2a;"></div>
+    <div class="scale-seg" style="background:#c77800;"></div>
+    <div class="scale-seg" style="background:#b00000;"></div>
+    <div class="scale-marker" id="scale-marker"></div>
+  </div>
+</div>
+
+<div class="hint">
+  <strong>What it means:</strong> BMI is a quick, widely-used screening number (weight relative to height squared) — it doesn't account for muscle mass, bone density, age, or where fat is distributed, so it's not a diagnosis. Categories follow the WHO's standard adult ranges: under 18.5 underweight, 18.5&ndash;24.9 healthy, 25&ndash;29.9 overweight, 30+ obese.
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var unitButtons = document.querySelectorAll(".unit-btn");
+  var fieldsMetric = document.getElementById("fields-metric");
+  var fieldsImperial = document.getElementById("fields-imperial");
+  var heightCm = document.getElementById("height-cm");
+  var weightKg = document.getElementById("weight-kg");
+  var heightFt = document.getElementById("height-ft");
+  var heightIn = document.getElementById("height-in");
+  var weightLb = document.getElementById("weight-lb");
+  var results = document.getElementById("results");
+  var scaleMarker = document.getElementById("scale-marker");
+
+  var unit = "metric";
+
+  var CATEGORIES = [
+    { max: 18.5, name: "Underweight", color: "#5b9bd5" },
+    { max: 25, name: "Healthy weight", color: "#2a7a2a" },
+    { max: 30, name: "Overweight", color: "#c77800" },
+    { max: Infinity, name: "Obese", color: "#b00000" }
+  ];
+  // Marker scale is anchored 15-40 BMI, matching the four visual segments.
+  var SCALE_MIN = 15, SCALE_MAX = 40;
+
+  function update() {
+    var heightM, weightKgVal;
+    if (unit === "metric") {
+      heightM = (parseFloat(heightCm.value) || 0) / 100;
+      weightKgVal = parseFloat(weightKg.value) || 0;
+    } else {
+      var totalInches = (parseFloat(heightFt.value) || 0) * 12 + (parseFloat(heightIn.value) || 0);
+      heightM = totalInches * 0.0254;
+      weightKgVal = (parseFloat(weightLb.value) || 0) * 0.453592;
+    }
+
+    if (heightM <= 0 || weightKgVal <= 0) {
+      results.classList.remove("show");
+      return;
+    }
+
+    var bmi = weightKgVal / (heightM * heightM);
+    var category = CATEGORIES.find(function (c) { return bmi < c.max; }) || CATEGORIES[CATEGORIES.length - 1];
+
+    document.getElementById("bmi-num").textContent = bmi.toFixed(1);
+    var catEl = document.getElementById("bmi-category");
+    catEl.textContent = category.name;
+    catEl.style.backgroundColor = category.color;
+    catEl.style.color = "#fff";
+
+    var pct = Math.max(0, Math.min(100, ((bmi - SCALE_MIN) / (SCALE_MAX - SCALE_MIN)) * 100));
+    scaleMarker.style.left = pct + "%";
+
+    results.classList.add("show");
+  }
+
+  unitButtons.forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      unit = btn.getAttribute("data-unit");
+      unitButtons.forEach(function (b) { b.classList.remove("active"); });
+      btn.classList.add("active");
+      fieldsMetric.style.display = unit === "metric" ? "flex" : "none";
+      fieldsImperial.style.display = unit === "imperial" ? "flex" : "none";
+      update();
+    });
+  });
+
+  [heightCm, weightKg, heightFt, heightIn, weightLb].forEach(function (el) {
+    el.addEventListener("input", update);
+  });
+})();
+</script>
+
+</body>
+</html>

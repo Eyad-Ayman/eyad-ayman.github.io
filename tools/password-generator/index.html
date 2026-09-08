@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Password Generator — Eyad Ayman Tools</title>
+<meta name="viewport" content="width=device-width, height=device-height, initial-scale=1, minimum-scale=1, maximum-scale=5">
+<style>
+  :root { --accent: #d02b2a; --ink: #000; }
+  * { box-sizing: border-box; }
+  body { font-family: Inter, Arial, Helvetica, sans-serif; margin: 0; padding: 20px; color: #222; position: relative; background-color: #f6f1e6; }
+  .tool-header { margin-bottom: 16px; padding-bottom: 12px; border-bottom: 2px solid var(--ink); }
+  .tool-header h1 { font-size: 18px; margin: 0 0 4px; letter-spacing: .5px; }
+  .tool-header p { font-size: 13px; color: #555; margin: 0; max-width: 62ch; }
+
+  .password-output { display: flex; gap: 10px; margin-bottom: 18px; }
+  #password-field { flex: 1; font-family: "Courier New", ui-monospace, monospace; font-size: 20px; letter-spacing: .5px; padding: 16px; border: 2px solid #000; background: #fff; word-break: break-all; }
+  .icon-btn { font-family: inherit; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; padding: 10px 16px; border: 2px solid #000; background: #fff; color: #000; cursor: pointer; white-space: nowrap; }
+  .icon-btn:hover { background: #000; color: #fff; }
+
+  .strength-row { display: flex; align-items: center; gap: 10px; margin-bottom: 22px; font-size: 12px; text-transform: uppercase; letter-spacing: .5px; }
+  .strength-bar-wrap { flex: 1; height: 8px; background: #eee; border: 1px solid #000; }
+  .strength-bar { height: 100%; width: 0%; background: #b00000; transition: width .2s ease, background-color .2s ease; }
+
+  .controls { border: 1px solid #000; background: #fff; padding: 18px; margin-bottom: 18px; }
+  .control-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; font-size: 14px; }
+  .control-row:last-child { margin-bottom: 0; }
+  input[type="range"] { width: 55%; accent-color: var(--accent); }
+  .len-val { font-family: monospace; font-weight: 700; min-width: 24px; text-align: right; }
+  .toggle-row { display: flex; align-items: center; gap: 10px; }
+  input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--accent); }
+
+  button.primary { width: 100%; font-family: inherit; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; padding: 14px; border: 2px solid var(--accent); background: var(--accent); color: #fff; cursor: pointer; }
+  button.primary:hover { background: #000; border-color: #000; }
+
+  .hint { font-size: 12px; color: #666; margin-top: 20px; line-height: 1.6; background: #fff; border: 1px solid #ccc; padding: 12px 14px; }
+
+  .noise-wrap { position: fixed; inset: 0; z-index: 100000; opacity: .3; pointer-events: none; overflow: hidden; mix-blend-mode: overlay; }
+  .noise-texture { position: absolute; width: 300%; height: 300%; left: -100%; top: -100%; background-image: url("/assets/images/texture/grain.png"); background-size: 220px 220px; background-repeat: repeat; animation: grain-shift 0.5s steps(4) infinite; }
+  @keyframes grain-shift {
+    0%   { transform: translate(0%, 0%); }
+    25%  { transform: translate(-3%, 2%); }
+    50%  { transform: translate(2%, -3%); }
+    75%  { transform: translate(-2%, -2%); }
+    100% { transform: translate(0%, 0%); }
+  }
+</style>
+</head>
+<body>
+
+<div class="noise-wrap"><div class="noise-texture"></div></div>
+
+<div class="tool-header">
+  <h1>Password Generator</h1>
+  <p>Strong, random passwords generated locally in your browser using the same secure randomness your OS uses for cryptography — never sent anywhere, never logged.</p>
+</div>
+
+<div class="password-output">
+  <div id="password-field">&nbsp;</div>
+  <button type="button" class="icon-btn" id="copy-btn">Copy</button>
+</div>
+
+<div class="strength-row">
+  <span>Strength:</span>
+  <div class="strength-bar-wrap"><div class="strength-bar" id="strength-bar"></div></div>
+  <span id="strength-label">—</span>
+</div>
+
+<div class="controls">
+  <div class="control-row">
+    <span>Length</span>
+    <input type="range" id="length-input" min="6" max="64" value="20">
+    <span class="len-val" id="length-val">20</span>
+  </div>
+  <div class="control-row toggle-row"><input type="checkbox" id="opt-upper" checked><label for="opt-upper">Uppercase (A–Z)</label></div>
+  <div class="control-row toggle-row"><input type="checkbox" id="opt-lower" checked><label for="opt-lower">Lowercase (a–z)</label></div>
+  <div class="control-row toggle-row"><input type="checkbox" id="opt-numbers" checked><label for="opt-numbers">Numbers (0–9)</label></div>
+  <div class="control-row toggle-row"><input type="checkbox" id="opt-symbols" checked><label for="opt-symbols">Symbols (!@#$…)</label></div>
+  <div class="control-row toggle-row"><input type="checkbox" id="opt-ambiguous"><label for="opt-ambiguous">Exclude look-alikes (l 1 I O 0)</label></div>
+</div>
+
+<button type="button" class="primary" id="generate-btn">Generate New Password</button>
+
+<div class="hint">
+  <strong>How it works:</strong> uses <code>crypto.getRandomValues()</code> — the Web Crypto API's cryptographically secure random number generator, the same class of randomness used for encryption keys — instead of <code>Math.random()</code>, which is not safe for anything security-related. Nothing about the password you generate here ever leaves this page.
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var passwordField = document.getElementById("password-field");
+  var copyBtn = document.getElementById("copy-btn");
+  var generateBtn = document.getElementById("generate-btn");
+  var lengthInput = document.getElementById("length-input");
+  var lengthVal = document.getElementById("length-val");
+  var strengthBar = document.getElementById("strength-bar");
+  var strengthLabel = document.getElementById("strength-label");
+  var optUpper = document.getElementById("opt-upper");
+  var optLower = document.getElementById("opt-lower");
+  var optNumbers = document.getElementById("opt-numbers");
+  var optSymbols = document.getElementById("opt-symbols");
+  var optAmbiguous = document.getElementById("opt-ambiguous");
+
+  var SETS = {
+    upper: "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+    lower: "abcdefghijklmnopqrstuvwxyz",
+    numbers: "0123456789",
+    symbols: "!@#$%^&*()-_=+[]{};:,.<>?/"
+  };
+  var AMBIGUOUS = /[l1IO0]/;
+
+  function buildCharset() {
+    var charset = "";
+    if (optUpper.checked) charset += SETS.upper;
+    if (optLower.checked) charset += SETS.lower;
+    if (optNumbers.checked) charset += SETS.numbers;
+    if (optSymbols.checked) charset += SETS.symbols;
+    if (optAmbiguous.checked) charset = charset.replace(new RegExp(AMBIGUOUS, "g"), "");
+    return charset;
+  }
+
+  function randomInt(max) {
+    // Rejection sampling avoids modulo bias — without it, low charset
+    // sizes would very slightly favor characters near the low end.
+    var range = Math.floor(0x100000000 / max) * max;
+    var buf = new Uint32Array(1);
+    var val;
+    do { crypto.getRandomValues(buf); val = buf[0]; } while (val >= range);
+    return val % max;
+  }
+
+  function generate() {
+    var charset = buildCharset();
+    var length = +lengthInput.value;
+    if (!charset) {
+      passwordField.textContent = "Pick at least one character type below.";
+      strengthBar.style.width = "0%";
+      strengthLabel.textContent = "—";
+      return;
+    }
+    var chars = [];
+    for (var i = 0; i < length; i++) {
+      chars.push(charset[randomInt(charset.length)]);
+    }
+    passwordField.textContent = chars.join("");
+    updateStrength(charset.length, length);
+  }
+
+  function updateStrength(poolSize, length) {
+    // Entropy in bits: how many yes/no guesses a brute-force search
+    // effectively needs. This is the standard, honest way to measure it —
+    // not a made-up "score".
+    var entropy = length * Math.log2(poolSize || 1);
+    var pct, color, label;
+    if (entropy < 40) { pct = 25; color = "#b00000"; label = "Weak"; }
+    else if (entropy < 60) { pct = 50; color = "#c77800"; label = "Fair"; }
+    else if (entropy < 80) { pct = 75; color = "#2a7a2a"; label = "Strong"; }
+    else { pct = 100; color = "#1a5c1a"; label = "Very strong"; }
+    strengthBar.style.width = pct + "%";
+    strengthBar.style.backgroundColor = color;
+    strengthLabel.textContent = label + " (" + Math.round(entropy) + " bits)";
+  }
+
+  lengthInput.addEventListener("input", function () {
+    lengthVal.textContent = lengthInput.value;
+    generate();
+  });
+  [optUpper, optLower, optNumbers, optSymbols, optAmbiguous].forEach(function (el) {
+    el.addEventListener("change", generate);
+  });
+  generateBtn.addEventListener("click", generate);
+
+  copyBtn.addEventListener("click", function () {
+    var text = passwordField.textContent;
+    if (!text || text === " ") return;
+    navigator.clipboard.writeText(text).then(function () {
+      var original = copyBtn.textContent;
+      copyBtn.textContent = "Copied!";
+      setTimeout(function () { copyBtn.textContent = original; }, 1200);
+    }).catch(function () {});
+  });
+
+  generate();
+})();
+</script>
+
+</body>
+</html>

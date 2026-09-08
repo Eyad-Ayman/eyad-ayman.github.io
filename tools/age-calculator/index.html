@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Age & Date Calculator — Eyad Ayman Tools</title>
+<meta name="viewport" content="width=device-width, height=device-height, initial-scale=1, minimum-scale=1, maximum-scale=5">
+<style>
+  :root { --accent: #d02b2a; --ink: #000; }
+  * { box-sizing: border-box; }
+  body { font-family: Inter, Arial, Helvetica, sans-serif; margin: 0; padding: 20px; color: #222; position: relative; background-color: #f6f1e6; }
+  .tool-header { margin-bottom: 16px; padding-bottom: 12px; border-bottom: 2px solid var(--ink); }
+  .tool-header h1 { font-size: 18px; margin: 0 0 4px; letter-spacing: .5px; }
+  .tool-header p { font-size: 13px; color: #555; margin: 0; max-width: 62ch; }
+
+  .fields-row { display: flex; gap: 14px; flex-wrap: wrap; margin: 20px 0; }
+  .field { flex: 1; min-width: 180px; }
+  .field label { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: #666; margin-bottom: 6px; }
+  input[type="date"] { width: 100%; font-size: 15px; padding: 12px; border: 2px solid #000; background: #fff; font-family: inherit; }
+
+  .results { display: none; }
+  .results.show { display: block; }
+  .headline { text-align: center; border: 2px solid #000; background: #fff; padding: 24px; margin-bottom: 18px; }
+  .headline .num { font-size: 48px; font-weight: 700; color: var(--accent); line-height: 1; }
+  .headline .label { font-size: 13px; text-transform: uppercase; letter-spacing: .5px; color: #666; margin-top: 6px; }
+
+  .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; }
+  .stat { border: 1px solid #000; background: #fff; padding: 14px; text-align: center; }
+  .stat-num { font-size: 22px; font-weight: 700; line-height: 1; }
+  .stat-label { font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: #666; margin-top: 6px; }
+
+  .noise-wrap { position: fixed; inset: 0; z-index: 100000; opacity: .3; pointer-events: none; overflow: hidden; mix-blend-mode: overlay; }
+  .noise-texture { position: absolute; width: 300%; height: 300%; left: -100%; top: -100%; background-image: url("/assets/images/texture/grain.png"); background-size: 220px 220px; background-repeat: repeat; animation: grain-shift 0.5s steps(4) infinite; }
+  @keyframes grain-shift {
+    0%   { transform: translate(0%, 0%); }
+    25%  { transform: translate(-3%, 2%); }
+    50%  { transform: translate(2%, -3%); }
+    75%  { transform: translate(-2%, -2%); }
+    100% { transform: translate(0%, 0%); }
+  }
+</style>
+</head>
+<body>
+
+<div class="noise-wrap"><div class="noise-texture"></div></div>
+
+<div class="tool-header">
+  <h1>Age &amp; Date Calculator</h1>
+  <p>Exact age down to the day, or the time between any two dates — days until a deadline, an anniversary, a trip.</p>
+</div>
+
+<div class="fields-row">
+  <div class="field">
+    <label for="from-date">From</label>
+    <input type="date" id="from-date">
+  </div>
+  <div class="field">
+    <label for="to-date">To (defaults to today)</label>
+    <input type="date" id="to-date">
+  </div>
+</div>
+
+<div class="results" id="results">
+  <div class="headline">
+    <div class="num" id="headline-num">—</div>
+    <div class="label" id="headline-label">&nbsp;</div>
+  </div>
+  <div class="stats-row">
+    <div class="stat"><div class="stat-num" id="stat-years">0</div><div class="stat-label">Years, exact</div></div>
+    <div class="stat"><div class="stat-num" id="stat-months">0</div><div class="stat-label">Total months</div></div>
+    <div class="stat"><div class="stat-num" id="stat-weeks">0</div><div class="stat-label">Total weeks</div></div>
+    <div class="stat"><div class="stat-num" id="stat-days">0</div><div class="stat-label">Total days</div></div>
+    <div class="stat"><div class="stat-num" id="stat-hours">0</div><div class="stat-label">Total hours</div></div>
+    <div class="stat"><div class="stat-num" id="stat-weekday">—</div><div class="stat-label">Day of week (from)</div></div>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var fromInput = document.getElementById("from-date");
+  var toInput = document.getElementById("to-date");
+  var results = document.getElementById("results");
+
+  var todayIso = new Date().toISOString().slice(0, 10);
+  toInput.value = todayIso;
+
+  var WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
+  function exactYearsMonthsDays(from, to) {
+    var years = to.getFullYear() - from.getFullYear();
+    var months = to.getMonth() - from.getMonth();
+    var days = to.getDate() - from.getDate();
+    if (days < 0) {
+      months--;
+      var prevMonth = new Date(to.getFullYear(), to.getMonth(), 0);
+      days += prevMonth.getDate();
+    }
+    if (months < 0) { years--; months += 12; }
+    return { years: years, months: months, days: days };
+  }
+
+  function update() {
+    if (!fromInput.value) { results.classList.remove("show"); return; }
+    var from = new Date(fromInput.value + "T00:00:00");
+    var to = new Date((toInput.value || todayIso) + "T00:00:00");
+    var reversed = from > to;
+    var earlier = reversed ? to : from;
+    var later = reversed ? from : to;
+
+    var diffMs = later - earlier;
+    var totalDays = Math.round(diffMs / 86400000);
+    var totalHours = Math.round(diffMs / 3600000);
+    var totalWeeks = Math.floor(totalDays / 7);
+    var totalMonths = (later.getFullYear() - earlier.getFullYear()) * 12 + (later.getMonth() - earlier.getMonth()) - (later.getDate() < earlier.getDate() ? 1 : 0);
+    var exact = exactYearsMonthsDays(earlier, later);
+
+    // "since/until" only means something relative to *today* — basing it
+    // on which of the two chosen dates came first (the earlier bug here)
+    // gets it backwards for a plain future countdown (From: today, To: a
+    // later date still reported "days since"). Anchor the wording to
+    // today instead, and fall back to a neutral phrasing when neither
+    // date is today.
+    var label;
+    if (toInput.value === todayIso && fromInput.value !== todayIso) {
+      label = "days since that date";
+    } else if (fromInput.value === todayIso && toInput.value !== todayIso) {
+      label = "days until that date";
+    } else {
+      label = "days apart";
+    }
+    document.getElementById("headline-num").textContent = totalDays.toLocaleString();
+    document.getElementById("headline-label").textContent =
+      label +
+      (exact.years > 0 ? " — " + exact.years + "y " + exact.months + "m " + exact.days + "d" : " — " + exact.months + "m " + exact.days + "d");
+    document.getElementById("stat-years").textContent = exact.years;
+    document.getElementById("stat-months").textContent = totalMonths.toLocaleString();
+    document.getElementById("stat-weeks").textContent = totalWeeks.toLocaleString();
+    document.getElementById("stat-days").textContent = totalDays.toLocaleString();
+    document.getElementById("stat-hours").textContent = totalHours.toLocaleString();
+    document.getElementById("stat-weekday").textContent = WEEKDAYS[from.getDay()];
+
+    results.classList.add("show");
+  }
+
+  fromInput.addEventListener("input", update);
+  toInput.addEventListener("input", update);
+})();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Tip Calculator — Eyad Ayman Tools</title>
+<meta name="viewport" content="width=device-width, height=device-height, initial-scale=1, minimum-scale=1, maximum-scale=5">
+<style>
+  :root { --accent: #d02b2a; --ink: #000; }
+  * { box-sizing: border-box; }
+  body { font-family: Inter, Arial, Helvetica, sans-serif; margin: 0; padding: 20px; color: #222; position: relative; background-color: #f6f1e6; }
+  .tool-header { margin-bottom: 16px; padding-bottom: 12px; border-bottom: 2px solid var(--ink); }
+  .tool-header h1 { font-size: 18px; margin: 0 0 4px; letter-spacing: .5px; }
+  .tool-header p { font-size: 13px; color: #555; margin: 0; max-width: 62ch; }
+
+  .field { margin-bottom: 18px; }
+  .field label { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: #666; margin-bottom: 6px; }
+  .amount-input-wrap { position: relative; }
+  .amount-input-wrap span { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); font-size: 20px; font-weight: 700; color: #666; }
+  input[type="number"] { width: 100%; font-size: 22px; font-weight: 700; padding: 14px 14px 14px 30px; border: 2px solid #000; background: #fff; font-family: inherit; }
+  input[type="number"]#bill-input { padding-left: 30px; }
+
+  .chip-row { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip { font-family: inherit; font-size: 14px; font-weight: 700; padding: 10px 16px; border: 2px solid #000; background: #fff; color: #000; cursor: pointer; }
+  .chip.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .chip:hover:not(.active) { background: #efece5; }
+  .custom-pct-wrap { display: flex; align-items: center; gap: 8px; }
+  .custom-pct-wrap input { width: 70px; font-size: 14px; padding: 10px; border: 2px solid #000; font-family: inherit; }
+
+  .people-row { display: flex; align-items: center; gap: 14px; }
+  .stepper-btn { width: 40px; height: 40px; font-size: 18px; font-weight: 700; border: 2px solid #000; background: #fff; cursor: pointer; }
+  .stepper-btn:hover { background: #000; color: #fff; }
+  .people-count { font-size: 20px; font-weight: 700; min-width: 30px; text-align: center; }
+
+  .results { border: 2px solid #000; background: #fff; padding: 18px; margin-top: 20px; }
+  .result-row { display: flex; justify-content: space-between; align-items: baseline; padding: 10px 0; border-bottom: 1px solid #eee; }
+  .result-row:last-child { border-bottom: none; }
+  .result-row .label { font-size: 13px; color: #666; text-transform: uppercase; letter-spacing: .3px; }
+  .result-row .value { font-size: 22px; font-weight: 700; }
+  .result-row.total .value { color: var(--accent); font-size: 28px; }
+
+  .noise-wrap { position: fixed; inset: 0; z-index: 100000; opacity: .3; pointer-events: none; overflow: hidden; mix-blend-mode: overlay; }
+  .noise-texture { position: absolute; width: 300%; height: 300%; left: -100%; top: -100%; background-image: url("/assets/images/texture/grain.png"); background-size: 220px 220px; background-repeat: repeat; animation: grain-shift 0.5s steps(4) infinite; }
+  @keyframes grain-shift {
+    0%   { transform: translate(0%, 0%); }
+    25%  { transform: translate(-3%, 2%); }
+    50%  { transform: translate(2%, -3%); }
+    75%  { transform: translate(-2%, -2%); }
+    100% { transform: translate(0%, 0%); }
+  }
+</style>
+</head>
+<body>
+
+<div class="noise-wrap"><div class="noise-texture"></div></div>
+
+<div class="tool-header">
+  <h1>Tip Calculator</h1>
+  <p>Bill total, tip percentage, split between however many people — the total and the per-person amount, instantly.</p>
+</div>
+
+<div class="field">
+  <label for="bill-input">Bill Amount</label>
+  <div class="amount-input-wrap">
+    <span>$</span>
+    <input type="number" id="bill-input" inputmode="decimal" min="0" step="0.01" placeholder="0.00">
+  </div>
+</div>
+
+<div class="field">
+  <label>Tip Percentage</label>
+  <div class="chip-row" id="tip-chips">
+    <button type="button" class="chip" data-pct="10">10%</button>
+    <button type="button" class="chip active" data-pct="15">15%</button>
+    <button type="button" class="chip" data-pct="18">18%</button>
+    <button type="button" class="chip" data-pct="20">20%</button>
+    <button type="button" class="chip" data-pct="25">25%</button>
+    <div class="custom-pct-wrap">
+      <input type="number" id="custom-pct" min="0" max="500" placeholder="Custom">
+      <span>%</span>
+    </div>
+  </div>
+</div>
+
+<div class="field">
+  <label>Split Between</label>
+  <div class="people-row">
+    <button type="button" class="stepper-btn" id="people-minus">&minus;</button>
+    <span class="people-count" id="people-count">1</span>
+    <button type="button" class="stepper-btn" id="people-plus">&plus;</button>
+    <span style="font-size:13px;color:#666;">people</span>
+  </div>
+</div>
+
+<div class="results">
+  <div class="result-row"><span class="label">Tip Amount</span><span class="value" id="out-tip">$0.00</span></div>
+  <div class="result-row total"><span class="label">Total</span><span class="value" id="out-total">$0.00</span></div>
+  <div class="result-row"><span class="label">Per Person (Tip)</span><span class="value" id="out-per-tip">$0.00</span></div>
+  <div class="result-row total"><span class="label">Per Person (Total)</span><span class="value" id="out-per-total">$0.00</span></div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var billInput = document.getElementById("bill-input");
+  var tipChips = document.getElementById("tip-chips");
+  var customPct = document.getElementById("custom-pct");
+  var peopleMinus = document.getElementById("people-minus");
+  var peoplePlus = document.getElementById("people-plus");
+  var peopleCount = document.getElementById("people-count");
+
+  var state = { pct: 15, people: 1 };
+
+  function fmt(n) {
+    return "$" + (isFinite(n) ? n.toFixed(2) : "0.00");
+  }
+
+  function update() {
+    var bill = parseFloat(billInput.value) || 0;
+    var tip = bill * (state.pct / 100);
+    var total = bill + tip;
+    document.getElementById("out-tip").textContent = fmt(tip);
+    document.getElementById("out-total").textContent = fmt(total);
+    document.getElementById("out-per-tip").textContent = fmt(tip / state.people);
+    document.getElementById("out-per-total").textContent = fmt(total / state.people);
+  }
+
+  billInput.addEventListener("input", update);
+
+  tipChips.querySelectorAll(".chip").forEach(function (chip) {
+    chip.addEventListener("click", function () {
+      state.pct = +chip.getAttribute("data-pct");
+      tipChips.querySelectorAll(".chip").forEach(function (c) { c.classList.remove("active"); });
+      chip.classList.add("active");
+      customPct.value = "";
+      update();
+    });
+  });
+
+  customPct.addEventListener("input", function () {
+    if (customPct.value === "") return;
+    state.pct = parseFloat(customPct.value) || 0;
+    tipChips.querySelectorAll(".chip").forEach(function (c) { c.classList.remove("active"); });
+    update();
+  });
+
+  peopleMinus.addEventListener("click", function () {
+    state.people = Math.max(1, state.people - 1);
+    peopleCount.textContent = state.people;
+    update();
+  });
+  peoplePlus.addEventListener("click", function () {
+    state.people = Math.min(100, state.people + 1);
+    peopleCount.textContent = state.people;
+    update();
+  });
+
+  update();
+})();
+</script>
+
+</body>
+</html>
