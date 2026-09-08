@@ -7270,3 +7270,74 @@ html[data-theme="dark"] .contact-map {
 @media screen and (max-width: 767px) {
   .scroll-hint { bottom: calc(64px + env(safe-area-inset-bottom)); font-size: 10px; }
 }
+
+/* ==========================================================================
+   "What I Do" — service categories, grounded in the real work shown in
+   the Gallery of Work above, not a generic services list.
+   ========================================================================== */
+.services-head { margin-bottom: 20px; }
+.services-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+  margin-bottom: 20px;
+}
+@media screen and (max-width: 600px) {
+  .services-grid { grid-template-columns: 1fr; }
+}
+.service-card {
+  border: 1px solid #000;
+  background: #fff;
+  padding: 20px;
+  transition: background-color .18s ease, border-color .18s ease;
+}
+.service-card:hover { background-color: var(--main-color); border-color: var(--main-color); }
+.service-card-num {
+  font-family: var(--headings);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .5px;
+  color: var(--accent-color);
+  margin-bottom: 10px;
+  display: block;
+}
+.service-card-title {
+  font-family: var(--headings);
+  font-weight: 700;
+  font-size: 16px;
+  text-transform: uppercase;
+  letter-spacing: .3px;
+  margin: 0 0 8px;
+  transition: color .18s ease;
+}
+.service-card:hover .service-card-title { color: #fff; }
+.service-card-desc {
+  font-family: var(--paragraph);
+  font-size: 13px;
+  line-height: 1.5;
+  color: #555;
+  margin: 0;
+  transition: color .18s ease;
+}
+.service-card:hover .service-card-desc { color: rgba(255, 255, 255, .8); }
+
+/* ==========================================================================
+   "Toolkit" — the actual software, as a plain badge row.
+   ========================================================================== */
+.toolkit-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+.toolkit-badge {
+  font-family: var(--headings);
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .3px;
+  padding: 10px 18px;
+  border: 2px solid #000;
+  background: #fff;
+  color: #000;
+}
