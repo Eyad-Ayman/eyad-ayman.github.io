@@ -7341,3 +7341,42 @@ html[data-theme="dark"] .contact-map {
   background: #fff;
   color: #000;
 }
+
+/* ==========================================================================
+   FAQ — plain <details>/<summary>, no JS needed.
+   ========================================================================== */
+.faq-list { margin-bottom: 20px; }
+.faq-item {
+  border: 1px solid #000;
+  background: #fff;
+  margin-bottom: 10px;
+}
+.faq-item summary {
+  padding: 16px 44px 16px 18px;
+  font-family: var(--headings);
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+  list-style: none;
+  position: relative;
+}
+.faq-item summary::-webkit-details-marker { display: none; }
+.faq-item summary::after {
+  content: "+";
+  position: absolute;
+  right: 18px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--accent-color);
+  transition: transform .2s ease;
+}
+.faq-item[open] summary::after { content: "\2212"; }
+.faq-item-answer {
+  padding: 0 18px 18px;
+  font-family: var(--paragraph);
+  font-size: 13px;
+  line-height: 1.6;
+  color: #555;
+}
