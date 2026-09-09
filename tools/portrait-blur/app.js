@@ -2,36 +2,35 @@
 
 // Same real on-device model as tools/bg-remover: Google's MediaPipe
 // Selfie Segmenter (Apache-2.0). Here the confidence mask blends a sharp
-// and a blurred copy of the same photo instead of cutting the subject out.
+// and a blurred copy of each photo instead of cutting the subject out.
+// Batch-capable: the model loads once and every photo dropped in reuses
+// it, same pattern as the Bulk WebP Converter.
 import { ImageSegmenter, FilesetResolver } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs";
 
 const MODEL_URL =
   "https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_segmenter/float16/latest/selfie_segmenter.tflite";
 const WASM_BASE = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm";
+const SMALL_SIDE = 220; // blur quality doesn't need full resolution — keeps every re-render fast, even across a whole batch
+const PRESETS = [6, 14, 24];
 
 var dropZone = document.getElementById("drop-zone");
 var fileInput = document.getElementById("file-input");
 var browseBtn = document.getElementById("browse-btn");
 var controlsRow = document.getElementById("controls-row");
+var presetRow = document.getElementById("preset-row");
 var blurAmountInput = document.getElementById("blur-amount");
 var blurVal = document.getElementById("blur-val");
 var statusLine = document.getElementById("status-line");
 var statusSpinner = document.getElementById("status-spinner");
 var statusText = document.getElementById("status-text");
-var resultArea = document.getElementById("result-area");
-var previewBefore = document.getElementById("preview-before");
-var previewAfter = document.getElementById("preview-after");
+var resultGrid = document.getElementById("result-grid");
 var actionsRow = document.getElementById("actions-row");
-var downloadBtn = document.getElementById("download-btn");
+var downloadAllBtn = document.getElementById("download-all-btn");
 var clearBtn = document.getElementById("clear-btn");
 
 var segmenter = null;
-var currentObjectUrl = null;
-var resultBlobUrl = null;
-var currentImage = null;
-var foregroundCanvas = null; // sharp subject cutout, computed once per photo
-var smallSourceCanvas = null; // downscaled copy of the photo, for fast blurring
-var SMALL_SIDE = 220; // blur quality doesn't need full resolution — this keeps every slider move fast
+var items = []; // { id, file, objectUrl, image, foregroundCanvas, smallSourceCanvas, canvasEl, downloadLinkEl, resultBlobUrl }
+var nextId = 1;
 
 function setStatus(text, kind, showSpinner) {
   statusText.textContent = text;
@@ -102,9 +101,22 @@ async function extractForeground(imgEl) {
   return canvas;
 }
 
+function makeSmallSourceCanvas(img) {
+  var w = img.naturalWidth, h = img.naturalHeight;
+  var scale = Math.min(1, SMALL_SIDE / Math.max(w, h));
+  var sw = Math.max(1, Math.round(w * scale));
+  var sh = Math.max(1, Math.round(h * scale));
+  var c = document.createElement("canvas");
+  c.width = sw;
+  c.height = sh;
+  c.getContext("2d").drawImage(img, 0, 0, sw, sh);
+  return c;
+}
+
 // One box-blur pass along one axis, edge pixels clamped (never treated as
-// transparent/empty — the actual bug this replaces). Three passes of box
-// blur is a standard, cheap approximation of a real Gaussian blur.
+// transparent/empty — ctx.filter's CSS blur() measured leaving over half
+// a canvas transparent at higher blur values in testing; this doesn't
+// have that failure mode at all, since every sample is a real pixel).
 function boxBlurPass(src, dst, w, h, radius, horizontal) {
   var lineLen = horizontal ? w : h;
   var lines = horizontal ? h : w;
@@ -137,27 +149,18 @@ function boxBlur(imageData, radius) {
   }
 }
 
-// Cheap, re-runs on every slider move — no model inference here. Blurs a
-// small cached copy of the photo (blur quality doesn't need full
-// resolution) with a manual box blur instead of ctx.filter's CSS blur,
-// which measured leaving over half the canvas transparent at higher blur
-// values here — it samples past the edge of the drawn image as empty
-// space instead of real pixels, and enlarging the draw to compensate
-// didn't fully fix it either. A manual blur on raw pixel data has no such
-// edge case: every sample is clamped to a real pixel, always opaque.
-function render(blurPx) {
-  if (!currentImage || !foregroundCanvas || !smallSourceCanvas) return;
-  var w = currentImage.naturalWidth;
-  var h = currentImage.naturalHeight;
-  previewAfter.width = w;
-  previewAfter.height = h;
+// Re-runs on every slider move / preset click — no model inference here,
+// just a blur over a small cached copy of the photo scaled back up, with
+// the pre-computed sharp cutout laid on top.
+function renderItem(item, blurPx) {
+  var w = item.image.naturalWidth;
+  var h = item.image.naturalHeight;
+  item.canvasEl.width = w;
+  item.canvasEl.height = h;
 
-  // smallSourceCanvas itself is never modified — read a fresh copy of its
-  // pixels every call and blur that, so repeated slider moves always blur
-  // from the original sharp image rather than an already-blurred one.
-  var sw = smallSourceCanvas.width, sh = smallSourceCanvas.height;
+  var sw = item.smallSourceCanvas.width, sh = item.smallSourceCanvas.height;
   var scale = sw / w;
-  var imageData = smallSourceCanvas.getContext("2d").getImageData(0, 0, sw, sh);
+  var imageData = item.smallSourceCanvas.getContext("2d").getImageData(0, 0, sw, sh);
   boxBlur(imageData, Math.max(1, Math.round(blurPx * scale)));
 
   var blurredCanvas = document.createElement("canvas");
@@ -165,78 +168,136 @@ function render(blurPx) {
   blurredCanvas.height = sh;
   blurredCanvas.getContext("2d").putImageData(imageData, 0, 0);
 
-  var ctx = previewAfter.getContext("2d");
+  var ctx = item.canvasEl.getContext("2d");
   ctx.drawImage(blurredCanvas, 0, 0, sw, sh, 0, 0, w, h);
-  ctx.drawImage(foregroundCanvas, 0, 0);
+  ctx.drawImage(item.foregroundCanvas, 0, 0);
 }
 
-function flattenToBlob(callback) {
-  // previewAfter already IS the flattened composite (blurred bg + sharp
-  // subject drawn on top in the same canvas), so just export it directly.
-  previewAfter.toBlob(callback, "image/png");
+function refreshDownloadLink(item) {
+  item.canvasEl.toBlob(function (blob) {
+    if (item.resultBlobUrl) URL.revokeObjectURL(item.resultBlobUrl);
+    item.resultBlobUrl = URL.createObjectURL(blob);
+    item.downloadLinkEl.href = item.resultBlobUrl;
+  }, "image/png");
 }
 
-function makeSmallSourceCanvas(img) {
-  var w = img.naturalWidth, h = img.naturalHeight;
-  var scale = Math.min(1, SMALL_SIDE / Math.max(w, h));
-  var sw = Math.max(1, Math.round(w * scale));
-  var sh = Math.max(1, Math.round(h * scale));
-  var c = document.createElement("canvas");
-  c.width = sw;
-  c.height = sh;
-  c.getContext("2d").drawImage(img, 0, 0, sw, sh);
-  return c;
+var renderQueued = false;
+function renderAll(blurPx, alsoRefreshLinks) {
+  if (renderQueued) return;
+  renderQueued = true;
+  requestAnimationFrame(function () {
+    renderQueued = false;
+    items.forEach(function (item) {
+      if (!item.ready) return;
+      renderItem(item, blurPx);
+      if (alsoRefreshLinks) refreshDownloadLink(item);
+    });
+  });
 }
 
-function resetOutputs() {
-  if (currentObjectUrl) { URL.revokeObjectURL(currentObjectUrl); currentObjectUrl = null; }
-  if (resultBlobUrl) { URL.revokeObjectURL(resultBlobUrl); resultBlobUrl = null; }
-  currentImage = null;
-  foregroundCanvas = null;
-  smallSourceCanvas = null;
-  resultArea.classList.remove("show");
-  actionsRow.classList.remove("show");
-  controlsRow.classList.remove("show");
-  var actx = previewAfter.getContext("2d");
-  if (actx) actx.clearRect(0, 0, previewAfter.width, previewAfter.height);
+function currentBlur() { return +blurAmountInput.value; }
+
+function syncPresetActive() {
+  var val = currentBlur();
+  presetRow.querySelectorAll(".preset-btn").forEach(function (btn) {
+    btn.classList.toggle("active", +btn.getAttribute("data-blur") === val);
+  });
 }
 
-async function handleFile(file) {
-  if (!file || !/^image\//.test(file.type)) {
-    setStatus("That doesn't look like an image file.", "err", false);
-    return;
-  }
-  resetOutputs();
-  hideStatus();
+function makeCard(item) {
+  var card = document.createElement("div");
+  card.className = "result-card is-pending";
+
+  var h3 = document.createElement("h3");
+  h3.textContent = item.file.name;
+
+  var frame = document.createElement("div");
+  frame.className = "frame";
+  frame.textContent = "Working…";
+
+  card.appendChild(h3);
+  card.appendChild(frame);
+  resultGrid.appendChild(card);
+  item.cardEl = card;
+  item.frameEl = frame;
+}
+
+function markCardReady(item) {
+  item.frameEl.textContent = "";
+  item.frameEl.appendChild(item.canvasEl);
+
+  var a = document.createElement("a");
+  a.className = "download-link";
+  a.textContent = "Download";
+  var base = item.file.name.replace(/\.[^.]+$/, "");
+  a.download = "blurred-" + base + ".png";
+  item.downloadLinkEl = a;
+  item.cardEl.appendChild(a);
+  item.cardEl.classList.remove("is-pending");
+}
+
+async function processFile(file) {
+  var item = {
+    id: nextId++,
+    file: file,
+    ready: false,
+    resultBlobUrl: null
+  };
+  items.push(item);
+  makeCard(item);
 
   try {
     var img = await loadImage(file);
-    currentObjectUrl = img.src;
-    currentImage = img;
-    previewBefore.src = img.src;
-    resultArea.classList.add("show");
+    item.image = img;
+    item.objectUrl = img.src;
 
-    setStatus("Finding the subject…", "", true);
-    foregroundCanvas = await extractForeground(img);
-    smallSourceCanvas = makeSmallSourceCanvas(img);
+    item.foregroundCanvas = await extractForeground(img);
+    item.smallSourceCanvas = makeSmallSourceCanvas(img);
+    item.canvasEl = document.createElement("canvas");
 
-    render(+blurAmountInput.value);
-    flattenToBlob(function (blob) {
-      if (resultBlobUrl) URL.revokeObjectURL(resultBlobUrl);
-      resultBlobUrl = URL.createObjectURL(blob);
-    });
-
-    setStatus("Done — drag the slider to adjust the blur.", "ok", false);
-    actionsRow.classList.add("show");
-    controlsRow.classList.add("show");
+    renderItem(item, currentBlur());
+    item.ready = true;
+    markCardReady(item);
+    refreshDownloadLink(item);
   } catch (err) {
-    setStatus(err && err.message ? err.message : "Something went wrong processing that photo.", "err", false);
+    item.frameEl.textContent = err && err.message ? err.message : "Couldn't process this photo.";
   }
+}
+
+async function handleFiles(fileList) {
+  var files = Array.prototype.filter.call(fileList, function (f) { return /^image\//.test(f.type); });
+  if (files.length === 0) {
+    setStatus("None of those look like image files.", "err", false);
+    return;
+  }
+  hideStatus();
+  resultGrid.classList.add("show");
+  controlsRow.classList.add("show");
+  actionsRow.classList.add("show");
+
+  setStatus("Processing " + files.length + " photo" + (files.length === 1 ? "" : "s") + "…", "", true);
+  for (var i = 0; i < files.length; i++) {
+    await processFile(files[i]);
+  }
+  var readyCount = items.filter(function (it) { return it.ready; }).length;
+  setStatus("Done — " + readyCount + " of " + items.length + " photo" + (items.length === 1 ? "" : "s") + " blurred.", "ok", false);
+}
+
+function resetAll() {
+  items.forEach(function (item) {
+    if (item.objectUrl) URL.revokeObjectURL(item.objectUrl);
+    if (item.resultBlobUrl) URL.revokeObjectURL(item.resultBlobUrl);
+  });
+  items = [];
+  resultGrid.innerHTML = "";
+  resultGrid.classList.remove("show");
+  controlsRow.classList.remove("show");
+  actionsRow.classList.remove("show");
 }
 
 browseBtn.addEventListener("click", function () { fileInput.click(); });
 fileInput.addEventListener("change", function () {
-  if (fileInput.files[0]) handleFile(fileInput.files[0]);
+  if (fileInput.files.length) handleFiles(fileInput.files);
   fileInput.value = "";
 });
 
@@ -247,43 +308,47 @@ fileInput.addEventListener("change", function () {
   dropZone.addEventListener(evt, function (e) { e.preventDefault(); dropZone.classList.remove("is-drag"); });
 });
 dropZone.addEventListener("drop", function (e) {
-  if (e.dataTransfer && e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+  if (e.dataTransfer && e.dataTransfer.files.length) handleFiles(e.dataTransfer.files);
 });
 dropZone.addEventListener("click", function (e) {
   if (e.target === browseBtn) return;
   fileInput.click();
 });
 
-var renderQueued = false;
-blurAmountInput.addEventListener("input", function () {
-  blurVal.textContent = blurAmountInput.value + "px";
-  // Dragging fires many "input" events per second — collapse them to one
-  // render per animation frame instead of rendering every single one.
-  if (renderQueued) return;
-  renderQueued = true;
-  requestAnimationFrame(function () {
-    renderQueued = false;
-    render(+blurAmountInput.value);
-  });
-});
-blurAmountInput.addEventListener("change", function () {
-  flattenToBlob(function (blob) {
-    if (resultBlobUrl) URL.revokeObjectURL(resultBlobUrl);
-    resultBlobUrl = URL.createObjectURL(blob);
+presetRow.querySelectorAll(".preset-btn").forEach(function (btn) {
+  btn.addEventListener("click", function () {
+    var val = +btn.getAttribute("data-blur");
+    blurAmountInput.value = val;
+    blurVal.textContent = val + "px";
+    syncPresetActive();
+    renderAll(val, true);
   });
 });
 
-downloadBtn.addEventListener("click", function () {
-  if (!resultBlobUrl) return;
-  var a = document.createElement("a");
-  a.href = resultBlobUrl;
-  a.download = "portrait-blur.png";
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
+blurAmountInput.addEventListener("input", function () {
+  blurVal.textContent = blurAmountInput.value + "px";
+  syncPresetActive();
+  renderAll(currentBlur(), false);
+});
+blurAmountInput.addEventListener("change", function () {
+  renderAll(currentBlur(), true);
+});
+
+downloadAllBtn.addEventListener("click", function () {
+  items.forEach(function (item, i) {
+    if (!item.ready || !item.resultBlobUrl) return;
+    setTimeout(function () {
+      var a = document.createElement("a");
+      a.href = item.resultBlobUrl;
+      a.download = item.downloadLinkEl.download;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    }, i * 180); // stagger so the browser doesn't block a burst of downloads
+  });
 });
 
 clearBtn.addEventListener("click", function () {
-  resetOutputs();
+  resetAll();
   hideStatus();
 });

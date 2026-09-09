@@ -29,10 +29,14 @@
   .drop-zone .browse-btn:hover { background: #000; color: #fff; }
   input[type="file"] { display: none; }
 
-  .controls-row { display: none; flex-wrap: wrap; gap: 16px; align-items: center; margin-bottom: 18px; font-size: 13px; }
+  .controls-row { display: none; flex-wrap: wrap; gap: 14px; align-items: center; margin-bottom: 18px; padding: 16px; border: 1px solid #000; background: #fff; font-size: 13px; }
   .controls-row.show { display: flex; }
   .controls-row label { display: flex; align-items: center; gap: 8px; }
   input[type="range"] { width: 160px; accent-color: var(--accent); }
+  .preset-row { display: flex; gap: 6px; }
+  .preset-btn { font-family: inherit; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; padding: 8px 12px; border: 2px solid #000; background: #fff; color: #000; cursor: pointer; }
+  .preset-btn:hover { background: #efece5; }
+  .preset-btn.active { background: #000; color: #fff; }
 
   .status-line { font-size: 13px; padding: 10px 12px; border: 1px solid #000; background: #fff; margin-bottom: 18px; display: none; align-items: center; gap: 10px; }
   .status-line.show { display: flex; }
@@ -41,13 +45,15 @@
   .spinner { width: 14px; height: 14px; border: 2px solid #ccc; border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; flex-shrink: 0; }
   @keyframes spin { to { transform: rotate(360deg); } }
 
-  .result-area { display: none; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 18px; }
-  .result-area.show { display: grid; }
-  @media (max-width: 640px) { .result-area.show { grid-template-columns: 1fr; } }
-  .result-pane { border: 1px solid #000; background: #fff; padding: 10px; }
-  .result-pane h2 { font-size: 11px; text-transform: uppercase; letter-spacing: .5px; margin: 0 0 8px; color: #666; }
-  .result-pane .frame { width: 100%; aspect-ratio: 1; display: flex; align-items: center; justify-content: center; overflow: hidden; background: #eee; }
-  .result-pane img, .result-pane canvas { max-width: 100%; max-height: 100%; object-fit: contain; display: block; }
+  .result-grid { display: none; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 14px; margin-bottom: 18px; }
+  .result-grid.show { display: grid; }
+  .result-card { border: 1px solid #000; background: #fff; padding: 8px; }
+  .result-card h3 { font-size: 11px; text-transform: uppercase; letter-spacing: .5px; margin: 0 0 8px; color: #666; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .result-card .frame { width: 100%; aspect-ratio: 1; display: flex; align-items: center; justify-content: center; overflow: hidden; background: #eee; margin-bottom: 8px; }
+  .result-card canvas { max-width: 100%; max-height: 100%; object-fit: contain; display: block; }
+  .result-card a.download-link { display: block; text-align: center; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; padding: 8px; border: 2px solid #000; color: #000; text-decoration: none; }
+  .result-card a.download-link:hover { background: #000; color: #fff; }
+  .result-card.is-pending .frame { color: #999; font-size: 11px; text-transform: uppercase; letter-spacing: .5px; }
 
   .actions-row { display: none; gap: 10px; flex-wrap: wrap; }
   .actions-row.show { display: flex; }
@@ -75,40 +81,36 @@
 
 <div class="tool-header">
   <h1>AI Portrait Blur</h1>
-  <p>Drop in a photo with a person in it and blur the background behind them — the "portrait mode" effect phone cameras do, applied after the fact to any photo.</p>
-  <p class="fine-print">Runs the same on-device model as the Background Remover (Google's MediaPipe Selfie Segmenter, ~250KB). No uploading, no account, free.</p>
+  <p>Drop in one photo or a whole batch — each gets its background blurred behind the person in it, the "portrait mode" effect phone cameras do, applied after the fact.</p>
+  <p class="fine-print">Runs the same on-device model as the Background Remover (Google's MediaPipe Selfie Segmenter, ~250KB, loaded once for the whole batch). No uploading, no account, free.</p>
 </div>
 
 <div class="drop-zone" id="drop-zone">
-  <p>Drag &amp; drop a photo here, or</p>
-  <button type="button" class="browse-btn" id="browse-btn">Choose Photo</button>
-  <input type="file" id="file-input" accept="image/*">
+  <p>Drag &amp; drop one or more photos here, or</p>
+  <button type="button" class="browse-btn" id="browse-btn">Choose Photos</button>
+  <input type="file" id="file-input" accept="image/*" multiple>
 </div>
 
 <div class="controls-row" id="controls-row">
-  <label>Blur strength: <input type="range" id="blur-amount" min="2" max="30" value="14"><span id="blur-val">14px</span></label>
+  <div class="preset-row" id="preset-row">
+    <button type="button" class="preset-btn" data-blur="6">Subtle</button>
+    <button type="button" class="preset-btn active" data-blur="14">Medium</button>
+    <button type="button" class="preset-btn" data-blur="24">Strong</button>
+  </div>
+  <label>Fine-tune: <input type="range" id="blur-amount" min="2" max="30" value="14"><span id="blur-val">14px</span></label>
 </div>
 
 <div class="status-line" id="status-line"><span class="spinner" id="status-spinner"></span><span id="status-text"></span></div>
 
-<div class="result-area" id="result-area">
-  <div class="result-pane">
-    <h2>Original</h2>
-    <div class="frame"><img id="preview-before" alt=""></div>
-  </div>
-  <div class="result-pane">
-    <h2>Blurred Background</h2>
-    <div class="frame"><canvas id="preview-after"></canvas></div>
-  </div>
-</div>
+<div class="result-grid" id="result-grid"></div>
 
 <div class="actions-row" id="actions-row">
-  <button type="button" class="primary" id="download-btn">Download PNG</button>
-  <button type="button" class="secondary" id="clear-btn">Try Another Photo</button>
+  <button type="button" class="primary" id="download-all-btn">Download All</button>
+  <button type="button" class="secondary" id="clear-btn">Clear All</button>
 </div>
 
 <div class="hint">
-  <strong>How it works:</strong> the same person-vs-background confidence mask the Background Remover uses gets used here to blend two versions of your photo — one blurred, one sharp — instead of cutting the background out entirely. Drag the slider and it re-blends instantly without re-running the model.
+  <strong>How it works:</strong> the same person-vs-background confidence mask the Background Remover uses gets used here to blend two versions of each photo — one blurred, one sharp — instead of cutting the background out entirely. The model loads once no matter how many photos you drop in; the strength slider and presets re-blend every photo in the batch instantly, with no re-running the model.
 </div>
 
 <script type="module" src="./app.js"></script>
