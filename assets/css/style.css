@@ -5158,6 +5158,12 @@ html {
   color: #fff;
   margin: 0;
   font-size: 22px;
+  /* The base .about-me-title rule sets letter-spacing: -6px for its usual
+     100px display-heading use — proportionally fine there, but this
+     override never reset it for a title running at 22px, so each letter
+     got pulled 6px toward the last one regardless, stacking them into
+     illegible overlap. Confirmed by reading the base rule, not guessed. */
+  letter-spacing: normal;
 }
 .tools-modal-close {
   background: none;
