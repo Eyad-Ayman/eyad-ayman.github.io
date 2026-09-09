@@ -7219,6 +7219,7 @@ html[data-theme="dark"] .full-bleed-break,
 html[data-theme="dark"] .showreel-strip-wrap,
 html[data-theme="dark"] .showreel-card,
 html[data-theme="dark"] .logo-link,
+html[data-theme="dark"] .marquee-band,
 html[data-theme="dark"] .contact-map {
   filter: invert(1) hue-rotate(180deg);
 }
@@ -7393,4 +7394,52 @@ html[data-theme="dark"] .contact-map {
   font-size: 13px;
   line-height: 1.6;
   color: #555;
+}
+
+/* ==========================================================================
+   Marquee ticker band — infinite-scroll strip between Home and About.
+   Two identical copies of the content back to back, animated to
+   translateX(-50%): at the halfway point the second copy sits exactly
+   where the first started, so the loop is seamless with no visible reset.
+   ========================================================================== */
+.marquee-band {
+  width: 100%;
+  overflow: hidden;
+  background: #000;
+  border-top: 2px solid #000;
+  border-bottom: 2px solid #000;
+  padding: 14px 0;
+}
+.marquee-track {
+  display: flex;
+  align-items: center;
+  width: max-content;
+  animation: marqueeScroll 32s linear infinite;
+}
+.marquee-item {
+  font-family: var(--headings);
+  font-weight: 700;
+  font-size: 22px;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  color: #fff;
+  white-space: nowrap;
+  padding: 0 22px;
+}
+.marquee-star {
+  color: var(--accent-color);
+  padding: 0 8px;
+  font-size: 16px;
+}
+@keyframes marqueeScroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+.marquee-band:hover .marquee-track { animation-play-state: paused; }
+@media (prefers-reduced-motion: reduce) {
+  .marquee-track { animation: none; }
+  .marquee-band { overflow-x: auto; }
+}
+@media screen and (max-width: 600px) {
+  .marquee-item { font-size: 16px; padding: 0 14px; }
 }
