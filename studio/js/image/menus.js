@@ -1,0 +1,186 @@
+import { toggleTheme, resolvedTheme } from '../core/settings.js';
+// EYAD IMAGE — menu definitions (menubar, mobile menu sheet, command palette).
+import * as ops from './ops.js';
+import * as io from './io.js';
+import { resetTransform } from './tools.js';
+import { ROUTES } from '../core/shell.js';
+import { listProjects } from '../core/db.js';
+import { BLEND_MODES } from './doc.js';
+
+export function buildMenus(app) {
+  const hasDoc = () => !!app.doc;
+  const hasLayer = () => !!app.active;
+  const hasSel = () => !!(app.doc && app.doc.selection);
+  const isRaster = () => !!(app.active && app.active.type === 'raster');
+  const hasMask = () => !!(app.active && app.active.mask);
+  let recent = [];
+  const refreshRecent = () => listProjects().then((l) => { recent = l.filter((p) => p.kind === 'image').slice(0, 8); }).catch(() => {});
+  refreshRecent();
+  setInterval(refreshRecent, 15000);
+
+  const adj = (op) => ({ label: ops.ADJUSTMENTS[op].label + (ops.ADJUSTMENTS[op].fields.length ? '…' : ''), action: () => ops.adjust(app, op), enabled: hasDoc });
+
+  return [
+    { label: 'File', items: [
+      { label: 'New…', shortcut: 'Mod+N', action: () => io.newDocDialog(app), icon: 'plus' },
+      { label: 'Open…', shortcut: 'Mod+O', action: () => io.openDialog(app), icon: 'folder' },
+      { label: 'Open PSD…', action: () => io.openDialog(app, 'psd'), icon: 'layers' },
+      { label: 'Open Recent', submenu: () => (recent.length ? recent.map((p) => ({ label: p.name, action: () => io.openProject(app, p.id) })) : [{ label: 'No recent image projects', enabled: false }]).concat([{ separator: true }, { label: 'Browse Projects…', action: () => { location.href = ROUTES.projects; } }]) },
+      { label: 'Place as Layer…', action: () => io.placeDialog(app), enabled: hasDoc, icon: 'image' },
+      { separator: true },
+      { label: 'Save', shortcut: 'Mod+S', action: () => io.save(app), enabled: hasDoc, icon: 'save' },
+      { label: 'Save As…', shortcut: 'Mod+Shift+S', action: () => io.saveAs(app), enabled: hasDoc },
+      { label: 'Download .eyad Project', action: () => io.downloadEyad(app), enabled: hasDoc, icon: 'download' },
+      { separator: true },
+      { label: 'Export', submenu: [
+        { label: 'Export As… (PNG / JPEG / WebP)', shortcut: 'Mod+Alt+Shift+W', action: () => io.exportDialog(app), enabled: hasDoc },
+        { label: 'Quick Export as PNG', action: () => io.quickExport(app, 'png'), enabled: hasDoc },
+        { label: 'Quick Export as JPEG', action: () => io.quickExport(app, 'jpeg'), enabled: hasDoc },
+        { label: 'Quick Export as WebP', action: () => io.quickExport(app, 'webp'), enabled: hasDoc },
+        { separator: true },
+        { label: 'Export PSD', badge: 'Experimental', action: () => io.exportPsdDialog(app), enabled: hasDoc },
+      ] },
+      { separator: true },
+      { label: 'Close', shortcut: 'Mod+W', action: () => app.closeDoc(), enabled: hasDoc },
+      { label: 'Back to Portfolio', action: () => { location.href = ROUTES.portfolio; } },
+    ] },
+    { label: 'Edit', items: [
+      { label: () => (app.history && app.history.canUndo ? 'Undo ' + app.history.stack[app.history.index].label : 'Undo'), shortcut: 'Mod+Z', action: () => app.undo(), enabled: () => !!(app.history && app.history.canUndo), icon: 'undo' },
+      { label: () => (app.history && app.history.canRedo ? 'Redo ' + app.history.stack[app.history.index + 1].label : 'Redo'), shortcut: 'Mod+Shift+Z', action: () => app.redo(), enabled: () => !!(app.history && app.history.canRedo), icon: 'redo' },
+      { separator: true },
+      { label: 'Cut', shortcut: 'Mod+X', action: () => ops.cut(app), enabled: isRaster },
+      { label: 'Copy', shortcut: 'Mod+C', action: () => ops.copy(app), enabled: hasLayer },
+      { label: 'Paste', shortcut: 'Mod+V', action: () => ops.paste(app), enabled: hasDoc },
+      { label: 'Clear', action: () => ops.clearOrDelete(app), enabled: () => isRaster() && hasSel() },
+      { separator: true },
+      { label: 'Fill…', shortcut: 'Shift+F5', action: () => ops.fillDialog(app), enabled: hasDoc },
+      { label: 'Free Transform', shortcut: 'Mod+T', action: () => app.selectTool('move'), enabled: hasLayer },
+      { label: 'Reset Transform', action: () => resetTransform(app), enabled: hasLayer },
+      { label: 'Flip Layer Horizontal', action: () => ops.flipLayer(app, 'h'), enabled: hasLayer },
+      { label: 'Flip Layer Vertical', action: () => ops.flipLayer(app, 'v'), enabled: hasLayer },
+      { separator: true },
+      { label: 'Preferences…', action: () => { location.href = ROUTES.settings; }, icon: 'gear' },
+    ] },
+    { label: 'Image', items: [
+      { label: 'Adjustments', submenu: [
+        adj('brightnessContrast'), adj('exposure'), adj('hueSaturation'),
+        { separator: true },
+        { label: 'Invert', shortcut: 'Mod+I', action: () => ops.quickOp(app, 'invert'), enabled: hasDoc },
+        { label: 'Desaturate', shortcut: 'Mod+Shift+U', action: () => ops.quickOp(app, 'desaturate'), enabled: hasDoc },
+        adj('sepia'), adj('threshold'), adj('posterize'),
+      ] },
+      { separator: true },
+      { label: 'Image Size…', shortcut: 'Mod+Alt+I', action: () => ops.imageSizeDialog(app), enabled: hasDoc },
+      { label: 'Canvas Size…', shortcut: 'Mod+Alt+C', action: () => ops.canvasSizeDialog(app), enabled: hasDoc },
+      { label: 'Image Rotation', submenu: [
+        { label: '180°', action: () => ops.rotateCanvas(app, 180), enabled: hasDoc },
+        { label: '90° Clockwise', action: () => ops.rotateCanvas(app, 90), enabled: hasDoc },
+        { label: '90° Counter-clockwise', action: () => ops.rotateCanvas(app, -90), enabled: hasDoc },
+        { separator: true },
+        { label: 'Flip Canvas Horizontal', action: () => ops.flipCanvas(app, 'h'), enabled: hasDoc },
+        { label: 'Flip Canvas Vertical', action: () => ops.flipCanvas(app, 'v'), enabled: hasDoc },
+      ] },
+      { label: 'Crop to Selection', action: () => ops.cropToSelection(app), enabled: hasSel },
+      { label: 'Rename Document…', action: () => ops.renameDoc(app), enabled: hasDoc },
+    ] },
+    { label: 'Layer', items: [
+      { label: 'New Layer', shortcut: 'Mod+Shift+N', action: () => ops.newLayer(app), enabled: hasDoc, icon: 'plus' },
+      { label: 'New Group', action: () => ops.newGroup(app), enabled: hasDoc, icon: 'folder' },
+      { label: 'New Text Layer', action: () => ops.addTextCenter(app), enabled: hasDoc, icon: 'text' },
+      { label: 'Layer via Copy', shortcut: 'Mod+J', action: () => ops.layerViaCopy(app), enabled: hasLayer },
+      { label: 'Layer via Cut', shortcut: 'Mod+Shift+J', action: () => ops.layerViaCut(app), enabled: () => isRaster() && hasSel() },
+      { separator: true },
+      { label: 'Duplicate Layer', action: () => ops.duplicate(app), enabled: hasLayer, icon: 'duplicate' },
+      { label: 'Delete Layer', action: () => ops.deleteLayers(app), enabled: hasLayer, icon: 'trash' },
+      { label: 'Rename Layer…', action: () => app.panels.layers.renameActive(), enabled: hasLayer },
+      { separator: true },
+      { label: 'Group Layers', shortcut: 'Mod+G', action: () => ops.groupLayers(app), enabled: hasLayer },
+      { label: 'Ungroup Layers', shortcut: 'Mod+Shift+G', action: () => ops.ungroup(app), enabled: () => app.active?.type === 'group' },
+      { label: 'Arrange', submenu: [
+        { label: 'Bring to Front', shortcut: 'Mod+Shift+]', action: () => ops.reorder(app, 'top'), enabled: hasLayer },
+        { label: 'Bring Forward', shortcut: 'Mod+]', action: () => ops.reorder(app, 'up'), enabled: hasLayer },
+        { label: 'Send Backward', shortcut: 'Mod+[', action: () => ops.reorder(app, 'down'), enabled: hasLayer },
+        { label: 'Send to Back', shortcut: 'Mod+Shift+[', action: () => ops.reorder(app, 'bottom'), enabled: hasLayer },
+      ] },
+      { label: 'Blend Mode', submenu: () => BLEND_MODES.map(([id, label]) => ({ label, checked: () => app.active?.blend === id, action: () => ops.setProp(app, app.active, 'blend', id, 'Blend Mode'), enabled: hasLayer })) },
+      { label: () => (app.active?.clip ? 'Release Clipping Mask' : 'Create Clipping Mask'), action: () => ops.toggleClip(app, app.active), enabled: () => hasLayer() && app.active.type !== 'group' },
+      { label: 'Layer Mask', submenu: [
+        { label: 'Reveal All', action: () => ops.addMask(app, 'reveal'), enabled: () => hasLayer() && !hasMask() },
+        { label: 'Hide All', action: () => ops.addMask(app, 'hide'), enabled: () => hasLayer() && !hasMask() },
+        { label: 'Reveal Selection', action: () => ops.addMask(app, 'selection'), enabled: () => hasLayer() && !hasMask() && hasSel() },
+        { separator: true },
+        { label: () => (app.active?.maskEnabled === false ? 'Enable Mask' : 'Disable Mask'), action: () => ops.toggleMask(app), enabled: hasMask },
+        { label: 'Invert Mask', action: () => ops.invertMask(app), enabled: hasMask },
+        { label: 'Apply Mask', action: () => ops.applyMask(app), enabled: () => hasMask() && isRaster() },
+        { label: 'Delete Mask', action: () => ops.deleteMask(app), enabled: hasMask },
+      ] },
+      { separator: true },
+      { label: () => (app.active?.locked ? 'Unlock Layer' : 'Lock Layer'), action: () => ops.toggleLock(app, app.active), enabled: hasLayer },
+      { label: () => (app.active && !app.active.visible ? 'Show Layer' : 'Hide Layer'), action: () => ops.toggleVisible(app, app.active), enabled: hasLayer },
+      { label: 'Rasterize', action: () => ops.rasterize(app, app.active), enabled: () => ['text', 'shape'].includes(app.active?.type) },
+      { label: 'Convert PSD Text to Editable', action: () => ops.convertPsdText(app), enabled: () => app.active?.psd?.kind === 'text' },
+      { separator: true },
+      { label: 'Merge Down', shortcut: 'Mod+E', action: () => ops.mergeDown(app), enabled: hasLayer },
+      { label: 'Merge Visible', shortcut: 'Mod+Shift+E', action: () => ops.mergeVisible(app), enabled: hasDoc },
+      { label: 'Flatten Image', action: () => ops.flattenImage(app), enabled: hasDoc },
+    ] },
+    { label: 'Select', items: [
+      { label: 'All', shortcut: 'Mod+A', action: () => ops.selectAll(app), enabled: hasDoc },
+      { label: 'Deselect', shortcut: 'Mod+D', action: () => ops.deselect(app), enabled: hasSel },
+      { label: 'Reselect', shortcut: 'Mod+Shift+D', action: () => ops.reselect(app), enabled: () => hasDoc() && !!app.lastSelection },
+      { label: 'Inverse', shortcut: 'Mod+Shift+I', action: () => ops.invert(app), enabled: hasDoc },
+      { separator: true },
+      { label: 'Layer Pixels', action: () => ops.selectLayerPixels(app), enabled: hasLayer },
+      { label: 'Feather…', shortcut: 'Shift+F6', action: () => ops.featherDialog(app), enabled: hasSel },
+      { separator: true },
+      { label: 'Rectangular Marquee', shortcut: 'M', action: () => app.selectTool('marquee'), enabled: hasDoc },
+      { label: 'Lasso', shortcut: 'L', action: () => app.selectTool('lasso'), enabled: hasDoc },
+    ] },
+    { label: 'Filter', items: [
+      { label: () => (app.lastFilter ? 'Repeat ' + ops.ADJUSTMENTS[app.lastFilter.op].label : 'Repeat Last Filter'), shortcut: 'Mod+Alt+F', action: () => ops.repeatFilter(app), enabled: () => hasDoc() && !!app.lastFilter },
+      { separator: true },
+      { label: 'Blur', submenu: [adj('gaussianBlur')] },
+      { label: 'Sharpen', submenu: [adj('sharpen')] },
+      { label: 'Noise', submenu: [adj('noise')] },
+      { label: 'Pixelate', submenu: [adj('pixelate')] },
+      { label: 'Stylize', submenu: [{ label: 'Emboss', action: () => ops.quickOp(app, 'emboss'), enabled: hasDoc }, { label: 'Find Edges', action: () => ops.quickOp(app, 'findEdges'), enabled: hasDoc }] },
+      { label: 'Render', submenu: [adj('vignette')] },
+    ] },
+    { label: 'View', items: [
+      { label: 'Zoom In', shortcut: 'Mod+=', action: () => app.view.zoomStep(1), enabled: hasDoc, icon: 'zoomIn' },
+      { label: 'Zoom Out', shortcut: 'Mod+-', action: () => app.view.zoomStep(-1), enabled: hasDoc, icon: 'zoomOut' },
+      { label: 'Fit on Screen', shortcut: 'Mod+0', action: () => app.view.fit(), enabled: hasDoc },
+      { label: 'Actual Size (100%)', shortcut: 'Mod+1', action: () => app.view.actualSize(), enabled: hasDoc },
+      { label: 'Fullscreen', shortcut: 'F', action: () => ops.fullscreen(app), icon: 'fullscreen' },
+      { separator: true },
+      { label: 'Grid', shortcut: "Mod+'", checked: () => app.view.showGrid, action: () => ops.toggleGrid(app) },
+      { label: 'Guides', shortcut: 'Mod+;', checked: () => app.view.showGuides, action: () => ops.toggleGuides(app) },
+      { label: 'Snap', checked: () => app.view.snap, action: () => ops.toggleSnap(app) },
+      { label: 'New Guide…', action: () => ops.newGuideDialog(app), enabled: hasDoc },
+      { label: 'Clear Guides', action: () => ops.clearGuides(app), enabled: () => hasDoc() && app.doc.guides.length > 0 },
+    ] },
+    { label: 'Window', items: [
+      ...[['color', 'Colour'], ['properties', 'Properties'], ['layers', 'Layers'], ['history', 'History']].map(([k, label]) => ({
+        label, checked: () => app.panelVis[k],
+        action: () => { if (app.mobile.matches) { app.openPanelSheet(k); return; } app.panelVis[k] = !app.panelVis[k]; app.buildPanels(); },
+      })),
+      { label: 'Options Bar', checked: () => app.panelVis.options, action: () => { app.panelVis.options = !app.panelVis.options; app.buildPanels(); app.view.resize(); } },
+      { label: 'Hide All Panels', shortcut: 'Tab', action: () => ops.togglePanels(app) },
+      { separator: true },
+      { label: 'Reset Workspace', action: () => { app.panelVis = { color: true, properties: true, layers: true, history: true, options: true }; app.root.classList.remove('is-panels-hidden'); app.buildPanels(); app.view.resize(); } },
+      { separator: true },
+      { label: () => (resolvedTheme() === 'dark' ? 'Light Theme' : 'Dark Theme'), action: () => toggleTheme(), icon: 'brightness' },
+      { label: 'Command Palette', shortcut: 'Mod+K', action: () => app.palette.show(), icon: 'command' },
+      { label: 'Go to EYAD VIDEO', action: () => { location.href = ROUTES.video; }, icon: 'video' },
+      { label: 'Go to Projects', action: () => { location.href = ROUTES.projects; }, icon: 'folder' },
+    ] },
+    { label: 'Help', items: [
+      { label: 'Supported Files', action: () => io.supportedFilesDialog() },
+      { label: 'Keyboard Shortcuts', action: () => io.shortcutsDialog() },
+      { label: 'PSD Compatibility', action: () => io.psdCompatDialog() },
+      { label: 'Studio Documentation', action: () => { location.href = ROUTES.help; } },
+      { separator: true },
+      { label: 'About EYAD STUDIO', action: () => io.aboutDialog() },
+    ] },
+  ];
+}

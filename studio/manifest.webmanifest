@@ -1,0 +1,112 @@
+{
+  "name": "EYAD STUDIO",
+  "short_name": "EYAD STUDIO",
+  "description": "Eyad Ayman's browser-based image and video editor \u2014 layers, PSD import, timeline editing. Runs locally.",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": [
+    "window-controls-overlay",
+    "standalone"
+  ],
+  "orientation": "any",
+  "background_color": "#f3ede1",
+  "theme_color": "#f3ede1",
+  "categories": [
+    "photo",
+    "graphics",
+    "productivity"
+  ],
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "icons/maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "New image",
+      "url": "./image/?new=1",
+      "icons": [
+        {
+          "src": "icons/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "New video",
+      "url": "./video/?new=1",
+      "icons": [
+        {
+          "src": "icons/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Projects",
+      "url": "./projects/",
+      "icons": [
+        {
+          "src": "icons/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ],
+  "file_handlers": [
+    {
+      "action": "./image/",
+      "accept": {
+        "image/vnd.adobe.photoshop": [
+          ".psd",
+          ".psb"
+        ],
+        "image/png": [
+          ".png"
+        ],
+        "image/jpeg": [
+          ".jpg",
+          ".jpeg"
+        ],
+        "image/webp": [
+          ".webp"
+        ]
+      }
+    },
+    {
+      "action": "./video/",
+      "accept": {
+        "application/x-eyad-project": [
+          ".eyad"
+        ],
+        "application/x-premiere-project": [
+          ".prproj"
+        ],
+        "video/mp4": [
+          ".mp4"
+        ],
+        "video/webm": [
+          ".webm"
+        ]
+      }
+    }
+  ],
+  "launch_handler": {
+    "client_mode": "focus-existing"
+  }
+}
