@@ -43,10 +43,16 @@
       .catch(function () { return null; });
   }
 
+  // data/gallery-snapshot.js is a copy of the two JSON files loaded as a
+  // plain script. It is only used when the fetch can't run (the page opened
+  // straight from disk, or offline) so the gallery still renders as the same
+  // mixed Behance + Instagram grid instead of the bare fallback markup.
+  var snapshot = window.__EYAD_GALLERY_SNAPSHOT__ || {};
+
   Promise.all([safeFetch("./data/behance.json"), safeFetch("./data/instagram.json")]).then(
     function (results) {
-      var behance = results[0];
-      var instagram = results[1];
+      var behance = results[0] || snapshot.behance || null;
+      var instagram = results[1] || snapshot.instagram || null;
 
       var items = [];
 
@@ -151,6 +157,7 @@
       // Mirrors the two breakpoints the old columns: N Wpx rule used
       // (5 260px desktop, 2 150px at <=767px) so the visual density stays
       // the same as before.
+      function columnCountFor() {
       var isMobile = window.innerWidth <= 767;
       var colWidth = isMobile ? 150 : 260;
       var colGap = isMobile ? 18 : 28;
@@ -165,13 +172,38 @@
       // when it's already sane (order of magnitude bigger than one column)
       var measuredWidth = grid.getBoundingClientRect().width;
       var gridWidth = measuredWidth > colWidth ? measuredWidth : window.innerWidth - 64;
-      var columnCount = Math.max(1, Math.min(maxColumns, Math.floor((gridWidth + colGap) / (colWidth + colGap))));
+      return Math.max(1, Math.min(maxColumns, Math.floor((gridWidth + colGap) / (colWidth + colGap))));
+      }
+      var columnCount = columnCountFor();
       var columns = [];
       for (var c = 0; c < columnCount; c++) columns.push([]);
       tileHtml.forEach(function (html, i) { columns[i % columnCount].push(html); });
       grid.innerHTML = columns
         .map(function (colTiles) { return '<div class="project-grid-col">' + colTiles.join("") + "</div>"; })
         .join("");
+
+      // Re-deal the same tile elements into the right number of columns when
+      // the window is resized (rotating a phone, resizing a desktop window),
+      // so the grid keeps the same density instead of the count it got on load.
+      var resizeTimer = 0;
+      window.addEventListener("resize", function () {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(function () {
+          var next = columnCountFor();
+          if (next === columnCount) return;
+          columnCount = next;
+          var all = Array.prototype.slice.call(grid.querySelectorAll(".project-tile"));
+          all.sort(function (a, b) { return a.__order - b.__order; });
+          var cols = [];
+          for (var c = 0; c < columnCount; c++) {
+            var col = document.createElement("div");
+            col.className = "project-grid-col";
+            cols.push(col);
+          }
+          all.forEach(function (t, i) { cols[i % columnCount].appendChild(t); });
+          grid.replaceChildren.apply(grid, cols);
+        }, 150);
+      });
 
       // Moved off an inline onload="..." attribute (inline event handlers
       // are a real weak spot: they only work with 'unsafe-inline' allowed
@@ -185,6 +217,11 @@
       // based on each tile's position in the grid, capped so a big batch
       // scrolling in at once doesn't take forever to finish revealing.
       var tiles = grid.querySelectorAll(".project-tile");
+      // Remember each tile's original position (round-robin across columns)
+      // so a resize can re-deal them in the same reading order.
+      grid.querySelectorAll(".project-grid-col").forEach(function (col, c) {
+        Array.prototype.forEach.call(col.children, function (t, r) { t.__order = r * columnCount + c; });
+      });
       if (tiles.length && "IntersectionObserver" in window) {
         var revealObserver = new IntersectionObserver(
           function (entries, observer) {
