@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Font Pairing Helper — Eyad Ayman Tools</title>
+<meta name="viewport" content="width=device-width, height=device-height, initial-scale=1, minimum-scale=1, maximum-scale=5">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;700&family=Bebas+Neue&family=Playfair+Display:wght@400;700&family=Anton&family=Space+Grotesk:wght@400;700&family=DM+Serif+Display&family=Archivo+Black&family=Fraunces:wght@400;700&family=Inter:wght@400;600&family=Source+Sans+3:wght@400;600&family=Lora:wght@400;600&family=Work+Sans:wght@400;600&family=Merriweather:wght@400;700&family=Nunito+Sans:wght@400;600&family=IBM+Plex+Sans:wght@400;600&family=EB+Garamond:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root { --accent: #d02b2a; --ink: #000; }
+  * { box-sizing: border-box; }
+  body { font-family: Inter, Arial, Helvetica, sans-serif; margin: 0; padding: 20px; color: #222; position: relative; background-color: #f6f1e6; }
+  .tool-header { margin-bottom: 16px; padding-bottom: 12px; border-bottom: 2px solid var(--ink); }
+  .tool-header h1 { font-size: 18px; margin: 0; letter-spacing: .5px; }
+
+  .pairing-list { display: flex; flex-direction: column; gap: 12px; }
+  .pairing-card {
+    border: 1px solid #000;
+    background: #fff;
+    padding: 20px;
+    cursor: pointer;
+    transition: background-color .15s ease;
+  }
+  .pairing-card:hover { background-color: #f3f1eb; }
+  .pairing-card.is-active { border-color: var(--accent); border-width: 2px; }
+  .pairing-meta { font-size: 12px; text-transform: uppercase; letter-spacing: .5px; color: #666; margin-bottom: 8px; }
+  .pairing-heading { font-size: 30px; line-height: 1.1; margin-bottom: 6px; }
+  .pairing-body { font-size: 15px; color: #333; max-width: 60ch; }
+
+  @media (max-width: 620px) {
+    .pairing-heading { font-size: 24px; }
+  }
+
+  /* Self-hosted animated film-grain, matching the main site */
+  .noise-wrap { position: fixed; inset: 0; z-index: 100000; opacity: .85; pointer-events: none; overflow: hidden; mix-blend-mode: overlay; }
+  .noise-texture { position: absolute; width: 300%; height: 300%; left: -100%; top: -100%; background-image: url("/assets/images/texture/grain.png"); background-size: 220px 220px; background-repeat: repeat; animation: grain-shift 0.5s steps(4) infinite; }
+  @keyframes grain-shift {
+    0%   { transform: translate(0%, 0%); }
+    25%  { transform: translate(-3%, 2%); }
+    50%  { transform: translate(2%, -3%); }
+    75%  { transform: translate(-2%, -2%); }
+    100% { transform: translate(0%, 0%); }
+  }
+</style>
+</head>
+<body>
+
+<div class="noise-wrap"><div class="noise-texture"></div></div>
+
+<div class="tool-header">
+  <h1>Font Pairing Helper</h1>
+</div>
+
+<div class="pairing-list" id="pairing-list"></div>
+
+<script>
+(function () {
+  "use strict";
+
+  var SAMPLE_HEADING = "Design That Speaks";
+  var SAMPLE_BODY = "The quick brown fox jumps over the lazy dog. A good pairing gives every heading weight and every paragraph room to breathe — this is how the two fonts read together, side by side, at real size.";
+
+  var pairings = [
+    { heading: "Oswald", body: "Inter", note: "Bold condensed display + clean neutral body" },
+    { heading: "Bebas Neue", body: "Work Sans", note: "Poster-style caps + humanist sans" },
+    { heading: "Playfair Display", body: "Source Sans 3", note: "Editorial serif + tidy sans body" },
+    { heading: "Anton", body: "Nunito Sans", note: "Heavy impact headline + soft rounded body" },
+    { heading: "Space Grotesk", body: "IBM Plex Sans", note: "Techy grotesque pairing, tech/portfolio feel" },
+    { heading: "DM Serif Display", body: "Lora", note: "Two serifs, refined and literary" },
+    { heading: "Archivo Black", body: "Inter", note: "Maximum weight contrast, bold statement" },
+    { heading: "Fraunces", body: "Work Sans", note: "Warm display serif + modern sans" },
+    { heading: "EB Garamond", body: "Nunito Sans", note: "Classic book serif + friendly sans" },
+    { heading: "Merriweather", body: "Source Sans 3", note: "Reliable, readable, corporate-safe" }
+  ];
+
+  var list = document.getElementById("pairing-list");
+
+  pairings.forEach(function (p, i) {
+    var card = document.createElement("div");
+    card.className = "pairing-card" + (i === 0 ? " is-active" : "");
+    card.innerHTML =
+      '<div class="pairing-meta">' + p.heading + ' + ' + p.body + ' — ' + p.note + '</div>' +
+      '<div class="pairing-heading" style="font-family:\'' + p.heading + '\', sans-serif;">' + SAMPLE_HEADING + '</div>' +
+      '<div class="pairing-body" style="font-family:\'' + p.body + '\', sans-serif;">' + SAMPLE_BODY + '</div>';
+    card.addEventListener("click", function () {
+      document.querySelectorAll(".pairing-card").forEach(function (c) { c.classList.remove("is-active"); });
+      card.classList.add("is-active");
+    });
+    list.appendChild(card);
+  });
+})();
+</script>
+
+</body>
+</html>

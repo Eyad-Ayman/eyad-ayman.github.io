@@ -1,0 +1,165 @@
+/* ==========================================================================
+   Showreel — Reels row under the full-bleed video (Motion section).
+   Loaded after style.css and only overrides/extends the .showreel-* rules.
+   ========================================================================== */
+.showreel-strip-wrap {
+  padding: 40px 0 48px;
+  background: #000;
+  position: relative;
+}
+.showreel-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 0 32px;
+  margin-bottom: 22px;
+}
+.showreel-title {
+  margin: 0;
+  color: #fff;
+  font-family: var(--headings);
+  font-size: clamp(44px, 7vw, 96px);
+  font-weight: 700;
+  line-height: .9;
+  text-transform: uppercase;
+  letter-spacing: -.01em;
+}
+.showreel-strip-wrap .showreel-strip-note {
+  margin: 10px 0 0;
+  padding: 0;
+  color: rgba(255, 255, 255, .55);
+}
+.showreel-strip-note [data-showreel-count] { color: #d02b2a; }
+
+.showreel-nav { display: none; gap: 8px; }
+.showreel-strip-wrap.is-scrollable .showreel-nav { display: flex; }
+.showreel-arrow {
+  width: 46px;
+  height: 46px;
+  border: 1px solid rgba(255, 255, 255, .35);
+  background: transparent;
+  color: #fff;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background .2s ease, color .2s ease, border-color .2s ease, opacity .2s ease;
+}
+.showreel-arrow:hover:not(:disabled) { background: #fff; color: #000; border-color: #fff; }
+.showreel-arrow:focus-visible { outline: 2px solid #d02b2a; outline-offset: 2px; }
+.showreel-arrow:disabled { opacity: .3; cursor: default; }
+
+.showreel-strip {
+  gap: 16px;
+  align-items: stretch;
+  scroll-snap-type: x mandatory;
+  scroll-padding: 0 32px;
+  padding: 0 32px 10px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, .25) transparent;
+}
+
+/* Cards: fixed row height, width follows each post's real aspect ratio
+   (set from the cover image by showreel.js), 9:16 until it's known. */
+.showreel-card {
+  width: auto;
+  height: clamp(300px, 46vh, 460px);
+  aspect-ratio: 9 / 16;
+  max-width: 70vw;
+  background: #111;
+  border: 1px solid rgba(255, 255, 255, .14);
+  transition: border-color .3s ease, transform .4s cubic-bezier(.2, .7, .2, 1);
+}
+.showreel-card:hover { border-color: rgba(255, 255, 255, .55); transform: translateY(-4px); }
+.showreel-card:focus-visible { outline: 2px solid #d02b2a; outline-offset: 3px; }
+
+.showreel-poster,
+.showreel-card video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  filter: grayscale(60%) contrast(105%);
+  transition: filter .35s ease, transform .6s cubic-bezier(.2, .7, .2, 1);
+}
+.showreel-card video { z-index: 1; }
+.showreel-card:hover .showreel-poster,
+.showreel-card:hover video { filter: grayscale(0%) contrast(100%); transform: scale(1.03); }
+.showreel-card.no-poster .showreel-poster { visibility: hidden; }
+
+.showreel-play {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 2;
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  background: rgba(0, 0, 0, .55);
+  border-radius: 50%;
+  transition: opacity .25s ease;
+}
+.showreel-card.is-playing .showreel-play { opacity: 0; }
+.showreel-caption {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  padding: 36px 12px 12px;
+}
+
+/* End card — link to the profile. */
+.showreel-more {
+  aspect-ratio: 3 / 4;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 6px;
+  padding: 18px;
+  background: #d02b2a;
+  border-color: #d02b2a;
+  color: #fff;
+}
+.showreel-more:hover { border-color: #fff; }
+.showreel-more-label {
+  font-family: var(--headings);
+  font-size: 34px;
+  font-weight: 700;
+  line-height: .95;
+  text-transform: uppercase;
+}
+.showreel-more-handle {
+  font-family: var(--headings);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .5px;
+  text-transform: uppercase;
+}
+
+/* Dark mode: the wrap already counter-inverts the whole row, so the cards
+   and videos must NOT invert again (that double-invert turned captions
+   and borders into white boxes). */
+html[data-theme="dark"] .showreel-strip-wrap .showreel-card { filter: none; }
+html[data-theme="dark"] .showreel-strip-wrap .showreel-card video,
+html[data-theme="dark"] .showreel-strip-wrap .showreel-poster { filter: grayscale(60%) contrast(105%); }
+html[data-theme="dark"] .showreel-strip-wrap .showreel-card:hover video,
+html[data-theme="dark"] .showreel-strip-wrap .showreel-card:hover .showreel-poster { filter: grayscale(0%) contrast(100%); }
+
+@media screen and (max-width: 600px) {
+  .showreel-strip-wrap { padding: 28px 0 34px; }
+  .showreel-head { padding: 0 18px; margin-bottom: 16px; }
+  .showreel-strip { padding: 0 18px 8px; scroll-padding: 0 18px; gap: 12px; }
+  .showreel-card { width: 80vw; height: auto; max-width: none; max-height: 70vh; }
+  .showreel-more { width: 56vw; }
+  .showreel-nav { display: none !important; }
+  .showreel-more-label { font-size: 28px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .showreel-card, .showreel-poster, .showreel-card video { transition: none; }
+  .showreel-card:hover { transform: none; }
+  .showreel-card:hover .showreel-poster, .showreel-card:hover video { transform: none; }
+}

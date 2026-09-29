@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>CSS Gradient Generator — Eyad Ayman Tools</title>
+<meta name="viewport" content="width=device-width, height=device-height, initial-scale=1, minimum-scale=1, maximum-scale=5">
+<style>
+  :root { --accent: #d02b2a; --ink: #000; }
+  * { box-sizing: border-box; }
+  body { font-family: Inter, Arial, Helvetica, sans-serif; margin: 0; padding: 20px; color: #222; position: relative; background-color: #f6f1e6; }
+  .tool-header { margin-bottom: 16px; padding-bottom: 12px; border-bottom: 2px solid var(--ink); }
+  .tool-header h1 { font-size: 18px; margin: 0; letter-spacing: .5px; }
+
+  .layout { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  @media (max-width: 620px) { .layout { grid-template-columns: 1fr; } }
+
+  .preview { border: 1px solid #000; height: 220px; margin-bottom: 16px; }
+
+  .field { margin-bottom: 14px; }
+  .field label { display: block; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 6px; }
+  .stop-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  input[type="color"] { width: 40px; height: 32px; border: 1px solid #ccc; padding: 0; cursor: pointer; }
+  input[type="range"] { flex: 1; }
+  select { border: 1px solid #ccc; padding: 6px 8px; font-family: inherit; }
+
+  .code-box { border: 1px solid #000; background: #1a1a1a; color: #eee; padding: 14px; font-family: monospace; font-size: 13px; white-space: pre-wrap; word-break: break-all; }
+  .copy-btn { border: 1px solid #000; background: #fff; padding: 8px 14px; font-family: inherit; font-size: 13px; cursor: pointer; margin-top: 10px; }
+  .copy-btn:hover { background: #000; color: #fff; }
+
+  /* Self-hosted animated film-grain, matching the main site */
+  .noise-wrap { position: fixed; inset: 0; z-index: 100000; opacity: .85; pointer-events: none; overflow: hidden; mix-blend-mode: overlay; }
+  .noise-texture { position: absolute; width: 300%; height: 300%; left: -100%; top: -100%; background-image: url("/assets/images/texture/grain.png"); background-size: 220px 220px; background-repeat: repeat; animation: grain-shift 0.5s steps(4) infinite; }
+  @keyframes grain-shift {
+    0%   { transform: translate(0%, 0%); }
+    25%  { transform: translate(-3%, 2%); }
+    50%  { transform: translate(2%, -3%); }
+    75%  { transform: translate(-2%, -2%); }
+    100% { transform: translate(0%, 0%); }
+  }
+</style>
+</head>
+<body>
+
+<div class="noise-wrap"><div class="noise-texture"></div></div>
+
+<div class="tool-header">
+  <h1>CSS Gradient Generator</h1>
+</div>
+
+<div class="layout">
+  <div>
+    <div class="preview" id="preview"></div>
+
+    <div class="field">
+      <label>Type</label>
+      <select id="type">
+        <option value="linear">Linear</option>
+        <option value="radial">Radial</option>
+      </select>
+    </div>
+
+    <div class="field" id="angle-field">
+      <label>Angle: <span id="angle-value">90</span>deg</label>
+      <input type="range" id="angle" min="0" max="360" value="90">
+    </div>
+
+    <div class="field">
+      <label>Color 1</label>
+      <div class="stop-row">
+        <input type="color" id="color1" value="#d02b2a">
+        <input type="range" id="stop1" min="0" max="100" value="0">
+      </div>
+    </div>
+    <div class="field">
+      <label>Color 2</label>
+      <div class="stop-row">
+        <input type="color" id="color2" value="#000000">
+        <input type="range" id="stop2" min="0" max="100" value="100">
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <label style="display:block; font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; margin-bottom:6px;">CSS Output</label>
+    <div class="code-box" id="code-output"></div>
+    <button type="button" class="copy-btn" id="copy">Copy CSS</button>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  var preview = document.getElementById("preview");
+  var codeOutput = document.getElementById("code-output");
+  var type = document.getElementById("type");
+  var angle = document.getElementById("angle");
+  var angleValue = document.getElementById("angle-value");
+  var angleField = document.getElementById("angle-field");
+  var color1 = document.getElementById("color1");
+  var color2 = document.getElementById("color2");
+  var stop1 = document.getElementById("stop1");
+  var stop2 = document.getElementById("stop2");
+
+  function update() {
+    angleValue.textContent = angle.value;
+    angleField.style.display = type.value === "linear" ? "block" : "none";
+
+    var gradient;
+    if (type.value === "linear") {
+      gradient = "linear-gradient(" + angle.value + "deg, " + color1.value + " " + stop1.value + "%, " + color2.value + " " + stop2.value + "%)";
+    } else {
+      gradient = "radial-gradient(circle, " + color1.value + " " + stop1.value + "%, " + color2.value + " " + stop2.value + "%)";
+    }
+
+    preview.style.background = gradient;
+    codeOutput.textContent = "background: " + gradient + ";";
+  }
+
+  [type, angle, color1, color2, stop1, stop2].forEach(function (el) {
+    el.addEventListener("input", update);
+  });
+
+  document.getElementById("copy").addEventListener("click", function () {
+    if (navigator.clipboard) navigator.clipboard.writeText(codeOutput.textContent).catch(function () {});
+  });
+
+  update();
+})();
+</script>
+
+</body>
+</html>

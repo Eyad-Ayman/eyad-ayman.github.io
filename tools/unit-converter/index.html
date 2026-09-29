@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Design Unit Converter — Eyad Ayman Tools</title>
+<meta name="viewport" content="width=device-width, height=device-height, initial-scale=1, minimum-scale=1, maximum-scale=5">
+<style>
+  :root { --accent: #d02b2a; --ink: #000; }
+  * { box-sizing: border-box; }
+  body { font-family: Inter, Arial, Helvetica, sans-serif; margin: 0; padding: 20px; color: #222; position: relative; background-color: #f6f1e6; }
+  .tool-header { margin-bottom: 16px; padding-bottom: 12px; border-bottom: 2px solid var(--ink); }
+  .tool-header h1 { font-size: 18px; margin: 0; letter-spacing: .5px; }
+
+  .field { margin-bottom: 16px; }
+  .field label { display: block; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 6px; }
+  .field input { border: 1px solid #ccc; padding: 8px 10px; font-family: inherit; font-size: 15px; width: 140px; }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-top: 8px; }
+  .unit-card { border: 1px solid #000; background: #fff; padding: 14px; }
+  .unit-card .val { font-size: 22px; font-weight: 700; font-family: monospace; }
+  .unit-card .name { font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: #666; margin-top: 4px; }
+
+  .hint { font-size: 13px; color: #666; margin-top: 18px; }
+
+  /* Self-hosted animated film-grain, matching the main site */
+  .noise-wrap { position: fixed; inset: 0; z-index: 100000; opacity: .85; pointer-events: none; overflow: hidden; mix-blend-mode: overlay; }
+  .noise-texture { position: absolute; width: 300%; height: 300%; left: -100%; top: -100%; background-image: url("/assets/images/texture/grain.png"); background-size: 220px 220px; background-repeat: repeat; animation: grain-shift 0.5s steps(4) infinite; }
+  @keyframes grain-shift {
+    0%   { transform: translate(0%, 0%); }
+    25%  { transform: translate(-3%, 2%); }
+    50%  { transform: translate(2%, -3%); }
+    75%  { transform: translate(-2%, -2%); }
+    100% { transform: translate(0%, 0%); }
+  }
+</style>
+</head>
+<body>
+
+<div class="noise-wrap"><div class="noise-texture"></div></div>
+
+<div class="tool-header">
+  <h1>Design Unit Converter</h1>
+</div>
+
+<div class="field">
+  <label for="px-input">Pixels (px)</label>
+  <input type="number" id="px-input" value="16">
+</div>
+
+<div class="field">
+  <label for="base-input">Root font size (for em/rem)</label>
+  <input type="number" id="base-input" value="16">
+</div>
+
+<div class="grid">
+  <div class="unit-card"><div class="val" id="out-px">16px</div><div class="name">Pixels</div></div>
+  <div class="unit-card"><div class="val" id="out-rem">1rem</div><div class="name">Rem</div></div>
+  <div class="unit-card"><div class="val" id="out-em">1em</div><div class="name">Em</div></div>
+  <div class="unit-card"><div class="val" id="out-pt">12pt</div><div class="name">Points</div></div>
+  <div class="unit-card"><div class="val" id="out-percent">100%</div><div class="name">Percent</div></div>
+  <div class="unit-card"><div class="val" id="out-in">0.167in</div><div class="name">Inches (96dpi)</div></div>
+  <div class="unit-card"><div class="val" id="out-cm">0.423cm</div><div class="name">Centimeters</div></div>
+  <div class="unit-card"><div class="val" id="out-mm">4.23mm</div><div class="name">Millimeters</div></div>
+</div>
+
+<p class="hint">Based on the CSS/print standard of 96px = 1in = 72pt = 2.54cm.</p>
+
+<script>
+(function () {
+  "use strict";
+  var pxInput = document.getElementById("px-input");
+  var baseInput = document.getElementById("base-input");
+
+  function update() {
+    var px = parseFloat(pxInput.value) || 0;
+    var base = parseFloat(baseInput.value) || 16;
+
+    document.getElementById("out-px").textContent = px + "px";
+    document.getElementById("out-rem").textContent = (px / base).toFixed(3).replace(/\.?0+$/, "") + "rem";
+    document.getElementById("out-em").textContent = (px / base).toFixed(3).replace(/\.?0+$/, "") + "em";
+    document.getElementById("out-pt").textContent = (px * 0.75).toFixed(2).replace(/\.?0+$/, "") + "pt";
+    document.getElementById("out-percent").textContent = ((px / base) * 100).toFixed(1).replace(/\.?0+$/, "") + "%";
+    document.getElementById("out-in").textContent = (px / 96).toFixed(3) + "in";
+    document.getElementById("out-cm").textContent = ((px / 96) * 2.54).toFixed(3) + "cm";
+    document.getElementById("out-mm").textContent = ((px / 96) * 25.4).toFixed(2) + "mm";
+  }
+
+  pxInput.addEventListener("input", update);
+  baseInput.addEventListener("input", update);
+  update();
+})();
+</script>
+
+</body>
+</html>

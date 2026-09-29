@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Color Palette Extractor — Eyad Ayman Tools</title>
+<meta name="viewport" content="width=device-width, height=device-height, initial-scale=1, minimum-scale=1, maximum-scale=5">
+<style>
+  :root { --accent: #d02b2a; --ink: #000; }
+  * { box-sizing: border-box; }
+  body { font-family: Inter, Arial, Helvetica, sans-serif; margin: 0; padding: 20px; color: #222; position: relative; background-color: #f6f1e6; }
+  .tool-header { margin-bottom: 16px; padding-bottom: 12px; border-bottom: 2px solid var(--ink); }
+  .tool-header h1 { font-size: 18px; margin: 0; letter-spacing: .5px; }
+
+  .drop-zone {
+    border: 2px dashed #999;
+    background: #fff;
+    padding: 32px 20px;
+    text-align: center;
+    cursor: pointer;
+    font-size: 14px;
+    color: #555;
+  }
+  .drop-zone.is-drag { border-color: var(--accent); color: var(--accent); }
+  .drop-zone input { display: none; }
+
+  .preview-wrap { margin-top: 18px; display: none; }
+  .preview-wrap.is-visible { display: block; }
+  #preview-img { max-width: 100%; max-height: 300px; display: block; border: 1px solid #000; }
+
+  .palette-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 12px; margin-top: 18px; }
+  .swatch {
+    border: 1px solid #000;
+    background: #fff;
+    cursor: pointer;
+    font-family: inherit;
+    padding: 0;
+    text-align: left;
+    overflow: hidden;
+  }
+  .swatch-color { height: 70px; }
+  .swatch-label { padding: 8px 10px; font-family: monospace; font-size: 13px; display: flex; justify-content: space-between; align-items: center; }
+  .swatch-copied { font-size: 11px; color: var(--accent); font-family: Inter, sans-serif; opacity: 0; transition: opacity .15s ease; }
+  .swatch.just-copied .swatch-copied { opacity: 1; }
+
+  .hint { font-size: 13px; color: #666; margin-top: 14px; }
+
+  /* Self-hosted animated film-grain, matching the main site */
+  .noise-wrap { position: fixed; inset: 0; z-index: 100000; opacity: .85; pointer-events: none; overflow: hidden; mix-blend-mode: overlay; }
+  .noise-texture { position: absolute; width: 300%; height: 300%; left: -100%; top: -100%; background-image: url("/assets/images/texture/grain.png"); background-size: 220px 220px; background-repeat: repeat; animation: grain-shift 0.5s steps(4) infinite; }
+  @keyframes grain-shift {
+    0%   { transform: translate(0%, 0%); }
+    25%  { transform: translate(-3%, 2%); }
+    50%  { transform: translate(2%, -3%); }
+    75%  { transform: translate(-2%, -2%); }
+    100% { transform: translate(0%, 0%); }
+  }
+</style>
+</head>
+<body>
+
+<div class="noise-wrap"><div class="noise-texture"></div></div>
+
+<div class="tool-header">
+  <h1>Color Palette Extractor</h1>
+</div>
+
+<label class="drop-zone" id="drop-zone" for="file-input">
+  <span id="drop-zone-text">Drop an image here, or click to choose a file<br>(nothing leaves your browser — this runs entirely on-device)</span>
+  <input type="file" id="file-input" accept="image/*">
+</label>
+
+<div class="preview-wrap" id="preview-wrap">
+  <img id="preview-img" alt="Uploaded image preview">
+</div>
+
+<div class="palette-grid" id="palette-grid"></div>
+<p class="hint" id="hint" style="display:none;">Click any swatch to copy its hex code.</p>
+
+<canvas id="work-canvas" style="display:none;"></canvas>
+
+<script>
+(function () {
+  "use strict";
+  var dropZone = document.getElementById("drop-zone");
+  var dropZoneText = document.getElementById("drop-zone-text");
+  var fileInput = document.getElementById("file-input");
+  var previewWrap = document.getElementById("preview-wrap");
+  var previewImg = document.getElementById("preview-img");
+  var paletteGrid = document.getElementById("palette-grid");
+  var hint = document.getElementById("hint");
+  var canvas = document.getElementById("work-canvas");
+  var ctx = canvas.getContext("2d");
+
+  var SWATCH_COUNT = 8;
+
+  function rgbToHex(r, g, b) {
+    return "#" + [r, g, b].map(function (c) {
+      return c.toString(16).padStart(2, "0");
+    }).join("");
+  }
+
+  // Simple median-cut style quantization: bucket sampled pixels into a
+  // fixed-size color cube, then take the most frequent bucket centers.
+  function extractPalette(img) {
+    var maxDim = 200;
+    var scale = Math.min(1, maxDim / Math.max(img.naturalWidth, img.naturalHeight));
+    var w = Math.max(1, Math.round(img.naturalWidth * scale));
+    var h = Math.max(1, Math.round(img.naturalHeight * scale));
+    canvas.width = w;
+    canvas.height = h;
+    ctx.drawImage(img, 0, 0, w, h);
+
+    var data;
+    try {
+      data = ctx.getImageData(0, 0, w, h).data;
+    } catch (e) {
+      return null;
+    }
+
+    var buckets = {};
+    var BUCKET_STEP = 24; // quantize each channel to reduce near-duplicate colors
+    for (var i = 0; i < data.length; i += 4) {
+      var a = data[i + 3];
+      if (a < 128) continue; // skip mostly-transparent pixels
+      var r = data[i], g = data[i + 1], b = data[i + 2];
+      var key = [
+        Math.round(r / BUCKET_STEP),
+        Math.round(g / BUCKET_STEP),
+        Math.round(b / BUCKET_STEP)
+      ].join(",");
+      if (!buckets[key]) buckets[key] = { r: 0, g: 0, b: 0, count: 0 };
+      buckets[key].r += r;
+      buckets[key].g += g;
+      buckets[key].b += b;
+      buckets[key].count += 1;
+    }
+
+    var list = Object.keys(buckets).map(function (key) {
+      var bucket = buckets[key];
+      return {
+        r: Math.round(bucket.r / bucket.count),
+        g: Math.round(bucket.g / bucket.count),
+        b: Math.round(bucket.b / bucket.count),
+        count: bucket.count
+      };
+    });
+
+    list.sort(function (a, b) { return b.count - a.count; });
+    return list.slice(0, SWATCH_COUNT);
+  }
+
+  function renderPalette(colors) {
+    paletteGrid.innerHTML = "";
+    colors.forEach(function (c) {
+      var hex = rgbToHex(c.r, c.g, c.b);
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "swatch";
+      btn.innerHTML =
+        '<div class="swatch-color" style="background:' + hex + '"></div>' +
+        '<div class="swatch-label"><span>' + hex.toUpperCase() + '</span><span class="swatch-copied">Copied!</span></div>';
+      btn.addEventListener("click", function () {
+        if (navigator.clipboard) {
+          navigator.clipboard.writeText(hex).catch(function () {});
+        }
+        btn.classList.add("just-copied");
+        setTimeout(function () { btn.classList.remove("just-copied"); }, 1000);
+      });
+      paletteGrid.appendChild(btn);
+    });
+    hint.style.display = colors.length ? "block" : "none";
+  }
+
+  function handleFile(file) {
+    if (!file || file.type.indexOf("image/") !== 0) return;
+    var url = URL.createObjectURL(file);
+    previewImg.onload = function () {
+      previewWrap.classList.add("is-visible");
+      var colors = extractPalette(previewImg);
+      if (colors) renderPalette(colors);
+      URL.revokeObjectURL(url);
+    };
+    previewImg.src = url;
+    dropZoneText.textContent = file.name;
+  }
+
+  fileInput.addEventListener("change", function () {
+    if (fileInput.files && fileInput.files[0]) handleFile(fileInput.files[0]);
+  });
+
+  ["dragenter", "dragover"].forEach(function (evt) {
+    dropZone.addEventListener(evt, function (e) {
+      e.preventDefault();
+      dropZone.classList.add("is-drag");
+    });
+  });
+  ["dragleave", "drop"].forEach(function (evt) {
+    dropZone.addEventListener(evt, function (e) {
+      e.preventDefault();
+      dropZone.classList.remove("is-drag");
+    });
+  });
+  dropZone.addEventListener("drop", function (e) {
+    var file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+    if (file) handleFile(file);
+  });
+})();
+</script>
+
+</body>
+</html>

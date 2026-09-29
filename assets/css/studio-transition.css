@@ -1,0 +1,11 @@
+/* Smooth page transition between the portfolio and EYAD STUDIO (/studio/).
+   Uses cross-document View Transitions: only affects navigations, never the
+   page's normal rendering. Browsers without support simply navigate as before. */
+@view-transition { navigation: auto; }
+::view-transition-old(root) { animation: eyad-vt-out .38s cubic-bezier(.4, 0, .2, 1) both; }
+::view-transition-new(root) { animation: eyad-vt-in .62s cubic-bezier(.32, .72, 0, 1) both; }
+@keyframes eyad-vt-out { to { opacity: 0; transform: scale(.985); } }
+@keyframes eyad-vt-in { from { opacity: 0; transform: translateY(22px); } }
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; }
+}

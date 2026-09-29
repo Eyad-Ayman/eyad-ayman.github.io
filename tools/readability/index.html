@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Readability Checker — Eyad Ayman Tools</title>
+<meta name="viewport" content="width=device-width, height=device-height, initial-scale=1, minimum-scale=1, maximum-scale=5">
+<style>
+  :root { --accent: #d02b2a; --ink: #000; }
+  * { box-sizing: border-box; }
+  body { font-family: Inter, Arial, Helvetica, sans-serif; margin: 0; padding: 20px; color: #222; position: relative; background-color: #f6f1e6; }
+  .tool-header { margin-bottom: 16px; padding-bottom: 12px; border-bottom: 2px solid var(--ink); }
+  .tool-header h1 { font-size: 18px; margin: 0; letter-spacing: .5px; }
+
+  textarea { width: 100%; min-height: 180px; border: 1px solid #000; padding: 14px; font-family: inherit; font-size: 15px; resize: vertical; background: #fff; margin-bottom: 16px; }
+
+  .score-card { border: 1px solid #000; background: #fff; padding: 20px; text-align: center; margin-bottom: 16px; }
+  .score-num { font-size: 44px; font-weight: 700; line-height: 1; }
+  .score-label { font-size: 13px; text-transform: uppercase; letter-spacing: .5px; color: #666; margin-top: 6px; }
+  .score-grade { font-size: 15px; color: var(--accent); font-weight: 700; margin-top: 8px; }
+
+  .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 10px; }
+  .stat { border: 1px solid #000; background: #fff; padding: 12px; text-align: center; }
+  .stat-num { font-size: 22px; font-weight: 700; }
+  .stat-label { font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: #666; margin-top: 4px; }
+
+  /* Self-hosted animated film-grain, matching the main site */
+  .noise-wrap { position: fixed; inset: 0; z-index: 100000; opacity: .85; pointer-events: none; overflow: hidden; mix-blend-mode: overlay; }
+  .noise-texture { position: absolute; width: 300%; height: 300%; left: -100%; top: -100%; background-image: url("/assets/images/texture/grain.png"); background-size: 220px 220px; background-repeat: repeat; animation: grain-shift 0.5s steps(4) infinite; }
+  @keyframes grain-shift {
+    0%   { transform: translate(0%, 0%); }
+    25%  { transform: translate(-3%, 2%); }
+    50%  { transform: translate(2%, -3%); }
+    75%  { transform: translate(-2%, -2%); }
+    100% { transform: translate(0%, 0%); }
+  }
+</style>
+</head>
+<body>
+
+<div class="noise-wrap"><div class="noise-texture"></div></div>
+
+<div class="tool-header">
+  <h1>Readability Checker</h1>
+</div>
+
+<textarea id="text-input" placeholder="Paste your copy, caption, or article here&hellip;"></textarea>
+
+<div class="score-card">
+  <div class="score-num" id="score-num">0</div>
+  <div class="score-label">Flesch Reading Ease</div>
+  <div class="score-grade" id="score-grade">—</div>
+</div>
+
+<div class="stats-row">
+  <div class="stat"><div class="stat-num" id="stat-words">0</div><div class="stat-label">Words</div></div>
+  <div class="stat"><div class="stat-num" id="stat-sentences">0</div><div class="stat-label">Sentences</div></div>
+  <div class="stat"><div class="stat-num" id="stat-syllables">0</div><div class="stat-label">Syllables</div></div>
+  <div class="stat"><div class="stat-num" id="stat-wps">0</div><div class="stat-label">Words/sentence</div></div>
+  <div class="stat"><div class="stat-num" id="stat-grade">0</div><div class="stat-label">Grade level</div></div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  var input = document.getElementById("text-input");
+
+  function countSyllables(word) {
+    word = word.toLowerCase().replace(/[^a-z]/g, "");
+    if (word.length === 0) return 0;
+    if (word.length <= 3) return 1;
+    word = word.replace(/(?:[^laeiouy]es|ed|[^laeiouy]e)$/, "");
+    word = word.replace(/^y/, "");
+    var matches = word.match(/[aeiouy]{1,2}/g);
+    return matches ? matches.length : 1;
+  }
+
+  function gradeLabel(score) {
+    if (score >= 90) return "Very easy — 5th grade";
+    if (score >= 80) return "Easy — 6th grade";
+    if (score >= 70) return "Fairly easy — 7th grade";
+    if (score >= 60) return "Standard — 8th–9th grade";
+    if (score >= 50) return "Fairly difficult — 10th–12th grade";
+    if (score >= 30) return "Difficult — college level";
+    return "Very difficult — college graduate";
+  }
+
+  function update() {
+    var text = input.value.trim();
+    if (!text) {
+      document.getElementById("score-num").textContent = "0";
+      document.getElementById("score-grade").textContent = "—";
+      ["words", "sentences", "syllables", "wps", "grade"].forEach(function (id) {
+        document.getElementById("stat-" + id).textContent = "0";
+      });
+      return;
+    }
+
+    var words = text.match(/[A-Za-z']+/g) || [];
+    var sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
+    var wordCount = words.length || 1;
+    var sentenceCount = sentences.length || 1;
+    var syllableCount = words.reduce(function (sum, w) { return sum + countSyllables(w); }, 0) || 1;
+
+    var wordsPerSentence = wordCount / sentenceCount;
+    var syllablesPerWord = syllableCount / wordCount;
+
+    var flesch = 206.835 - (1.015 * wordsPerSentence) - (84.6 * syllablesPerWord);
+    flesch = Math.max(0, Math.min(100, flesch));
+
+    var gradeLevel = (0.39 * wordsPerSentence) + (11.8 * syllablesPerWord) - 15.59;
+    gradeLevel = Math.max(0, gradeLevel);
+
+    document.getElementById("score-num").textContent = Math.round(flesch);
+    document.getElementById("score-grade").textContent = gradeLabel(flesch);
+    document.getElementById("stat-words").textContent = wordCount;
+    document.getElementById("stat-sentences").textContent = sentenceCount;
+    document.getElementById("stat-syllables").textContent = syllableCount;
+    document.getElementById("stat-wps").textContent = wordsPerSentence.toFixed(1);
+    document.getElementById("stat-grade").textContent = gradeLevel.toFixed(1);
+  }
+
+  input.addEventListener("input", update);
+})();
+</script>
+
+</body>
+</html>
