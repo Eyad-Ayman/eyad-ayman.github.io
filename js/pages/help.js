@@ -1,0 +1,61 @@
+// EYAD STUDIO — Help & documentation (/studio/help/).
+import { h } from '../core/dom.js';
+import { ROUTES } from '../core/shell.js';
+import { supportedTable, shortcutsTable } from '../core/docs.js';
+import { page } from './common.js';
+
+const sec = (id, title, ...body) => h('section', { class: 'hub-doc', id }, h('h2', { class: 'hub-doc-title', text: title }), ...body);
+const p = (t) => h('p', { text: t });
+const ul = (items) => h('ul', { class: 'studio-list' }, items.map((t) => h('li', { text: t })));
+
+page('help',
+  h('section', { class: 'hub-pagehead' }, h('div', {},
+    h('h1', { class: 'studio-page-title' }, 'HE', h('em', { text: 'LP' })),
+    h('p', { class: 'studio-page-lede', text: 'How EYAD STUDIO works, what it supports, and where its limits are.' }))),
+  h('div', { class: 'hub-docs' },
+    h('nav', { class: 'hub-toc', 'aria-label': 'On this page' },
+      [['files', 'Supported files'], ['image', 'EYAD IMAGE'], ['psd', 'PSD support'], ['video', 'EYAD VIDEO'], ['prproj', 'Premiere projects'], ['projects', 'Projects & saving'], ['mobile', 'Phones & tablets'], ['keys', 'Shortcuts'], ['privacy', 'Privacy']].map(([id, t]) => h('a', { href: '#' + id, text: t }))),
+    h('div', { class: 'hub-doc-body' },
+      sec('files', 'Supported files', p('✓ supported · △ partial, experimental or browser-dependent.'), supportedTable()),
+      sec('image', 'EYAD IMAGE',
+        p('A layered image editor. Layers can be pixel, text, shape or group layers, each with visibility, opacity, blend mode, lock, position, scale and rotation. Every change is recorded in History (Undo/Redo), which stores only what changed — for pixel edits, just the touched rectangle.'),
+        ul(['Tools: Move/Transform, Marquee (rectangle/ellipse), Lasso, Crop, Brush, Eraser, Gradient, Paint Bucket, Clone Stamp, Text, Shape, Pen, Eyedropper, Hand, Zoom.',
+          'Selections limit painting, fills, filters, copy/cut and masks; Select ▸ Inverse, Feather, Layer Pixels.',
+          'Layer masks and clipping masks, merge down / visible, flatten, rasterize.',
+          'Image ▸ Adjustments (brightness/contrast, exposure, hue/saturation, invert, desaturate, sepia, threshold, posterize) and Filter menu (blur, sharpen, noise, mosaic, emboss, find edges, vignette) run in a background worker with live preview.',
+          'Export PNG, JPEG, WebP; Experimental PSD Export.'])),
+      sec('psd', 'PSD support',
+        p('PSD files are read with a real PSD parser (the open-source ag-psd library), not by treating them as images. After every import you see a report listing exactly what was supported for that file.'),
+        ul(['✓ Canvas size, RGB, transparency, raster layers, names, ordering, visibility, opacity, groups, common blend modes, layer masks, clipping, guides, resolution.',
+          '△ Text layers arrive as pixels (their text is kept; Layer ▸ Convert PSD Text makes an approximate editable copy). Smart objects arrive as rendered pixels. Adjustment layers are kept as named placeholders. Layer styles are listed but not rendered. 16/32-bit, CMYK and Grayscale are converted to 8-bit RGB.',
+          '× Vector masks, layer comps, 3D and video layers.',
+          'When the look may differ from Photoshop, Photoshop’s own flattened composite is added as a hidden, locked reference layer.',
+          'PSD export is labelled Experimental: text and shapes are rasterised and transforms are baked.'])),
+      sec('video', 'EYAD VIDEO',
+        ul(['Import MP4, WebM, MOV (when the browser supports the codec), MP3, WAV, AAC and images. Unsupported codecs (e.g. ProRes) are reported instead of failing silently.',
+          'Timeline with multiple video and audio tracks; drag, trim, split (razor), move, delete, ripple delete, snapping, markers, In/Out, track mute/solo/lock, zoom.',
+          'Clip properties: position, scale, rotation, opacity, crop, speed, fade in/out, volume/gain; effects: brightness, contrast, saturation, exposure, hue, black & white, sepia, invert, blur.',
+          'Playback uses the browser’s media engine and Web Audio; J/K/L shuttle, frame stepping, loop, playback speed, fullscreen.',
+          'Export: video (real-time render to WebM or MP4 depending on the browser), WAV mixdown, and PNG frames.'])),
+      sec('prproj', 'Premiere Pro projects (.prproj)',
+        p('A .prproj file is compressed XML that describes sequences, tracks and clips and points to media files on the original computer. EYAD VIDEO decompresses and validates it, follows its internal references, and rebuilds sequences, tracks, clip timing, media references and markers where it can.'),
+        ul(['Media is never inside a .prproj, so every file starts as MEDIA OFFLINE. Use Relink to pick each file on this device (or select several at once to match by name).',
+          'Effects, transitions, audio processing and keyframes are detected and listed in the import report, but not reproduced.',
+          'Nested and multicam sequences, graphics/titles, captions and other proprietary features appear as offline placeholders or are reported as unsupported.',
+          'Structure varies between Premiere versions; unusual projects may import partially. The report always says what happened.'])),
+      sec('projects', 'Projects & saving',
+        ul(['Save (Ctrl/Cmd+S) stores the project in this browser in the native .eyad format; find it under Projects.',
+          'Autosave keeps a recovery copy of unsaved work. If the tab closes or crashes, reopening the editor offers Restore or Discard.',
+          'Download .eyad to back up or move a project. Video projects can embed their media in the file.',
+          'Browsers may clear storage when the device is low on space — use “Make storage persistent” on the Projects page, and download important work.'])),
+      sec('mobile', 'Phones & tablets',
+        ul(['Both editors have a dedicated touch layout: a top bar with undo/redo/save, a tool dock at the bottom, and panels as swipe-down sheets.',
+          'Image: pinch to zoom, two-finger drag to pan, long-press for the context menu, double-tap text to edit, double-tap empty canvas to fit. Stylus pressure changes brush size where the browser reports it.',
+          'Video: tap a clip to select it, then drag to move or pull its edges to trim; the dock has Split, Delete, Media, Effects, Properties and Audio.',
+          'Install the Studio (browser menu ▸ Install / Add to Home Screen) to use it like an app, including offline.'])),
+      sec('keys', 'Keyboard shortcuts', p('Ctrl on Windows/Linux, ⌘ on Mac. Press Ctrl/Cmd+K anywhere in an editor for the command palette.'), shortcutsTable()),
+      sec('privacy', 'Privacy & security',
+        ul(['No server and no upload: all processing happens in your browser.',
+          'Imported files are treated as untrusted: formats are detected from their contents, sizes are capped, names are sanitised, SVGs are rasterised without running scripts, and project files are parsed as data — nothing in them is ever executed.',
+          'EYAD STUDIO is Eyad Ayman’s own software. It is inspired by professional creative apps but is not made by, affiliated with or endorsed by Adobe.']),
+        h('p', {}, h('a', { class: 'studio-btn is-small', href: ROUTES.home, text: '← Back to Studio' }))))));
