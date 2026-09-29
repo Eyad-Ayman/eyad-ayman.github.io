@@ -41,6 +41,7 @@
 <link rel="stylesheet" href="./assets/css/style.css">
 <link rel="stylesheet" href="./assets/css/studio-transition.css">
 <link rel="stylesheet" href="./assets/css/showreel.css">
+<link rel="stylesheet" href="./assets/css/additions.css">
 <link href="https://fonts.gstatic.com" rel="preconnect" crossorigin="anonymous">
 <link href="https://fonts.googleapis.com" rel="preconnect">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@800;900&family=Caveat:wght@600;700&display=swap">
@@ -200,7 +201,7 @@
               <div class="nav-links"><a href="#Motion" class="nav-link-big w-nav-link">Motion</a></div>
               <div class="nav-links"><a href="#mylinks" class="nav-link-big w-nav-link">Contact</a></div>
               <div class="nav-links"><a href="#tools" class="nav-link-big w-nav-link">Tools</a></div>
-              <div class="nav-links"><a href="./studio/" class="nav-link-big w-nav-link" title="EYAD STUDIO — image &amp; video editor">Studio ↗</a></div>
+              <div class="nav-links"><a href="./studio/" class="nav-link-big w-nav-link" data-studio-link title="EYAD STUDIO — image, vector &amp; video editor">Studio ↗</a></div>
               <div class="nav-links"><button type="button" class="nav-link-big theme-toggle" id="theme-toggle" aria-label="Toggle dark mode"><span id="theme-toggle-label">Dark</span></button></div>
             </div>
           </div>
@@ -459,14 +460,6 @@
     </div>
   </div>
 
-  <div class="full-bleed-break">
-    <video loop muted playsinline preload="none" data-lazy-video poster="./assets/images/hero/loop-poster.webp" data-media-poster-key="fullbleed-video-poster">
-      <source src="./assets/images/hero/loop.webm" type="video/webm" data-media-key="fullbleed-video">
-    </video>
-    <span class="full-bleed-caption">Behind The Work <br> Eyad Ayman</span>
-    <span class="handwritten-note full-bleed-note">the art speaks &#9825;</span>
-  </div>
-
   <div class="showreel-strip-wrap" data-showreel-wrap>
     <div class="showreel-head">
       <div class="showreel-head-text">
@@ -479,6 +472,39 @@
       </div>
     </div>
     <div class="showreel-strip" data-showreel-strip></div>
+  </div>
+
+  <!-- Behind The Work — sits under the Reels row. The full-bleed loop stays
+       exactly as it was; the process strip below it tells the story from
+       first idea to final piece, then hands off to EYAD STUDIO. -->
+  <div class="btw" id="behind-the-work">
+    <div class="full-bleed-break">
+      <video loop muted playsinline preload="none" data-lazy-video poster="./assets/images/hero/loop-poster.webp" data-media-poster-key="fullbleed-video-poster">
+      <source src="./assets/images/hero/loop.webm" type="video/webm" data-media-key="fullbleed-video">
+      </video>
+      <span class="full-bleed-caption">Behind The Work <br> Eyad Ayman</span>
+      <span class="handwritten-note full-bleed-note">the art speaks &#9825;</span>
+    </div>
+
+    <div class="btw-inner">
+      <div class="btw-head reveal">
+        <span class="section-number">03.5 — Process</span>
+        <h3 class="btw-title">Behind<br>The Work</h3>
+        <p class="btw-lede">From a feeling to a finished frame. Scroll sideways through how a piece actually gets made.</p>
+      </div>
+      <ol class="btw-track" data-btw-track>
+        <li class="btw-step"><figure><img src="./assets/images/about/photo-1.jpg" alt="Eyad at work" loading="lazy"></figure><span class="btw-num">01</span><h4>Idea</h4><p>It starts with a feeling, not a brief. What should this make people feel?</p></li>
+        <li class="btw-step"><figure><img src="./assets/images/behance/05-nuqtat-al-ibtekar-offical.webp" alt="Logo work in progress" loading="lazy"></figure><span class="btw-num">02</span><h4>Sketch</h4><p>Rough shapes, type, layout. Fast and ugly on purpose.</p></li>
+        <li class="btw-step"><figure><img src="./assets/images/behance/02-mercedes-g63.webp" alt="Photo manipulation" loading="lazy"></figure><span class="btw-num">03</span><h4>Design</h4><p>Layers, masks, light. Building the frame piece by piece.</p></li>
+        <li class="btw-step"><figure><img src="./assets/images/instagram/17941573728332584.jpg" alt="Frame from a reel edit" loading="lazy"></figure><span class="btw-num">04</span><h4>Edit</h4><p>Cutting to the beat. Every frame earns its place or goes.</p></li>
+        <li class="btw-step"><figure><img src="./assets/images/hero/loop-poster.webp" alt="Motion still" loading="lazy"></figure><span class="btw-num">05</span><h4>Motion</h4><p>Timing, easing, grain. Where a still image starts to breathe.</p></li>
+        <li class="btw-step"><figure><img src="./assets/images/behance/09-travis-scott-ft-ferrari-poster.webp" alt="Finished poster" loading="lazy"></figure><span class="btw-num">06</span><h4>Final</h4><p>Export, deliver, move on to the next one.</p></li>
+      </ol>
+      <div class="btw-bridge reveal">
+        <p class="btw-bridge-line">Made with the same tools I use to create.</p>
+        <a href="./studio/" class="btw-bridge-cta" data-studio-link>Enter EYAD Studio <span aria-hidden="true">&#8599;</span></a>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -495,6 +521,24 @@
       </div>
       <span class="section-number reveal">04 — Free Tools</span>
       <div class="reveal title-wrap-standard"><h2 class="about-me-title">Tools<span class="handwritten-inline">actually useful, promise</span></h2></div>
+      <a href="./studio/" class="studio-portal reveal" data-studio-link aria-label="Enter EYAD STUDIO — image, vector and video editor in your browser">
+        <span class="sp-chrome" aria-hidden="true"><i></i><i></i><i></i><b>eyad-studio — workspace</b><em>2027</em></span>
+        <span class="sp-stage" aria-hidden="true">
+          <span class="sp-shot sp-a"><img src="./assets/images/behance/02-mercedes-g63.webp" alt="" loading="lazy"></span>
+          <span class="sp-shot sp-b"><img src="./assets/images/behance/09-travis-scott-ft-ferrari-poster.webp" alt="" loading="lazy"></span>
+          <span class="sp-shot sp-c"><video muted loop playsinline preload="none" poster="./assets/images/hero/loop-poster.webp" data-sp-video><source src="./assets/images/hero/loop.webm" type="video/webm"></video></span>
+          <span class="sp-shot sp-d"><img src="./assets/images/behance/12-ford-mustang-classic-poster.webp" alt="" loading="lazy"></span>
+          <span class="sp-shot sp-e"><img src="./assets/images/instagram/17941573728332584.jpg" alt="" loading="lazy"></span>
+          <span class="sp-timeline"><i style="--w:34%"></i><i style="--w:22%"></i><i style="--w:28%"></i><u></u></span>
+        </span>
+        <span class="sp-copy">
+          <span class="sp-kicker">New &mdash; built into this site</span>
+          <span class="sp-title">EYAD<br>STUDIO</span>
+          <span class="sp-apps"><span>Image</span><span>Vector</span><span>Video</span><span>Motion</span><span>Design</span></span>
+          <span class="sp-desc">Photoshop-, Illustrator- and Premiere-style editing in your browser. PSD, layers, pen, keyframes, on-device AI. Free, nothing uploaded.</span>
+          <span class="sp-cta">Enter Studio <span aria-hidden="true">&#8599;</span></span>
+        </span>
+      </a>
       <div class="tools-launcher-grid reveal">
         <button type="button" class="tools-launcher-card" data-tool-src="./tools/qr-code/index.html" data-tool-title="QR Code Maker">
           <span class="tools-launcher-title">QR Code Maker</span>
@@ -756,5 +800,6 @@
 <script src="./assets/js/gallery-feed.js"></script>
 <script src="./assets/js/showreel.js"></script>
 <script src="./assets/js/content-loader.js"></script>
+<script src="./assets/js/additions.js"></script>
 </body>
 </html>
