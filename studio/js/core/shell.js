@@ -7,7 +7,6 @@ export const STUDIO_ROOT = new URL('../../', import.meta.url);       // …/stud
 export const PORTFOLIO_ROOT = new URL('../', STUDIO_ROOT);            // site root
 
 import { windowControls, startTour, autoOfflinePack, installGuide, bugReportDialog, dock as xpDock } from './experience.js';
-import { initStudioV4 } from './studio-v4.js';
 
 export const ROUTES = {
   home: new URL('./', STUDIO_ROOT).href,
@@ -124,7 +123,6 @@ export function registerServiceWorker() {
 /** Common bootstrap for every Studio page. */
 export function bootStudio() {
   applyUiSettings();
-  initStudioV4();
   // Ctrl/Cmd + Alt + 1 / 2 / 3 → Image / Vector / Video (plain Ctrl+1 stays "100%" like desktop editors)
   addEventListener('keydown', (e) => {
     if (!(e.ctrlKey || e.metaKey) || !e.altKey || e.shiftKey) return;

@@ -707,31 +707,6 @@ function showReviewVideo(blob, name) {
   v.play().catch(() => {});
 }
 
-
-// ---------------------------------------------------------------- AI / social-style smart looks
-// These are local, deterministic presets built from EYAD's film engine — no upload.
-function buildSmartLooks() {
-  if (document.querySelector('.cam-smart-looks')) return;
-  const defs = [
-    ['flash', 'Flash Pop', 'ccd-party'],
-    ['y2k', 'Y2K CCD', 'ccd-2003'],
-    ['night', 'Night Flash', 'night-halo'],
-    ['film', 'Clean Film', 'cine-50d'],
-    ['disposable', 'Disposable', 'fairground'],
-    ['warm', 'Warm Skin', 'portrait-400'],
-    ['cool', 'Cool Street', 'ccd-blue-2004'],
-  ];
-  const bar = h('div', { class:'cam-smart-looks', 'aria-label':'AI smart looks' },
-    h('span',{class:'cam-smart-label'}, icon('sparkle',12), h('b',{text:'SMART LOOKS'})),
-    ...defs.map(([id,label,look]) => h('button',{
-      class:'cam-smart-chip', type:'button', dataset:{id},
-      title:`Smart look: ${label}`,
-      onclick:()=>selectLook(look,true)
-    }, h('span',{text:label})))
-  );
-  body.appendChild(bar);
-}
-
 // ---------------------------------------------------------------- keyboard
 addEventListener('keydown', (e) => {
   if (isTyping(e) || e.ctrlKey || e.metaKey || e.altKey) return;
@@ -750,7 +725,6 @@ document.addEventListener('visibilitychange', () => {
 addEventListener('pagehide', () => { stopStream(); if (micStream) micStream.getTracks().forEach((t) => t.stop()); renderer.dispose(); });
 
 // ---------------------------------------------------------------- boot
-buildSmartLooks();
 buildStrip();
 buildPanel();
 syncControls();

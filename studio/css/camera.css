@@ -262,17 +262,3 @@ html body.studio-app.cam-app.cam-app[data-theme] {
 @media (max-width: 420px) and (orientation: portrait) {
   .cam-brand .studio-brand-app { display: none; }
 }
-
-/* V4 smart-look rail */
-.cam-smart-looks {
-  position:absolute; left:50%; bottom:92px; transform:translateX(-50%);
-  z-index:18; display:flex; align-items:center; gap:6px; max-width:min(94vw,980px);
-  overflow:auto; padding:7px 9px; border:1px solid rgba(255,255,255,.12);
-  border-radius:999px; background:rgba(10,10,12,.62); color:#fff;
-  box-shadow:0 16px 50px rgba(0,0,0,.32), inset 0 1px rgba(255,255,255,.08);
-  backdrop-filter:blur(20px) saturate(1.35); -webkit-backdrop-filter:blur(20px) saturate(1.35);
-}
-.cam-smart-label { display:inline-flex; align-items:center; gap:5px; padding:0 7px; color:#ddd; font-size:9px; letter-spacing:.09em; white-space:nowrap; }
-.cam-smart-chip { border:1px solid rgba(255,255,255,.08); border-radius:999px; background:rgba(255,255,255,.06); color:#eee; padding:7px 10px; font-size:10px; white-space:nowrap; cursor:pointer; }
-.cam-smart-chip:hover { background:rgba(255,255,255,.14); transform:translateY(-1px); }
-@media(max-width:760px){ .cam-smart-looks{left:8px;right:8px;bottom:84px;transform:none;max-width:none}.cam-smart-label{display:none} }

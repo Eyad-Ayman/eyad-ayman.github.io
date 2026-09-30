@@ -740,38 +740,3 @@ html.xp-force-desktop .studio-app { min-width: 1024px; }
 .img-top-apps .studio-switcher-item.is-active span { display: inline; }
 @media (max-width: 1360px) { .img-top-apps .studio-switcher-item.is-active span { display: none; } }
 @media (max-width: 420px) { .xp-menubar .studio-brand-app { display: none; } }
-
-/* =====================================================================
-   EYAD STUDIO V4 — spatial / studio chrome
-   Replaces the old desktop-window feel with a floating creative room.
-   ===================================================================== */
-:root[data-eyad-v4="1"] .studio-app {
-  --st-accent: var(--eyad-accent, #ff3045);
-  --st-accent-hi: var(--eyad-accent, #ff3045);
-}
-:root[data-eyad-v4="1"] .xp-wcs {
-  display:flex !important; align-items:center; gap:6px; padding:5px 7px;
-  border:1px solid rgba(255,255,255,.10); border-radius:999px;
-  background:rgba(18,18,20,.55); box-shadow:0 8px 28px rgba(0,0,0,.2);
-  backdrop-filter:blur(18px) saturate(1.25); -webkit-backdrop-filter:blur(18px) saturate(1.25);
-}
-:root[data-eyad-v4="1"] .xp-wc {
-  width:auto !important; height:26px !important; min-width:28px; padding:0 9px !important;
-  border:1px solid rgba(255,255,255,.08) !important; border-radius:999px !important;
-  background:rgba(255,255,255,.055) !important; color:#eee !important;
-  display:inline-flex !important; align-items:center; gap:5px; font:600 9px/1 var(--st-ui) !important;
-  letter-spacing:.06em; text-transform:uppercase;
-}
-:root[data-eyad-v4="1"] .xp-wc:hover { background:rgba(255,255,255,.12) !important; transform:translateY(-1px); }
-:root[data-eyad-v4="1"] .xp-wc.is-home { background:rgba(255,48,69,.15) !important; }
-:root[data-eyad-v4="1"] .xp-dock {
-  border:0 !important; background:transparent !important;
-  box-shadow:none !important; backdrop-filter:none !important;
-}
-:root[data-eyad-v4="1"] .xp-dock-shelf {
-  border:1px solid rgba(255,255,255,.10) !important;
-  border-radius:28px !important; background:rgba(18,18,20,.68) !important;
-  box-shadow:0 20px 70px rgba(0,0,0,.34), inset 0 1px rgba(255,255,255,.08) !important;
-  backdrop-filter:blur(24px) saturate(1.25); -webkit-backdrop-filter:blur(24px) saturate(1.25);
-}
-:root[data-eyad-v4="1"] .xp-dock-item { border-radius:18px !important; }

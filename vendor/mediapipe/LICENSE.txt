@@ -1,5 +1,0 @@
-MediaPipe Tasks Vision 0.10.14 (@mediapipe/tasks-vision)
-Copyright Google LLC. Licensed under the Apache License, Version 2.0.
-https://github.com/google-ai-edge/mediapipe  —  https://www.apache.org/licenses/LICENSE-2.0
-Vendored unmodified so EYAD AI runs from this site (no CDN) and works offline once cached.
-Models (.tflite) are downloaded on first use from Google (storage.googleapis.com/mediapipe-models) or from studio/models/ if you place them there.

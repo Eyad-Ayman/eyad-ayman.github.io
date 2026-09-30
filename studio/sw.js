@@ -6,7 +6,7 @@
  * cached shell offline; static files = cache first, refreshed in the background.
  */
 "use strict";
-var VERSION = "v4-spatial-20260930";
+var VERSION = "de18a702cf";
 var CACHE = "eyad-studio-" + VERSION;
 var SHELL = [
 "./3d/",
@@ -105,7 +105,6 @@ var SHELL = [
 "./js/core/lut.js",
 "./js/core/open.js",
 "./js/core/settings.js",
-"./js/core/studio-v4.js",
 "./js/core/shell.js",
 "./js/core/ui.js",
 "./js/core/zip.js",
@@ -129,7 +128,6 @@ var SHELL = [
 "./js/image/selection.js",
 "./js/image/tools.js",
 "./js/image/tools2.js",
-"./js/image/v4-effects.js",
 "./js/image/view.js",
 "./js/pages/common.js",
 "./js/pages/help.js",

@@ -11,7 +11,6 @@ import * as ai from './ai.js';
 import * as gen from './generate.js';
 import * as film from './filmlab.js';
 import * as artboards from './artboards.js';
-import * as v4fx from './v4-effects.js';
 import { experienceHelp } from '../core/experience.js';
 
 export function buildMenus(app) {
@@ -174,11 +173,7 @@ export function buildMenus(app) {
       { label: 'Distort', submenu: [adj('twirl'), adj('pinch'), adj('spherize'), adj('wave'), adj('ripple')] },
       { label: 'Noise', submenu: [adj('noise'), adj('reduceNoise'), adj('dustScratches'), adj('median'), adj('addGrain')] },
       { label: 'Pixelate', submenu: [adj('pixelate'), adj('halftone')] },
-      { label: 'Render', submenu: [
-        { label: 'Glow / Bloom', action: () => v4fx.glow(app), enabled: hasDoc, icon: 'sparkle' },
-        { label: 'Direct Flash Bloom', action: () => v4fx.flashBloom(app), enabled: hasDoc, icon: 'sparkle' },
-        { label: 'Optical Chromatic', action: () => v4fx.chromatic(app), enabled: hasDoc },
-        adj('clouds'), adj('vignette'), { separator: true },
+      { label: 'Render', submenu: [adj('clouds'), adj('vignette'), { separator: true },
         ...Object.entries(film.GENERATORS).map(([k, g]) => ({ label: g.label + '…', action: () => film.renderTextureDialog(app, k), enabled: hasDoc }))] },
       { label: 'Stylize', submenu: [{ label: 'Emboss', action: () => ops.quickOp(app, 'emboss'), enabled: hasDoc }, { label: 'Find Edges', action: () => ops.quickOp(app, 'findEdges'), enabled: hasDoc }, { label: 'Solarize', action: () => ops.quickOp(app, 'solarize'), enabled: hasDoc }, adj('oilPaint')] },
       { label: 'Other', submenu: [adj('highPass')] },

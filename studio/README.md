@@ -73,19 +73,3 @@ before the Studio existed). Instead:
 - **Windows:** double-click `Preview locally (Windows).bat` in the site folder.
 - **Mac/Linux:** run `local-preview/preview-mac-linux.sh`.
 Both serve the folder at http://localhost:8080/ — the same way GitHub Pages does.
-
-
-## V4 Spatial Studio upgrade
-
-The Studio now ships with a local, dependency-free spatial workspace layer:
-
-- Studio / Swag visual chrome instead of macOS traffic-light window styling.
-- Floating glass controls, grain, blur and configurable corner radius.
-- **Studio Control** panel (`Ctrl/Cmd + Alt + K`) for persistent UI customisation.
-- Freeform workspace mode: drag the image toolbar, options bar and inspector around the canvas.
-- New Studio windows and duplicated browser tabs.
-- **Font Lab**: import WOFF/WOFF2/TTF/OTF from the device, persist them in IndexedDB, and use them in the text tool; includes an online font discovery link.
-- Camera **Smart Looks** rail with local film-engine presets for direct flash, Y2K CCD, night flash, disposable, warm skin and street looks.
-- Image **Glow / Bloom**, **Direct Flash Bloom**, and **Optical Chromatic** effects as separate layers.
-- Template Store **Trending now** filter for quick trend-oriented starting points.
-- All runtime libraries remain local in `vendor/`; no new CDN/runtime dependency was added.
