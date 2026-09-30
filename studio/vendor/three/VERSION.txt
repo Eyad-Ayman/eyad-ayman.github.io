@@ -1,0 +1,5 @@
+three.js r186 (npm "three" 0.186.1), MIT — see LICENSE.
+Files are the npm build/ and examples/jsm/ sources, minified one-to-one with
+esbuild (no bundling). The bare specifier 'three' in the addons was rewritten
+to the relative path '../../three.module.js' (CSP forbids inline import maps).
+addons/libs/fflate.module.js is fflate 0.8.2, MIT — see addons/libs/fflate.LICENSE.txt.

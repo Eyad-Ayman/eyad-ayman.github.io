@@ -1,0 +1,235 @@
+{
+  "name": "EYAD Experience",
+  "short_name": "EYAD",
+  "description": "Eyad Ayman's creative suite \u2014 photo editing (PSD), vector design (SVG, PDF, .ai), video editing, 3D scenes, a film camera and templates. Runs on your device and works offline.",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": [
+    "window-controls-overlay",
+    "standalone"
+  ],
+  "orientation": "any",
+  "background_color": "#0b0b0c",
+  "theme_color": "#0b0b0c",
+  "categories": [
+    "photo",
+    "graphics",
+    "productivity",
+    "design"
+  ],
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "New image",
+      "url": "./image/?new=1",
+      "icons": [
+        {
+          "src": "icons/app-image.png",
+          "sizes": "96x96",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "New vector",
+      "url": "./vector/?new=1",
+      "icons": [
+        {
+          "src": "icons/app-vector.png",
+          "sizes": "96x96",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "New video",
+      "url": "./video/?new=1",
+      "icons": [
+        {
+          "src": "icons/app-video.png",
+          "sizes": "96x96",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "EYAD 3D",
+      "url": "./3d/",
+      "icons": [
+        {
+          "src": "icons/app-3d.png",
+          "sizes": "96x96",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "EYAD CAMERA",
+      "url": "./camera/",
+      "icons": [
+        {
+          "src": "icons/app-camera.png",
+          "sizes": "96x96",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Templates",
+      "url": "./templates/",
+      "icons": [
+        {
+          "src": "icons/app-templates.png",
+          "sizes": "96x96",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Projects",
+      "url": "./projects/",
+      "icons": [
+        {
+          "src": "icons/app-projects.png",
+          "sizes": "96x96",
+          "type": "image/png"
+        }
+      ]
+    }
+  ],
+  "file_handlers": [
+    {
+      "action": "./image/",
+      "accept": {
+        "image/vnd.adobe.photoshop": [
+          ".psd",
+          ".psb"
+        ],
+        "image/png": [
+          ".png"
+        ],
+        "image/jpeg": [
+          ".jpg",
+          ".jpeg"
+        ],
+        "image/webp": [
+          ".webp"
+        ],
+        "application/x-cube-lut": [
+          ".cube"
+        ]
+      }
+    },
+    {
+      "action": "./vector/",
+      "accept": {
+        "image/svg+xml": [
+          ".svg"
+        ],
+        "application/pdf": [
+          ".pdf"
+        ],
+        "application/illustrator": [
+          ".ai"
+        ],
+        "application/x-figma": [
+          ".fig"
+        ],
+        "application/postscript": [
+          ".eps"
+        ]
+      }
+    },
+    {
+      "action": "./video/",
+      "accept": {
+        "application/x-eyad-project": [
+          ".eyad"
+        ],
+        "application/x-premiere-project": [
+          ".prproj"
+        ],
+        "video/mp4": [
+          ".mp4"
+        ],
+        "video/webm": [
+          ".webm"
+        ]
+      }
+    },
+    {
+      "action": "./3d/",
+      "accept": {
+        "model/gltf-binary": [
+          ".glb"
+        ],
+        "model/gltf+json": [
+          ".gltf"
+        ],
+        "model/obj": [
+          ".obj"
+        ],
+        "model/stl": [
+          ".stl"
+        ],
+        "application/octet-stream": [
+          ".fbx"
+        ]
+      }
+    }
+  ],
+  "launch_handler": {
+    "client_mode": "focus-existing"
+  },
+  "share_target": {
+    "action": "./share-target/",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "title": "title",
+      "files": [
+        {
+          "name": "files",
+          "accept": [
+            "image/*",
+            "video/*",
+            "audio/*",
+            ".psd",
+            ".psb",
+            ".eyad",
+            ".prproj",
+            ".svg",
+            ".pdf",
+            ".ai",
+            ".fig",
+            ".glb",
+            ".obj",
+            ".stl",
+            ".cube"
+          ]
+        }
+      ]
+    }
+  }
+}

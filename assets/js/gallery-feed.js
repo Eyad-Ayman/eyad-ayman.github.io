@@ -1,0 +1,277 @@
+// Renders one mixed "Gallery of Work" grid combining your real Behance
+// projects (data/behance.json) and your real Instagram posts
+// (data/instagram.json) as a single interleaved set of tiles. The
+// static markup in index.html is a same-page fallback (Behance only)
+// in case this fetch fails, so this only needs to run once new data
+// is added on either side.
+//
+// Behance stays in sync automatically via .github/workflows/behance-sync.yml.
+// Instagram needs data/instagram.json populated — see INSTAGRAM_SETUP.md —
+// until then this just shows Behance alone, same as before.
+
+(function () {
+  "use strict";
+
+  var grid = document.querySelector("[data-mixed-gallery]");
+  if (!grid) return;
+
+  // Every value interpolated into the HTML template below comes from an
+  // external source (Instagram captions, Behance titles/URLs) rather than
+  // hand-written markup. Only escaping quotes (the old approach) still lets
+  // a caption containing "<" or "&" corrupt the DOM, or a crafted caption
+  // break out of an attribute and inject real HTML/script. Escape properly.
+  var escapeEl = document.createElement("div");
+  function escapeHtml(str) {
+    escapeEl.textContent = str == null ? "" : String(str);
+    return escapeEl.innerHTML;
+  }
+
+  // Only ever render a URL as an href/src if it's a real http(s) link or a
+  // relative path to our own assets — blocks a "javascript:" or "data:"
+  // scheme from a compromised/unexpected API response ever executing.
+  function safeUrl(str) {
+    var s = str == null ? "" : String(str);
+    if (/^(https?:)?\/\//i.test(s) || s.indexOf("./") === 0 || s.indexOf("/") === 0) {
+      return escapeHtml(s);
+    }
+    return "";
+  }
+
+  function safeFetch(url) {
+    return fetch(url, { cache: "no-store" })
+      .then(function (res) { return res.ok ? res.json() : null; })
+      .catch(function () { return null; });
+  }
+
+  // data/gallery-snapshot.js is a copy of the two JSON files loaded as a
+  // plain script. It is only used when the fetch can't run (the page opened
+  // straight from disk, or offline) so the gallery still renders as the same
+  // mixed Behance + Instagram grid instead of the bare fallback markup.
+  var snapshot = window.__EYAD_GALLERY_SNAPSHOT__ || {};
+
+  Promise.all([safeFetch("./data/behance.json"), safeFetch("./data/instagram.json")]).then(
+    function (results) {
+      var behance = results[0] || snapshot.behance || null;
+      var instagram = results[1] || snapshot.instagram || null;
+
+      var items = [];
+
+      if (behance && Array.isArray(behance.projects)) {
+        behance.projects.forEach(function (p) {
+          items.push({
+            type: "behance",
+            image: "./assets/images/behance/" + p.file,
+            url: p.url,
+            caption: p.title || "Untitled project",
+          });
+        });
+      }
+
+      if (instagram && Array.isArray(instagram.posts) && instagram.posts.length > 0) {
+        instagram.posts.forEach(function (post) {
+          items.push({
+            type: "instagram",
+            image: post.image,
+            isVideo: !!post.isVideo,
+            videoUrl: post.isVideo ? (post.videoUrl || null) : null,
+            url: post.permalink,
+            caption: post.caption || "@eyadayman__ on Instagram",
+          });
+        });
+      }
+
+      if (items.length === 0) {
+        // Keep the static Behance-only fallback markup as-is, but still
+        // reveal its tiles — they never get touched by the code below.
+        grid.querySelectorAll(".project-tile").forEach(function (t) {
+          t.classList.add("tile-visible");
+        });
+        return;
+      }
+
+      // Interleave Instagram posts evenly through the Behance projects
+      // instead of just concatenating, so it reads as one mixed set
+      // rather than "Behance, then Instagram stapled on the end".
+      var behanceItems = items.filter(function (i) { return i.type === "behance"; });
+      var instaItems = items.filter(function (i) { return i.type === "instagram"; });
+      var mixed = [];
+      var ratio = instaItems.length > 0 ? Math.ceil(behanceItems.length / instaItems.length) : Infinity;
+      var bi = 0, ii = 0;
+      while (bi < behanceItems.length || ii < instaItems.length) {
+        for (var k = 0; k < ratio && bi < behanceItems.length; k++) {
+          mixed.push(behanceItems[bi++]);
+        }
+        if (ii < instaItems.length) mixed.push(instaItems[ii++]);
+      }
+
+      var tileHtml = mixed
+        .map(function (item, i) {
+          var title = escapeHtml(item.caption);
+          var linkUrl = safeUrl(item.url);
+          var imgUrl = safeUrl(item.image);
+          var vidUrl = item.videoUrl ? safeUrl(item.videoUrl) : "";
+          var badge = item.type === "instagram" ? "Instagram" : "Behance";
+          // Real Instagram Reels play automatically right in the grid
+          // (muted + loop, same as Instagram/TikTok grid previews — browsers
+          // require muted for unattended autoplay) instead of sitting as a
+          // static thumbnail. Behance covers stay images since the profile
+          // scrape only ever gives a cover photo, never the video file.
+          //
+          // Some Instagram videos come back from the API with no direct
+          // media_url at all (an Instagram-side inconsistency, not
+          // something we can request around) — Instagram's own embed for
+          // those requires a click and drags in its own branded UI, which
+          // doesn't belong on this site, so those just stay a thumbnail.
+          // onload marks the image so CSS can drop the reserved placeholder
+          // ratio — without it a lazy image has zero height until it loads,
+          // collapsing its tile and making the masonry columns jump around
+          // as you scroll (very noticeable on a phone).
+          var media = vidUrl
+            ? '<video src="' + vidUrl + '" poster="' + imgUrl + '" muted loop playsinline preload="metadata" data-autoplay-video></video>'
+            : '<img src="' + imgUrl + '" loading="lazy" alt="' + title + '" data-onload-reveal>';
+          // Small play-icon badge marks every video post as a video —
+          // both the ones playing live and the ones stuck as a thumbnail
+          // (no direct file from Instagram to actually play) — same
+          // convention Instagram's own grid uses. Not a fake "click to
+          // play" control, just a label.
+          var playBadge = item.isVideo
+            ? '<span class="project-play-badge" aria-hidden="true"><svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></span>'
+            : "";
+          return (
+            '<a href="' + linkUrl + '" target="_blank" rel="noopener noreferrer" title="' + title + ' — View on ' + badge + '" class="project-tile gallery-tile gallery-tile-' + item.type + '">' +
+              '<div class="project-photo">' + media + playBadge + "</div>" +
+              '<div class="project-caption"><span class="project-name">' + title + '</span><span class="project-index">' + badge + "</span></div>" +
+            "</a>"
+          );
+        });
+
+      // Split into N plain column divs and hand tiles out round-robin,
+      // instead of the CSS `columns:` multi-column layout this used to be.
+      // With 49 real tiles of very different aspect ratios, that element's
+      // getComputedStyle().height (~7600px) and its real rendered height
+      // (~3600px) disagreed under some test conditions — a genuine
+      // CSS-reported-vs-painted mismatch, whatever exactly triggers it.
+      // Plain column divs sidestep the question entirely: no balancing
+      // algorithm involved, so there's nothing to compute wrong — each
+      // column's height is just the real sum of its own children.
+      // Mirrors the two breakpoints the old columns: N Wpx rule used
+      // (5 260px desktop, 2 150px at <=767px) so the visual density stays
+      // the same as before.
+      function columnCountFor() {
+      var isMobile = window.innerWidth <= 767;
+      var colWidth = isMobile ? 150 : 260;
+      var colGap = isMobile ? 18 : 28;
+      var maxColumns = isMobile ? 2 : 5;
+      // grid.getBoundingClientRect().width measured 0 (or near it) here on
+      // a real run despite window.innerWidth being a normal 1280 at the
+      // same instant — a real layout-timing race, not guessed: caught by
+      // checking gridCols after a live render and finding 1 instead of the
+      // expected 3+. window.innerWidth is available immediately with no
+      // dependency on this element's own layout having settled yet, so
+      // it's the primary source now; the grid's own width is only used
+      // when it's already sane (order of magnitude bigger than one column)
+      var measuredWidth = grid.getBoundingClientRect().width;
+      var gridWidth = measuredWidth > colWidth ? measuredWidth : window.innerWidth - 64;
+      return Math.max(1, Math.min(maxColumns, Math.floor((gridWidth + colGap) / (colWidth + colGap))));
+      }
+      var columnCount = columnCountFor();
+      var columns = [];
+      for (var c = 0; c < columnCount; c++) columns.push([]);
+      tileHtml.forEach(function (html, i) { columns[i % columnCount].push(html); });
+      grid.innerHTML = columns
+        .map(function (colTiles) { return '<div class="project-grid-col">' + colTiles.join("") + "</div>"; })
+        .join("");
+
+      // Re-deal the same tile elements into the right number of columns when
+      // the window is resized (rotating a phone, resizing a desktop window),
+      // so the grid keeps the same density instead of the count it got on load.
+      var resizeTimer = 0;
+      window.addEventListener("resize", function () {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(function () {
+          var next = columnCountFor();
+          if (next === columnCount) return;
+          columnCount = next;
+          var all = Array.prototype.slice.call(grid.querySelectorAll(".project-tile"));
+          all.sort(function (a, b) { return a.__order - b.__order; });
+          var cols = [];
+          for (var c = 0; c < columnCount; c++) {
+            var col = document.createElement("div");
+            col.className = "project-grid-col";
+            cols.push(col);
+          }
+          all.forEach(function (t, i) { cols[i % columnCount].appendChild(t); });
+          grid.replaceChildren.apply(grid, cols);
+        }, 150);
+      });
+
+      // Moved off an inline onload="..." attribute (inline event handlers
+      // are a real weak spot: they only work with 'unsafe-inline' allowed
+      // in a script-src CSP, which defeats most of the point of having one).
+      grid.querySelectorAll("[data-onload-reveal]").forEach(function (img) {
+        img.addEventListener("load", function () { img.classList.add("is-loaded"); });
+      });
+
+      // Tiles cascade in one at a time as they scroll into view, instead
+      // of the whole grid fading in as one flat block — a staggered delay
+      // based on each tile's position in the grid, capped so a big batch
+      // scrolling in at once doesn't take forever to finish revealing.
+      var tiles = grid.querySelectorAll(".project-tile");
+      // Remember each tile's original position (round-robin across columns)
+      // so a resize can re-deal them in the same reading order.
+      grid.querySelectorAll(".project-grid-col").forEach(function (col, c) {
+        Array.prototype.forEach.call(col.children, function (t, r) { t.__order = r * columnCount + c; });
+      });
+      if (tiles.length && "IntersectionObserver" in window) {
+        var revealObserver = new IntersectionObserver(
+          function (entries, observer) {
+            entries.forEach(function (entry) {
+              if (!entry.isIntersecting) return;
+              var i = Array.prototype.indexOf.call(tiles, entry.target);
+              var delay = Math.min(i % 6, 5) * 70;
+              entry.target.style.transitionDelay = delay + "ms";
+              entry.target.classList.add("tile-visible");
+              observer.unobserve(entry.target);
+            });
+          },
+          { threshold: 0.1, rootMargin: "0px 0px -40px 0px" }
+        );
+        tiles.forEach(function (t) { revealObserver.observe(t); });
+      } else {
+        tiles.forEach(function (t) { t.classList.add("tile-visible"); });
+      }
+
+      // Auto-play every Reel once it scrolls into view instead of all of
+      // them at once on page load — same result (no hover/click needed),
+      // far less bandwidth/CPU if there end up being a lot of them.
+      var videos = grid.querySelectorAll("[data-autoplay-video]");
+      if (videos.length && "IntersectionObserver" in window) {
+        var playObserver = new IntersectionObserver(
+          function (entries) {
+            entries.forEach(function (entry) {
+              if (entry.isIntersecting) {
+                entry.target.play().catch(function () {});
+              } else {
+                entry.target.pause();
+              }
+            });
+          },
+          { threshold: 0.35 }
+        );
+        videos.forEach(function (v) { playObserver.observe(v); });
+      } else {
+        videos.forEach(function (v) { v.play().catch(function () {}); });
+      }
+
+      // Moving the mouse off a tile stops that video immediately, on top
+      // of the scroll-based autoplay above.
+      videos.forEach(function (v) {
+        v.addEventListener("mouseleave", function () { v.pause(); });
+        v.addEventListener("mouseenter", function () {
+          var r = v.getBoundingClientRect();
+          if (r.top < window.innerHeight && r.bottom > 0) v.play().catch(function () {});
+        });
+      });
+    }
+  );
+})();

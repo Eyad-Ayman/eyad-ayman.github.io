@@ -1,0 +1,39 @@
+/* EYAD Generate — dialogs and panel for generative tools in EYAD IMAGE.
+   Loaded on demand by js/image/generate.js (uses the Studio design tokens). */
+.gen-form { display: flex; flex-direction: column; gap: 10px; }
+.gen-form textarea.studio-input { min-height: 64px; height: auto; resize: vertical; padding: 8px; line-height: 1.4; font: inherit; }
+.gen-form .studio-field { grid-template-columns: 1fr; gap: 4px; }
+.gen-form .studio-field .studio-input { width: 100%; box-sizing: border-box; }
+.gen-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; }
+.gen-row .studio-field { margin: 0; }
+.gen-seed { display: flex; gap: 6px; align-items: center; }
+.gen-seed .studio-input { flex: 1; min-width: 0; }
+.gen-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.gen-status { font-size: 12px; color: var(--st-dim); min-height: 1.4em; }
+.gen-status.is-error { color: var(--st-err); }
+.gen-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; }
+.gen-grid:empty { display: none; }
+.gen-thumb { position: relative; padding: 0; border: 1px solid var(--st-line-2); border-radius: 8px; overflow: hidden; background: var(--st-panel-2); cursor: pointer; aspect-ratio: var(--gen-ar, 1); display: grid; place-items: center; color: var(--st-dim); font-size: 11px; }
+.gen-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.gen-thumb:hover, .gen-thumb:focus-visible { outline: 2px solid var(--st-accent); outline-offset: 1px; }
+.gen-thumb.is-pending { cursor: progress; background: repeating-linear-gradient(135deg, var(--st-panel-2) 0 10px, var(--st-hover) 10px 20px); background-size: 28px 28px; animation: gen-stripes 1s linear infinite; }
+.gen-thumb.is-failed { cursor: default; color: var(--st-err); padding: 6px; text-align: center; }
+.gen-thumb em { position: absolute; left: 4px; bottom: 4px; font-style: normal; font-size: 10px; padding: 1px 5px; border-radius: 4px; background: rgba(0, 0, 0, .55); color: #fff; }
+@keyframes gen-stripes { to { background-position: 28px 0; } }
+.gen-note { font-size: 11.5px; color: var(--st-dim); line-height: 1.5; }
+.gen-note strong { color: var(--st-text); }
+.gen-details summary { cursor: pointer; font-size: 12px; color: var(--st-dim); }
+.gen-details[open] summary { margin-bottom: 6px; }
+.gen-check { display: flex; align-items: center; gap: 8px; font-size: 12.5px; cursor: pointer; }
+.gen-consent p { margin: 0; line-height: 1.5; }
+.gen-consent-list { margin: 0; padding-left: 18px; font-size: 12.5px; line-height: 1.5; color: var(--st-dim); display: flex; flex-direction: column; gap: 4px; }
+.gen-sides { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.gen-seg { display: flex; gap: 4px; }
+.gen-seg .studio-btn.is-on { background: var(--st-accent-soft); border-color: var(--st-accent); color: var(--st-accent); }
+.gen-model { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 8px 10px; border-radius: 8px; background: var(--st-panel-2); font-size: 12px; }
+.gen-model .gen-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--st-faint); flex: none; }
+.gen-model .gen-dot.is-ok { background: var(--st-ok); }
+.gen-model .gen-dot.is-busy { background: var(--st-warn); }
+.gen-model .gen-dot.is-err { background: var(--st-err); }
+.gen-model span { flex: 1; min-width: 140px; color: var(--st-dim); }
+@media (prefers-reduced-motion: reduce) { .gen-thumb.is-pending { animation: none; } }

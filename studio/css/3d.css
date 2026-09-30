@@ -1,0 +1,194 @@
+/* EYAD 3D — reuses the EYAD IMAGE workspace layout (.img-*) and adds the
+   WebGL viewport, HUD, timeline and 3D panels. Scoped to .t3-app. */
+
+.t3-app .img-main { grid-template-columns: 46px minmax(0, 1fr) 304px; }
+.t3-app .img-center { position: relative; }
+
+/* ---------- viewport */
+.t3-stage { touch-action: none; }
+.t3-canvas { position: absolute; inset: 0; width: 100% !important; height: 100% !important; display: block; outline: none; touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.t3-stage.is-transparent { background: repeating-conic-gradient(#2a2a2a 0% 25%, #353535 0% 50%) 50% / 20px 20px; }
+.studio-app:not([data-theme="dark"]) .t3-stage.is-transparent { background: repeating-conic-gradient(#d8d8d8 0% 25%, #efefef 0% 50%) 50% / 20px 20px; }
+
+.t3-hud { position: absolute; left: 10px; top: 10px; z-index: 3; display: flex; align-items: center; gap: 8px; pointer-events: none; }
+.t3-hud-btn { pointer-events: auto; display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border-radius: 14px; border: 1px solid rgba(255, 255, 255, .14); background: rgba(16, 16, 18, .62); color: #ececea; font: 500 11.5px var(--st-ui); cursor: pointer; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+.t3-hud-btn:hover { background: rgba(16, 16, 18, .8); }
+.t3-hud-btn .studio-icon:last-child { opacity: .7; }
+.t3-hud-note:empty { display: none; }
+.t3-hud-note { color: #ececea; background: rgba(16, 16, 18, .62); padding: 3px 8px; border-radius: 10px; }
+
+.t3-empty { position: absolute; left: 0; right: 0; bottom: 18px; z-index: 2; display: flex; justify-content: center; padding: 0 14px; pointer-events: none; }
+.t3-empty[hidden] { display: none; }
+.t3-empty-card { pointer-events: auto; max-width: 520px; width: 100%; padding: 16px 18px; border-radius: var(--st-radius-lg); background: color-mix(in srgb, var(--st-panel) 92%, transparent); border: 1px solid var(--st-line-2); box-shadow: var(--st-shadow); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); text-align: center; }
+.studio-app .t3-empty-title { font-family: var(--st-display); font-weight: 700; font-size: 30px; text-transform: uppercase; letter-spacing: .01em; line-height: 1; margin: 6px 0 8px; }
+.t3-empty-card p { margin: 0 auto 12px; max-width: 420px; font-size: 12.5px; }
+.t3-empty-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+
+/* ---------- options bar */
+.t3-options .img-seg .studio-btn { height: 24px; padding: 0 8px; gap: 5px; }
+.t3-options .studio-btn.is-on { background: var(--st-accent-soft); color: var(--st-accent-hi); border-color: transparent; }
+.t3-options .img-opt-items { gap: 8px; }
+
+/* ---------- timeline */
+.t3-timeline { flex: none; display: flex; align-items: center; gap: 10px; min-height: 58px; padding: 6px 10px; background: var(--st-panel); border-top: 1px solid var(--st-line); }
+.t3-tl-transport { display: flex; align-items: center; gap: 2px; flex: none; }
+.t3-tl-play { background: var(--st-accent); color: #fff; }
+.t3-tl-play:hover { background: var(--st-accent-hi); color: #fff; }
+.t3-tl-time { min-width: 92px; padding-left: 6px; color: var(--st-text); font-size: 11px; }
+.t3-tl-track { position: relative; flex: 1; min-width: 80px; height: 46px; border-radius: 6px; background: var(--st-bg); border: 1px solid var(--st-line); cursor: pointer; touch-action: none; overflow: hidden; outline: none; }
+.t3-tl-track:focus-visible { border-color: var(--st-accent); }
+.t3-tl-ruler { position: absolute; left: 0; right: 0; top: 0; height: 14px; border-bottom: 1px solid var(--st-line); }
+.t3-tick { position: absolute; top: 1px; transform: translateX(3px); font: 9.5px var(--st-mono); color: var(--st-faint); white-space: nowrap; pointer-events: none; }
+.t3-tick::before { content: ''; position: absolute; left: -3px; top: -1px; width: 1px; height: 14px; background: var(--st-line-2); }
+.t3-tl-row { position: absolute; left: 0; right: 0; height: 15px; }
+.t3-tl-row.is-obj { top: 15px; }
+.t3-tl-row.is-cam { top: 30px; }
+.t3-tl-row::before { content: attr(data-label); position: absolute; left: 6px; top: 1px; font-size: 9.5px; color: var(--st-faint); pointer-events: none; white-space: nowrap; max-width: 40%; overflow: hidden; text-overflow: ellipsis; }
+.t3-tl-row.is-cam::before { content: 'Camera'; }
+.t3-dia { position: absolute; top: 2px; width: 11px; height: 11px; margin-left: -5.5px; padding: 0; border: 1px solid rgba(0, 0, 0, .45); background: #f2b134; transform: rotate(45deg); border-radius: 2px; cursor: ew-resize; z-index: 2; touch-action: none; }
+.t3-tl-row.is-cam .t3-dia { background: #5aa2ff; }
+.t3-dia.is-now { box-shadow: 0 0 0 2px var(--st-text); }
+.t3-dia::after { content: ''; position: absolute; inset: -8px; }
+.t3-tl-head { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: var(--st-accent); pointer-events: none; z-index: 3; }
+.t3-tl-head::before { content: ''; position: absolute; top: 0; left: -4px; border: 5px solid transparent; border-top-color: var(--st-accent); }
+.t3-tl-tools { display: flex; align-items: center; gap: 4px; flex: none; }
+.t3-tl-key { gap: 5px; }
+.t3-tl-auto { gap: 6px; }
+.t3-rec-dot { width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid var(--st-faint); }
+.t3-tl-auto.is-on { border-color: var(--st-accent); color: var(--st-accent-hi); }
+.t3-tl-auto.is-on .t3-rec-dot { background: var(--st-accent); border-color: var(--st-accent); }
+
+/* ---------- panels */
+.t3-panels { overflow-y: auto; }
+.t3-panel.is-flash { box-shadow: inset 3px 0 0 var(--st-accent); }
+.t3-stack { display: flex; flex-direction: column; gap: 8px; }
+.t3-sub { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 2px; font-family: var(--st-display); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--st-faint); font-weight: 600; }
+.t3-sub .t3-check { text-transform: none; letter-spacing: 0; font-family: var(--st-ui); font-weight: 400; }
+.t3-row { display: grid; grid-template-columns: 82px minmax(0, 1fr); align-items: center; gap: 8px; font-size: 11.5px; color: var(--st-dim); }
+.t3-row-label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.t3-row-ctl { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.t3-row-ctl .studio-input { height: 26px; }
+.t3-grow { flex: 1; min-width: 0; }
+.t3-range { display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0; }
+.t3-range .studio-range { flex: 1; min-width: 0; }
+.t3-out { width: 40px; text-align: right; color: var(--st-text); }
+.t3-hex { color: var(--st-faint); }
+.t3-check { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--st-text); cursor: pointer; }
+.t3-checks { display: flex; flex-wrap: wrap; gap: 6px 14px; }
+.t3-checks.is-col { flex-direction: column; }
+.t3-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.t3-actions .studio-btn { gap: 5px; }
+.t3-xyz { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.t3-num { display: flex; align-items: center; min-width: 0; border: 1px solid var(--st-line-2); border-radius: 5px; background: var(--st-bg); overflow: hidden; }
+.t3-num:focus-within { border-color: var(--st-accent); }
+.t3-num-label { flex: none; align-self: stretch; display: grid; place-items: center; min-width: 20px; padding: 0 5px; font: 600 10px var(--st-mono); color: var(--st-dim); background: var(--st-panel-2); cursor: ew-resize; touch-action: none; user-select: none; }
+.t3-num.is-x .t3-num-label { color: #e5534b; }
+.t3-num.is-y .t3-num-label { color: #57b85f; }
+.t3-num.is-z .t3-num-label { color: #4d8ff0; }
+.t3-num .studio-input { border: 0; border-radius: 0; height: 26px; background: transparent; min-width: 0; padding: 0 5px; }
+.t3-num .studio-input:focus { border: 0; }
+.t3-row .t3-num { max-width: 110px; }
+.t3-name-row { display: flex; flex-direction: column; gap: 6px; }
+.t3-kind { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; color: var(--st-dim); }
+.t3-seg { width: 100%; }
+.t3-seg .studio-btn { flex: 1; height: 24px; padding: 0 6px; gap: 5px; font-size: 11px; }
+.t3-bgseg .img-seg { display: flex; }
+.t3-views { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+.t3-bm { display: flex; align-items: center; gap: 2px; }
+.t3-bm-go { flex: 1; min-width: 0; display: flex; align-items: center; gap: 7px; height: 28px; padding: 0 8px; border: 1px solid var(--st-line); border-radius: 6px; background: var(--st-raised); color: var(--st-text); cursor: pointer; font-size: 12px; text-align: left; }
+.t3-bm-go:hover { border-color: var(--st-accent); }
+.t3-bm-go span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.t3-bm-go em { font-style: normal; color: var(--st-faint); font-size: 10.5px; }
+.t3-keys { display: flex; flex-direction: column; gap: 3px; max-height: 180px; overflow-y: auto; }
+.t3-key { display: flex; align-items: center; gap: 6px; }
+.t3-key-t { display: inline-flex; align-items: center; gap: 5px; min-width: 76px; height: 26px; padding: 0 6px; border: 1px solid var(--st-line); border-radius: 5px; background: var(--st-raised); color: #f2b134; cursor: pointer; }
+.t3-key-t span { color: var(--st-text); }
+.t3-key .studio-input { height: 26px; flex: 1; }
+.t3-tex { display: flex; gap: 10px; align-items: center; }
+.t3-tex-thumb { width: 48px; height: 48px; flex: none; border-radius: 6px; border: 1px solid var(--st-line-2); overflow: hidden; display: grid; place-items: center; background: repeating-conic-gradient(#b8b8b8 0% 25%, #e8e8e8 0% 50%) 50% / 8px 8px; }
+.t3-tex-thumb.is-empty { background: var(--st-bg); color: var(--st-faint); }
+.t3-tex-thumb canvas { display: block; width: 48px; height: 48px; }
+.t3-tex-meta { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.t3-tex-meta > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* outliner */
+.img-panel.is-outliner { flex: none; }
+.img-panel.is-outliner .img-panel-body { padding: 0; gap: 0; }
+.t3-outliner { max-height: 260px; min-height: 60px; overflow-y: auto; padding: 2px 0; }
+.t3-out-row { display: flex; align-items: center; gap: 4px; height: 32px; padding-right: 4px; border-bottom: 1px solid color-mix(in srgb, var(--st-line) 60%, transparent); cursor: pointer; font-size: 12px; outline: none; }
+.t3-out-row:hover { background: var(--st-panel-2); }
+.t3-out-row:focus-visible { box-shadow: inset 0 0 0 1px var(--st-accent); }
+.t3-out-row.is-on { background: var(--st-accent-soft); box-shadow: inset 2px 0 0 var(--st-accent); }
+.t3-out-row.is-hidden .t3-out-name, .t3-out-row.is-hidden .t3-out-icon { opacity: .45; }
+.t3-out-icon { color: var(--st-faint); display: grid; place-items: center; width: 18px; }
+.t3-out-name { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.t3-out-badge { color: #f2b134; display: grid; place-items: center; }
+.t3-out-more { opacity: 0; }
+.t3-out-row:hover .t3-out-more, .t3-out-row.is-on .t3-out-more, .t3-out-row:focus-within .t3-out-more { opacity: 1; }
+.t3-out-rename { height: 24px; flex: 1; }
+.t3-out-foot { display: flex; align-items: center; gap: 2px; padding: 4px 6px 4px 10px; border-top: 1px solid var(--st-line); background: var(--st-panel-2); }
+
+/* sheets (phones) */
+.t3-sheet .img-panel { border: 0; }
+.t3-sheet .img-panel-head { display: none; }
+.t3-sheet .img-panel-body { padding: 4px 2px 10px; }
+.t3-sheet .t3-outliner { max-height: 48vh; }
+.t3-sheet .t3-out-row { height: 46px; }
+.t3-sheet .t3-out-more { opacity: 1; width: 36px; height: 36px; }
+.t3-sheet .img-layer-eye { width: 38px; height: 40px; }
+.t3-sheet .studio-input, .t3-sheet .t3-num .studio-input { height: 36px; font-size: 14px; }
+.t3-sheet .t3-num-label { min-width: 26px; }
+.t3-sheet .t3-row { grid-template-columns: 96px minmax(0, 1fr); font-size: 13px; }
+.t3-sheet .t3-check { font-size: 13px; min-height: 32px; }
+.t3-sheet .t3-seg .studio-btn { height: 34px; font-size: 12.5px; }
+.t3-sheet .studio-btn.is-small { height: 34px; padding: 0 12px; font-size: 12.5px; }
+.t3-sheet .t3-bm-go, .t3-sheet .t3-key-t { height: 38px; }
+.t3-sheet .studio-color { width: 44px; height: 34px; }
+
+/* help dialogs */
+.t3-shortcuts { display: flex; flex-direction: column; gap: 2px; }
+.t3-sc-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 6px 0; border-bottom: 1px solid var(--st-line); font-size: 12.5px; }
+.t3-sc-row .studio-kbd { white-space: normal; text-align: right; max-width: 60%; }
+.t3-sc-row.is-wide { flex-direction: column; align-items: flex-start; gap: 3px; }
+
+/* ---------- desktop tweaks */
+@media (max-width: 1180px) { .t3-app .img-main { grid-template-columns: 44px minmax(0, 1fr) 270px; } }
+@media (max-width: 960px) and (min-width: 761px), (orientation: landscape) and (max-height: 540px) and (min-width: 541px) {
+  .t3-app .img-main { grid-template-columns: 40px minmax(0, 1fr) 236px; }
+  .t3-app.is-panels-collapsed .img-main { grid-template-columns: 40px minmax(0, 1fr) 0; }
+  .t3-hide-s { display: none; }
+  .t3-tl-key span, .t3-tl-auto span:last-child { display: none; }
+}
+
+/* ---------- phone portrait: full-bleed viewport, compact timeline above the dock */
+@media (max-width: 760px) and (orientation: portrait), (max-width: 540px) {
+  .t3-app .img-main { grid-template-columns: minmax(0, 1fr); }
+  .t3-app .img-options { display: none; }
+  .t3-timeline { flex-wrap: wrap; gap: 6px 8px; min-height: 0; padding: 6px 8px; }
+  .t3-tl-transport { order: 1; }
+  .t3-tl-tools { order: 2; margin-left: auto; }
+  .t3-tl-track { order: 3; flex-basis: 100%; height: 44px; }
+  .t3-tl-time { min-width: 0; }
+  .t3-tl-btn { width: 36px; height: 36px; }
+  .t3-tl-tools .studio-btn.is-small { height: 32px; padding: 0 9px; }
+  .t3-dia { width: 13px; height: 13px; margin-left: -6.5px; top: 1px; }
+  .t3-hud { left: 8px; top: 8px; }
+  .t3-empty { bottom: 10px; }
+  .t3-empty-card { padding: 12px 14px; }
+  .studio-app .t3-empty-title { font-size: 24px; }
+  .t3-app .img-dock-tool.is-active { background: var(--st-accent); color: #fff; }
+}
+
+/* ---------- phone landscape: compact desktop, timeline stays one row */
+@media (orientation: landscape) and (max-height: 540px) and (min-width: 541px) {
+  .t3-app .img-options { min-height: 32px; }
+  .t3-timeline { min-height: 44px; padding: 3px 8px calc(3px + env(safe-area-inset-bottom)); gap: 6px; }
+  .t3-tl-track { height: 38px; }
+  .t3-tl-ruler { height: 10px; }
+  .t3-tick { font-size: 8.5px; top: 0; }
+  .t3-tl-row.is-obj { top: 10px; }
+  .t3-tl-row.is-cam { top: 24px; }
+  .t3-tl-time { min-width: 76px; font-size: 10px; }
+  .t3-empty-card p { display: none; }
+  .t3-app .img-toolbar { padding-bottom: env(safe-area-inset-bottom); }
+}

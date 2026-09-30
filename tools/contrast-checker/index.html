@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Contrast Checker — Eyad Ayman Tools</title>
+<meta name="viewport" content="width=device-width, height=device-height, initial-scale=1, minimum-scale=1, maximum-scale=5">
+<style>
+  :root { --accent: #d02b2a; --ink: #000; }
+  * { box-sizing: border-box; }
+  body { font-family: Inter, Arial, Helvetica, sans-serif; margin: 0; padding: 20px; color: #222; position: relative; background-color: #f6f1e6; }
+  .tool-header { margin-bottom: 16px; padding-bottom: 12px; border-bottom: 2px solid var(--ink); }
+  .tool-header h1 { font-size: 18px; margin: 0; letter-spacing: .5px; }
+
+  .layout { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  @media (max-width: 620px) { .layout { grid-template-columns: 1fr; } }
+
+  .field { margin-bottom: 16px; }
+  .field label { display: block; font-size: 13px; font-weight: 700; margin-bottom: 6px; }
+  .swatch-row { display: flex; align-items: center; gap: 10px; }
+  input[type="color"] { width: 44px; height: 36px; border: 1px solid #ccc; padding: 0; background: none; cursor: pointer; }
+  input[type="text"].hex { border: 1px solid #ccc; padding: 8px 10px; font-family: monospace; font-size: 14px; width: 110px; }
+
+  .swap-btn { border: 1px solid #000; background: #fff; padding: 8px 14px; font-family: inherit; font-size: 13px; cursor: pointer; margin-top: 4px; }
+  .swap-btn:hover { background: var(--ink); color: #fff; }
+
+  .preview {
+    border: 1px solid #000;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 8px;
+    min-height: 180px;
+  }
+  .preview .big { font-size: 28px; font-weight: 700; }
+  .preview .small { font-size: 14px; }
+
+  .ratio-card { border: 1px solid #000; padding: 18px; margin-top: 16px; background: #fff; }
+  .ratio-number { font-size: 40px; font-weight: 700; line-height: 1; }
+  .ratio-label { font-size: 12px; text-transform: uppercase; letter-spacing: .5px; color: #666; margin-top: 4px; }
+
+  .checks { margin-top: 14px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .check-item { border: 1px solid #ccc; padding: 10px 12px; font-size: 13px; display: flex; justify-content: space-between; align-items: center; }
+  .check-item .status { font-weight: 700; padding: 2px 8px; font-size: 11px; text-transform: uppercase; }
+  .pass { background: #1f8a3d; color: #fff; }
+  .fail { background: var(--accent); color: #fff; }
+
+  /* Self-hosted animated film-grain, matching the main site */
+  .noise-wrap { position: fixed; inset: 0; z-index: 100000; opacity: .85; pointer-events: none; overflow: hidden; mix-blend-mode: overlay; }
+  .noise-texture { position: absolute; width: 300%; height: 300%; left: -100%; top: -100%; background-image: url("/assets/images/texture/grain.png"); background-size: 220px 220px; background-repeat: repeat; animation: grain-shift 0.5s steps(4) infinite; }
+  @keyframes grain-shift {
+    0%   { transform: translate(0%, 0%); }
+    25%  { transform: translate(-3%, 2%); }
+    50%  { transform: translate(2%, -3%); }
+    75%  { transform: translate(-2%, -2%); }
+    100% { transform: translate(0%, 0%); }
+  }
+</style>
+</head>
+<body>
+
+<div class="noise-wrap"><div class="noise-texture"></div></div>
+
+<div class="tool-header">
+  <h1>Contrast Checker</h1>
+</div>
+
+<div class="layout">
+  <div>
+    <div class="field">
+      <label for="fg-color">Text color</label>
+      <div class="swatch-row">
+        <input type="color" id="fg-color" value="#000000">
+        <input type="text" class="hex" id="fg-hex" value="#000000" maxlength="7">
+      </div>
+    </div>
+    <div class="field">
+      <label for="bg-color">Background color</label>
+      <div class="swatch-row">
+        <input type="color" id="bg-color" value="#ffffff">
+        <input type="text" class="hex" id="bg-hex" value="#ffffff" maxlength="7">
+      </div>
+    </div>
+    <button type="button" class="swap-btn" id="swap">&#8645; Swap colors</button>
+
+    <div class="ratio-card">
+      <div class="ratio-number" id="ratio-number">21.00</div>
+      <div class="ratio-label">Contrast ratio</div>
+      <div class="checks">
+        <div class="check-item"><span>AA — normal text</span><span class="status" id="aa-normal">PASS</span></div>
+        <div class="check-item"><span>AA — large text</span><span class="status" id="aa-large">PASS</span></div>
+        <div class="check-item"><span>AAA — normal text</span><span class="status" id="aaa-normal">PASS</span></div>
+        <div class="check-item"><span>AAA — large text</span><span class="status" id="aaa-large">PASS</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <div class="preview" id="preview">
+      <div class="big">The quick brown fox</div>
+      <div class="small">Jumps over the lazy dog — 14px body text at this contrast.</div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  var fgColor = document.getElementById("fg-color");
+  var fgHex = document.getElementById("fg-hex");
+  var bgColor = document.getElementById("bg-color");
+  var bgHex = document.getElementById("bg-hex");
+  var preview = document.getElementById("preview");
+  var ratioNumber = document.getElementById("ratio-number");
+  var swapBtn = document.getElementById("swap");
+
+  function hexToRgb(hex) {
+    var m = hex.replace("#", "").match(/^([0-9a-f]{6})$/i);
+    if (!m) return null;
+    var n = parseInt(m[1], 16);
+    return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
+  }
+
+  function relLuminance(rgb) {
+    var vals = [rgb.r, rgb.g, rgb.b].map(function (c) {
+      var s = c / 255;
+      return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
+    });
+    return 0.2126 * vals[0] + 0.7152 * vals[1] + 0.0722 * vals[2];
+  }
+
+  function contrastRatio(hexA, hexB) {
+    var a = hexToRgb(hexA), b = hexToRgb(hexB);
+    if (!a || !b) return null;
+    var la = relLuminance(a), lb = relLuminance(b);
+    var lighter = Math.max(la, lb), darker = Math.min(la, lb);
+    return (lighter + 0.05) / (darker + 0.05);
+  }
+
+  function setStatus(el, pass) {
+    el.textContent = pass ? "Pass" : "Fail";
+    el.className = "status " + (pass ? "pass" : "fail");
+  }
+
+  function update() {
+    var fg = fgHex.value, bg = bgHex.value;
+    var ratio = contrastRatio(fg, bg);
+    if (ratio === null) return;
+
+    ratioNumber.textContent = ratio.toFixed(2);
+    preview.style.color = fg;
+    preview.style.backgroundColor = bg;
+
+    setStatus(document.getElementById("aa-normal"), ratio >= 4.5);
+    setStatus(document.getElementById("aa-large"), ratio >= 3);
+    setStatus(document.getElementById("aaa-normal"), ratio >= 7);
+    setStatus(document.getElementById("aaa-large"), ratio >= 4.5);
+  }
+
+  function syncFromPicker(picker, hexInput) {
+    hexInput.value = picker.value;
+    update();
+  }
+
+  function syncFromHex(hexInput, picker) {
+    var v = hexInput.value.trim();
+    if (!/^#?[0-9a-f]{6}$/i.test(v)) return;
+    if (v[0] !== "#") v = "#" + v;
+    hexInput.value = v;
+    picker.value = v;
+    update();
+  }
+
+  fgColor.addEventListener("input", function () { syncFromPicker(fgColor, fgHex); });
+  bgColor.addEventListener("input", function () { syncFromPicker(bgColor, bgHex); });
+  fgHex.addEventListener("input", function () { syncFromHex(fgHex, fgColor); });
+  bgHex.addEventListener("input", function () { syncFromHex(bgHex, bgColor); });
+
+  swapBtn.addEventListener("click", function () {
+    var tmp = fgHex.value;
+    fgHex.value = bgHex.value;
+    bgHex.value = tmp;
+    fgColor.value = fgHex.value;
+    bgColor.value = bgHex.value;
+    update();
+  });
+
+  update();
+})();
+</script>
+
+</body>
+</html>

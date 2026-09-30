@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Bulk WebP Converter — Eyad Ayman Tools</title>
+<meta name="viewport" content="width=device-width, height=device-height, initial-scale=1, minimum-scale=1, maximum-scale=5">
+<style>
+  :root { --accent: #d02b2a; --ink: #000; }
+  * { box-sizing: border-box; }
+  body { font-family: Inter, Arial, Helvetica, sans-serif; margin: 0; padding: 20px; color: #222; position: relative; background-color: #f6f1e6; }
+  .tool-header { margin-bottom: 16px; padding-bottom: 12px; border-bottom: 2px solid var(--ink); }
+  .tool-header h1 { font-size: 18px; margin: 0 0 4px; letter-spacing: .5px; }
+  .tool-header p { font-size: 13px; color: #555; margin: 0; max-width: 62ch; }
+
+  .drop-zone {
+    border: 2px dashed #000;
+    background: #fff;
+    padding: 36px 20px;
+    text-align: center;
+    cursor: pointer;
+    margin-bottom: 18px;
+  }
+  .drop-zone.is-drag { background: #efece5; }
+  .drop-zone p { margin: 0 0 10px; font-size: 14px; }
+  .drop-zone .browse-btn { font-family: inherit; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; padding: 10px 18px; border: 2px solid #000; background: #fff; color: #000; cursor: pointer; }
+  .drop-zone .browse-btn:hover { background: #000; color: #fff; }
+  input[type="file"] { display: none; }
+
+  .controls-row { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; margin-bottom: 18px; font-size: 13px; }
+  .controls-row label { display: flex; align-items: center; gap: 8px; }
+  input[type="range"] { width: 160px; accent-color: var(--accent); }
+
+  .file-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 18px; }
+  .file-row { display: grid; grid-template-columns: 60px 1fr auto auto; gap: 12px; align-items: center; border: 1px solid #000; background: #fff; padding: 10px; }
+  .file-row img { width: 60px; height: 60px; object-fit: cover; display: block; border: 1px solid #ccc; }
+  .file-row .name { font-size: 13px; word-break: break-all; }
+  .file-row .sizes { font-size: 11px; color: #666; white-space: nowrap; }
+  .file-row .sizes .saved { color: #2a7a2a; font-weight: 700; }
+  .file-row a.download-link { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; padding: 8px 12px; border: 2px solid #000; color: #000; text-decoration: none; white-space: nowrap; }
+  .file-row a.download-link:hover { background: #000; color: #fff; }
+  .file-row.is-pending .sizes { color: #999; }
+
+  .actions-row { display: flex; gap: 10px; flex-wrap: wrap; }
+  button.primary { font-family: inherit; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; padding: 12px 22px; border: 2px solid var(--accent); background: var(--accent); color: #fff; cursor: pointer; }
+  button.primary:hover { background: #000; border-color: #000; }
+  button.primary:disabled { background: #ccc; border-color: #ccc; cursor: default; }
+  button.secondary { font-family: inherit; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; padding: 12px 22px; border: 2px solid #000; background: #fff; color: #000; cursor: pointer; }
+  button.secondary:hover { background: #000; color: #fff; }
+
+  .hint { font-size: 12px; color: #666; margin-top: 20px; line-height: 1.6; background: #fff; border: 1px solid #ccc; padding: 12px 14px; }
+
+  /* Self-hosted animated film-grain, matching the main site */
+  .noise-wrap { position: fixed; inset: 0; z-index: 100000; opacity: .3; pointer-events: none; overflow: hidden; mix-blend-mode: overlay; }
+  .noise-texture { position: absolute; width: 300%; height: 300%; left: -100%; top: -100%; background-image: url("/assets/images/texture/grain.png"); background-size: 220px 220px; background-repeat: repeat; animation: grain-shift 0.5s steps(4) infinite; }
+  @keyframes grain-shift {
+    0%   { transform: translate(0%, 0%); }
+    25%  { transform: translate(-3%, 2%); }
+    50%  { transform: translate(2%, -3%); }
+    75%  { transform: translate(-2%, -2%); }
+    100% { transform: translate(0%, 0%); }
+  }
+</style>
+</head>
+<body>
+
+<div class="noise-wrap"><div class="noise-texture"></div></div>
+
+<div class="tool-header">
+  <h1>Bulk WebP Converter</h1>
+  <p>Drop in as many JPGs/PNGs as you want, convert them all to WebP at once, download individually or as a batch. Runs entirely in your browser — nothing is ever uploaded anywhere.</p>
+</div>
+
+<div class="drop-zone" id="drop-zone">
+  <p>Drag &amp; drop images here, or</p>
+  <button type="button" class="browse-btn" id="browse-btn">Choose Files</button>
+  <input type="file" id="file-input" accept="image/*" multiple>
+</div>
+
+<div class="controls-row">
+  <label>Quality: <input type="range" id="quality" min="10" max="100" value="82"><span id="quality-val">82%</span></label>
+</div>
+
+<div class="file-list" id="file-list"></div>
+
+<div class="actions-row" id="actions-row" style="display:none;">
+  <button type="button" class="primary" id="download-all">Download All</button>
+  <button type="button" class="secondary" id="clear-all">Clear All</button>
+</div>
+
+<div class="hint">
+  <strong>How it works:</strong> each image is drawn to an off-screen canvas and re-encoded as WebP with <code>canvas.toBlob()</code> — a standard browser feature, no server, no upload, no size limit beyond what your browser can hold in memory. WebP typically comes out 25–35% smaller than the original JPG/PNG at the same visual quality.
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var dropZone = document.getElementById("drop-zone");
+  var fileInput = document.getElementById("file-input");
+  var browseBtn = document.getElementById("browse-btn");
+  var qualitySlider = document.getElementById("quality");
+  var qualityVal = document.getElementById("quality-val");
+  var fileList = document.getElementById("file-list");
+  var actionsRow = document.getElementById("actions-row");
+  var downloadAllBtn = document.getElementById("download-all");
+  var clearAllBtn = document.getElementById("clear-all");
+
+  var items = []; // { id, file, originalUrl, webpBlob, webpUrl, row }
+
+  function fmtSize(bytes) {
+    if (bytes < 1024) return bytes + " B";
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
+    return (bytes / (1024 * 1024)).toFixed(2) + " MB";
+  }
+
+  function webpName(originalName) {
+    var dot = originalName.lastIndexOf(".");
+    var base = dot > 0 ? originalName.slice(0, dot) : originalName;
+    return base + ".webp";
+  }
+
+  function escapeHtml(str) {
+    return str.replace(/[<>&"]/g, function (c) {
+      return { "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" }[c];
+    });
+  }
+
+  function convertOne(item) {
+    return new Promise(function (resolve) {
+      var img = new Image();
+      img.onload = function () {
+        var canvas = document.createElement("canvas");
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        var ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0);
+        var quality = +qualitySlider.value / 100;
+        canvas.toBlob(
+          function (blob) { resolve(blob); },
+          "image/webp",
+          quality
+        );
+      };
+      img.src = item.originalUrl;
+    });
+  }
+
+  function renderRow(item) {
+    var row = document.createElement("div");
+    row.className = "file-row is-pending";
+    row.innerHTML =
+      '<img src="' + item.originalUrl + '" alt="">' +
+      '<span class="name">' + escapeHtml(item.file.name) + "</span>" +
+      '<span class="sizes">Converting&hellip;</span>' +
+      "<span></span>";
+    fileList.appendChild(row);
+    item.row = row;
+  }
+
+  function updateRow(item) {
+    var sizes = item.row.querySelector(".sizes");
+    var linkSlot = item.row.querySelectorAll("span")[2];
+    var origSize = item.file.size;
+    var newSize = item.webpBlob.size;
+    var savedPct = Math.max(0, Math.round((1 - newSize / origSize) * 100));
+    sizes.innerHTML = fmtSize(origSize) + " &rarr; " + fmtSize(newSize) + ' <span class="saved">(-' + savedPct + "%)</span>";
+    var a = document.createElement("a");
+    a.className = "download-link";
+    a.href = item.webpUrl;
+    a.download = webpName(item.file.name);
+    a.textContent = "Download";
+    linkSlot.replaceWith(a);
+    item.row.classList.remove("is-pending");
+  }
+
+  function addFiles(fileArray) {
+    fileArray.forEach(function (file) {
+      if (!/^image\//.test(file.type)) return;
+      var item = { id: Date.now() + Math.random(), file: file, originalUrl: URL.createObjectURL(file) };
+      items.push(item);
+      renderRow(item);
+      convertOne(item).then(function (blob) {
+        item.webpBlob = blob;
+        item.webpUrl = URL.createObjectURL(blob);
+        updateRow(item);
+      });
+    });
+    actionsRow.style.display = items.length ? "flex" : "none";
+  }
+
+  browseBtn.addEventListener("click", function () { fileInput.click(); });
+  fileInput.addEventListener("change", function () {
+    addFiles(Array.prototype.slice.call(fileInput.files));
+    fileInput.value = "";
+  });
+
+  ["dragenter", "dragover"].forEach(function (evt) {
+    dropZone.addEventListener(evt, function (e) {
+      e.preventDefault();
+      dropZone.classList.add("is-drag");
+    });
+  });
+  ["dragleave", "drop"].forEach(function (evt) {
+    dropZone.addEventListener(evt, function (e) {
+      e.preventDefault();
+      dropZone.classList.remove("is-drag");
+    });
+  });
+  dropZone.addEventListener("drop", function (e) {
+    if (e.dataTransfer && e.dataTransfer.files) {
+      addFiles(Array.prototype.slice.call(e.dataTransfer.files));
+    }
+  });
+  dropZone.addEventListener("click", function (e) {
+    if (e.target === browseBtn) return;
+    fileInput.click();
+  });
+
+  qualitySlider.addEventListener("input", function () {
+    qualityVal.textContent = qualitySlider.value + "%";
+  });
+
+  downloadAllBtn.addEventListener("click", function () {
+    items.forEach(function (item, i) {
+      if (!item.webpUrl) return;
+      setTimeout(function () {
+        var a = document.createElement("a");
+        a.href = item.webpUrl;
+        a.download = webpName(item.file.name);
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+      }, i * 180); // stagger so the browser doesn't block a burst of downloads
+    });
+  });
+
+  clearAllBtn.addEventListener("click", function () {
+    items.forEach(function (item) {
+      URL.revokeObjectURL(item.originalUrl);
+      if (item.webpUrl) URL.revokeObjectURL(item.webpUrl);
+    });
+    items = [];
+    fileList.innerHTML = "";
+    actionsRow.style.display = "none";
+  });
+})();
+</script>
+
+</body>
+</html>
