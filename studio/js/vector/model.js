@@ -5,19 +5,13 @@
 // Groups own children; their transforms are baked into the children.
 import { uid } from '../core/dom.js';
 import { num, str, bool, oneOf, color } from '../core/eyad.js';
-<<<<<<< HEAD
 import { EXTRA_FONTS } from '../templates/fonts.js';
-=======
->>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
 
 export const FONTS = [
   ['Studio Inter', 'Inter'], ['Studio Oswald', 'Oswald'], ['Studio Mono', 'Mono'],
   ['Arial', 'Arial'], ['Helvetica', 'Helvetica'], ['Georgia', 'Georgia'], ['Times New Roman', 'Times New Roman'],
   ['Courier New', 'Courier New'], ['Verdana', 'Verdana'], ['Trebuchet MS', 'Trebuchet MS'], ['Impact', 'Impact'],
-<<<<<<< HEAD
   ...EXTRA_FONTS,
-=======
->>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
 ];
 export const BLENDS = ['normal', 'multiply', 'screen', 'overlay', 'darken', 'lighten', 'color-dodge', 'color-burn', 'hard-light', 'soft-light', 'difference', 'exclusion', 'hue', 'saturation', 'color', 'luminosity'];
 export const PATTERNS = ['dots', 'lines', 'grid', 'checker', 'diagonal', 'waves'];

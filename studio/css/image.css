@@ -207,19 +207,11 @@
    canvas, scrollable tool options, bottom tool dock + panel sheets.
    =================================================================== */
 @media (max-width: 760px) and (orientation: portrait), (max-width: 540px) {
-<<<<<<< HEAD
   .studio-app.img-app { grid-template-rows: 48px auto minmax(0, 1fr) 0 auto; }
   .img-app .img-m-only { display: inline-grid !important; }
   .img-app .img-m-titlewrap { display: flex !important; min-width: 0; flex: 1; }
   .img-app .img-d-only { display: none !important; }
   .img-top { padding: 0 4px; }
-=======
-  .studio-app.img-app { grid-template-rows: calc(48px + env(safe-area-inset-top)) auto minmax(0, 1fr) 0 auto; }
-  .img-app .img-m-only { display: inline-grid !important; }
-  .img-app .img-m-titlewrap { display: flex !important; min-width: 0; flex: 1; }
-  .img-app .img-d-only { display: none !important; }
-  .img-top { padding: env(safe-area-inset-top) 4px 0 4px; }
->>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
   .img-top-left { gap: 2px; min-width: 0; }
   .img-top-right { gap: 0; }
   .img-top .studio-icon-btn { width: 40px; height: 40px; }

@@ -8,13 +8,11 @@ import { listProjects } from '../core/db.js';
 import { BLEND_MODES } from './doc.js';
 import * as pro from './pro.js';
 import * as ai from './ai.js';
-<<<<<<< HEAD
 import * as gen from './generate.js';
 import * as film from './filmlab.js';
 import * as artboards from './artboards.js';
+import * as v4fx from './v4-effects.js';
 import { experienceHelp } from '../core/experience.js';
-=======
->>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
 
 export function buildMenus(app) {
   const hasDoc = () => !!app.doc;
@@ -34,11 +32,8 @@ export function buildMenus(app) {
       { label: 'New…', shortcut: 'Mod+N', action: () => io.newDocDialog(app), icon: 'plus' },
       { label: 'Open…', shortcut: 'Mod+O', action: () => io.openDialog(app), icon: 'folder' },
       { label: 'Open PSD…', action: () => io.openDialog(app, 'psd'), icon: 'layers' },
-<<<<<<< HEAD
       { label: 'New from Template…', action: () => { location.href = ROUTES.templates; }, icon: 'grid' },
       { label: 'Take a Photo (EYAD CAMERA)…', action: () => { location.href = ROUTES.camera; }, icon: 'camera' },
-=======
->>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
       { label: 'Open Recent', submenu: () => (recent.length ? recent.map((p) => ({ label: p.name, action: () => io.openProject(app, p.id) })) : [{ label: 'No recent image projects', enabled: false }]).concat([{ separator: true }, { label: 'Browse Projects…', action: () => { location.href = ROUTES.projects; } }]) },
       { label: 'Place as Layer…', action: () => io.placeDialog(app), enabled: hasDoc, icon: 'image' },
       { separator: true },
@@ -53,11 +48,8 @@ export function buildMenus(app) {
         { label: 'Quick Export as WebP', action: () => io.quickExport(app, 'webp'), enabled: hasDoc },
         { separator: true },
         { label: 'Export PSD', badge: 'Experimental', action: () => io.exportPsdDialog(app), enabled: hasDoc },
-<<<<<<< HEAD
         { separator: true },
         { label: 'Artboards to Files…', action: () => artboards.exportArtboards(app), enabled: () => hasDoc() && artboards.artboardsOf(app.doc).length > 0 },
-=======
->>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
       ] },
       { separator: true },
       { label: 'Close', shortcut: 'Mod+W', action: () => app.closeDoc(), enabled: hasDoc },
@@ -72,11 +64,7 @@ export function buildMenus(app) {
       { label: 'Paste', shortcut: 'Mod+V', action: () => ops.paste(app), enabled: hasDoc },
       { label: 'Clear', action: () => ops.clearOrDelete(app), enabled: () => isRaster() && hasSel() },
       { separator: true },
-<<<<<<< HEAD
       { label: 'Smart Fill', action: () => pro.contentAwareFill(app), enabled: hasSel, icon: 'heal' },
-=======
-      { label: 'Content-Aware Fill', action: () => pro.contentAwareFill(app), enabled: hasSel, icon: 'heal' },
->>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
       { label: 'Fill…', shortcut: 'Shift+F5', action: () => ops.fillDialog(app), enabled: hasDoc },
       { label: 'Free Transform', shortcut: 'Mod+T', action: () => app.selectTool('move'), enabled: hasLayer },
       { label: 'Reset Transform', action: () => resetTransform(app), enabled: hasLayer },
@@ -95,10 +83,7 @@ export function buildMenus(app) {
         adj('posterize'), adj('threshold'), adj('gradientMap'), adj('sepia'),
         { separator: true },
         adj('shadowsHighlights'),
-<<<<<<< HEAD
         { label: 'Color Lookup (LUT)…', action: () => film.colorLookupDialog(app), enabled: hasDoc },
-=======
->>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
         { label: 'Desaturate', shortcut: 'Mod+Shift+U', action: () => ops.quickOp(app, 'desaturate'), enabled: hasDoc },
       ] },
       { separator: true },
@@ -123,12 +108,9 @@ export function buildMenus(app) {
       { label: 'New Layer', shortcut: 'Mod+Shift+N', action: () => ops.newLayer(app), enabled: hasDoc, icon: 'plus' },
       { label: 'New Group', action: () => ops.newGroup(app), enabled: hasDoc, icon: 'folder' },
       { label: 'New Text Layer', action: () => ops.addTextCenter(app), enabled: hasDoc, icon: 'text' },
-<<<<<<< HEAD
       { label: 'New Artboard…', action: () => artboards.newArtboardDialog(app), enabled: hasDoc, icon: 'artboard' },
       { label: 'New Generated Layer…', action: () => gen.generateImageDialog(app), enabled: hasDoc, icon: 'sparkle' },
       { label: 'Place 3D Model (EYAD 3D)…', action: () => { location.href = ROUTES['3d']; }, icon: 'cube' },
-=======
->>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
       { label: 'Layer via Copy', shortcut: 'Mod+J', action: () => ops.layerViaCopy(app), enabled: hasLayer },
       { label: 'Layer via Cut', shortcut: 'Mod+Shift+J', action: () => ops.layerViaCut(app), enabled: () => isRaster() && hasSel() },
       { separator: true },
@@ -184,30 +166,25 @@ export function buildMenus(app) {
     { label: 'Filter', items: [
       { label: () => (app.lastFilter ? 'Repeat ' + ops.ADJUSTMENTS[app.lastFilter.op].label : 'Repeat Last Filter'), shortcut: 'Mod+Alt+F', action: () => ops.repeatFilter(app), enabled: () => hasDoc() && !!app.lastFilter },
       { separator: true },
-<<<<<<< HEAD
       { label: 'Raw Develop Filter…', shortcut: 'Mod+Shift+A', action: () => pro.cameraRawDialog(app), enabled: hasDoc, icon: 'aperture' },
       { label: 'Film Lab (136 film & camera looks)…', shortcut: 'Mod+Shift+F', action: () => film.filmLabDialog(app), enabled: hasDoc, icon: 'film' },
-=======
-      { label: 'Camera Raw Filter…', shortcut: 'Mod+Shift+A', action: () => pro.cameraRawDialog(app), enabled: hasDoc, icon: 'aperture' },
->>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
       { separator: true },
       { label: 'Blur', submenu: [adj('gaussianBlur'), adj('motionBlur'), adj('radialBlur'), adj('tiltShift')] },
       { label: 'Sharpen', submenu: [adj('sharpen'), adj('unsharpMask')] },
       { label: 'Distort', submenu: [adj('twirl'), adj('pinch'), adj('spherize'), adj('wave'), adj('ripple')] },
       { label: 'Noise', submenu: [adj('noise'), adj('reduceNoise'), adj('dustScratches'), adj('median'), adj('addGrain')] },
       { label: 'Pixelate', submenu: [adj('pixelate'), adj('halftone')] },
-<<<<<<< HEAD
-      { label: 'Render', submenu: [adj('clouds'), adj('vignette'), { separator: true },
+      { label: 'Render', submenu: [
+        { label: 'Glow / Bloom', action: () => v4fx.glow(app), enabled: hasDoc, icon: 'sparkle' },
+        { label: 'Direct Flash Bloom', action: () => v4fx.flashBloom(app), enabled: hasDoc, icon: 'sparkle' },
+        { label: 'Optical Chromatic', action: () => v4fx.chromatic(app), enabled: hasDoc },
+        adj('clouds'), adj('vignette'), { separator: true },
         ...Object.entries(film.GENERATORS).map(([k, g]) => ({ label: g.label + '…', action: () => film.renderTextureDialog(app, k), enabled: hasDoc }))] },
-=======
-      { label: 'Render', submenu: [adj('clouds'), adj('vignette')] },
->>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
       { label: 'Stylize', submenu: [{ label: 'Emboss', action: () => ops.quickOp(app, 'emboss'), enabled: hasDoc }, { label: 'Find Edges', action: () => ops.quickOp(app, 'findEdges'), enabled: hasDoc }, { label: 'Solarize', action: () => ops.quickOp(app, 'solarize'), enabled: hasDoc }, adj('oilPaint')] },
       { label: 'Other', submenu: [adj('highPass')] },
     ] },
     { label: 'AI', items: [
       { label: 'EYAD AI Panel…', action: () => ai.aiPanel(app), icon: 'sparkle' },
-<<<<<<< HEAD
       { label: 'EYAD Generate…', action: () => gen.openGeneratePanel(app), icon: 'sparkle' },
       { separator: true },
       { label: 'Generate Image…', action: () => gen.generateImageDialog(app), enabled: hasDoc, badge: 'Online' },
@@ -215,9 +192,6 @@ export function buildMenus(app) {
       { label: 'Generate Background…', action: () => gen.generateBackground(app), enabled: hasLayer, badge: 'Online' },
       { label: 'Generative Expand…', action: () => gen.expandDialog(app), enabled: hasDoc },
       { label: 'Remove Object (model)', action: () => gen.removeSelection(app), enabled: hasSel },
-=======
-      { label: 'Generate Texture / Background…', action: () => ai.generateDialog(app), enabled: hasDoc, icon: 'sparkle' },
->>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
       { separator: true },
       { label: 'Select Subject', action: () => ai.selectSubject(app), enabled: hasDoc, icon: 'sparkle' },
       { label: 'Object Selection Tool', shortcut: 'W', action: () => app.selectTool('aiselect'), enabled: hasDoc },
@@ -232,13 +206,8 @@ export function buildMenus(app) {
       { label: 'Select Faces', action: () => ai.selectFaces(app), enabled: hasDoc },
       { separator: true },
       { label: 'Remove Background', action: () => ai.removeBackground(app), enabled: hasLayer, icon: 'mask' },
-<<<<<<< HEAD
       { label: 'Remove Object (Smart)', action: () => ai.removeObject(app), enabled: hasDoc, icon: 'heal' },
       { label: 'Spot Heal Brush', shortcut: 'J', action: () => app.selectTool('heal'), enabled: hasDoc },
-=======
-      { label: 'Remove Object (Content-Aware)', action: () => ai.removeObject(app), enabled: hasDoc, icon: 'heal' },
-      { label: 'Spot Healing Brush', shortcut: 'J', action: () => app.selectTool('heal'), enabled: hasDoc },
->>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
       { label: 'Smart Crop…', action: () => ai.smartCrop(app), enabled: hasDoc, icon: 'crop' },
       { label: 'Enlarge 2×', action: () => ai.enlarge(app, 2), enabled: hasDoc, icon: 'expand' },
       { label: 'Enlarge 4×', action: () => ai.enlarge(app, 4), enabled: hasDoc },
@@ -278,11 +247,8 @@ export function buildMenus(app) {
       { label: () => (resolvedTheme() === 'dark' ? 'Light Theme' : 'Dark Theme'), action: () => toggleTheme(), icon: 'brightness' },
       { label: 'Command Palette', shortcut: 'Mod+K', action: () => app.palette.show(), icon: 'command' },
       { label: 'Go to EYAD VIDEO', action: () => { location.href = ROUTES.video; }, icon: 'video' },
-<<<<<<< HEAD
       { label: 'Go to EYAD VECTOR', action: () => { location.href = ROUTES.vector; }, icon: 'vector' },
       { label: 'Go to EYAD 3D', action: () => { location.href = ROUTES['3d']; }, icon: 'cube' },
-=======
->>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
       { label: 'Go to Projects', action: () => { location.href = ROUTES.projects; }, icon: 'folder' },
     ] },
     { label: 'Help', items: [
@@ -292,10 +258,7 @@ export function buildMenus(app) {
       { label: 'Studio Documentation', action: () => { location.href = ROUTES.help; } },
       { separator: true },
       { label: 'About EYAD STUDIO', action: () => io.aboutDialog() },
-<<<<<<< HEAD
       ...experienceHelp('image'),
-=======
->>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
     ] },
   ];
 }

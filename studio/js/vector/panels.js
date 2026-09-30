@@ -41,11 +41,7 @@ export class Panels {
   sheet(key) {
     const el = this.make(key);
     this.sheetKey = key;
-<<<<<<< HEAD
     this.activeSheet = openSheet({ title: { appearance: 'Appearance', layers: 'Layers', align: 'Align & Transform', pathfinder: 'Shape Builder', artboards: 'Artboards', character: 'Character' }[key] || key, content: h('div', { class: 'vec-sheet' }, el), onClose: () => { this.sheetKey = null; } });
-=======
-    this.activeSheet = openSheet({ title: { appearance: 'Appearance', layers: 'Layers', align: 'Align & Transform', pathfinder: 'Pathfinder', artboards: 'Artboards', character: 'Character' }[key] || key, content: h('div', { class: 'vec-sheet' }, el), onClose: () => { this.sheetKey = null; } });
->>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
   }
   refresh() {
     if (!this.app.doc) return;
@@ -67,11 +63,7 @@ export class Panels {
     this.host.scrollTop = scroll;
   }
   make(k) {
-<<<<<<< HEAD
     const title = { appearance: 'Appearance', character: 'Character', align: 'Align & Transform', pathfinder: 'Shape Builder', layers: 'Layers', artboards: 'Artboards' }[k];
-=======
-    const title = { appearance: 'Appearance', character: 'Character', align: 'Align & Transform', pathfinder: 'Pathfinder', layers: 'Layers', artboards: 'Artboards' }[k];
->>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
     return section(title, k, this['p_' + k]());
   }
 

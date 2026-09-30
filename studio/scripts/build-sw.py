@@ -15,15 +15,11 @@ for dp, dn, fn in os.walk(root):
         if rel in ('sw.js',) or rel.endswith(('.md', '.txt')):
             continue
         # large on-demand AI runtime/models: cached at first use instead of precached
-<<<<<<< HEAD
         # (the offline pack in Settings caches these after install)
         if rel.startswith(('vendor/mediapipe/', 'vendor/onnxruntime-web/', 'vendor/three/', 'vendor/pdfjs/', 'vendor/fzstd/', 'vendor/kiwi/')):
             continue
         full = os.path.join(dp, f)
         if rel.startswith('models/') and os.path.getsize(full) > 3_000_000:
-=======
-        if rel.startswith(('vendor/mediapipe/', 'models/')):
->>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
             continue
         files.append('./' + rel)
 files.sort()

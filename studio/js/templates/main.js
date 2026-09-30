@@ -16,6 +16,8 @@ import { embedFontCss, loadFaces } from './fonts.js';
 
 const CAT_LABEL = Object.fromEntries(CATEGORIES);
 const q0 = new URLSearchParams(location.search);
+const TRENDING_TAGS = new Set(['product','dark','gradient','street','sale','arabic','tech','minimal','poster','social']);
+const isTrending = (tpl) => tpl.tags.some((x) => TRENDING_TAGS.has(String(x).toLowerCase()));
 let filter = q0.get('cat') || 'all';
 let query = (q0.get('q') || '').toLowerCase();
 
@@ -164,13 +166,13 @@ const blanks = h('section', { class: 'studio-section tpl-blanks', 'aria-label': 
 const countEl = h('span', { class: 'studio-dim studio-small tpl-count' });
 const search = h('input', { class: 'studio-input hub-search tpl-search', type: 'search', placeholder: 'Search templates — e.g. wedding, sale, arabic', 'aria-label': 'Search templates', value: query });
 search.addEventListener('input', () => { query = search.value.trim().toLowerCase(); render(); });
-const chipDefs = [['all', 'All'], ...CATEGORIES.filter(([k]) => TEMPLATES.some((x) => x.cat.includes(k))), ['blank', 'Blank sizes']];
+const chipDefs = [['all', 'All'], ['trending', 'Trending now'], ...CATEGORIES.filter(([k]) => TEMPLATES.some((x) => x.cat.includes(k))), ['blank', 'Blank sizes']];
 const chips = h('div', { class: 'hub-chips tpl-chips', role: 'tablist', 'aria-label': 'Categories' }, chipDefs.map(([k, l]) => h('button', { class: 'hub-chip', type: 'button', role: 'tab', dataset: { f: k }, text: l, onclick: () => { filter = k; render(); } })));
 
 page('templates',
   h('section', { class: 'hub-pagehead tpl-head' },
     h('div', {},
-      h('p', { class: 'studio-label', text: 'EYAD STUDIO · Start from a design' }),
+      h('p', { class: 'studio-label', text: 'EYAD STUDIO · Start from a design · TREND RADAR' }),
       h('h1', { class: 'studio-page-title' }, 'TEMP', h('em', { text: 'LATES' })),
       h('p', { class: 'studio-page-lede', text: `${TEMPLATES.length} original layouts — posts, stories, thumbnails, slides, posters, cards, menus, CVs and Arabic designs. Every one opens as a fully editable vector document; swap the words, colours and photos and make it yours.` })),
     h('div', { class: 'hub-actions' },
@@ -182,14 +184,15 @@ page('templates',
   blanks);
 
 function matches(tpl) {
-  if (filter !== 'all' && filter !== 'blank' && !tpl.cat.includes(filter)) return false;
+  if (filter === 'trending' && !isTrending(tpl)) return false;
+  if (filter !== 'all' && filter !== 'blank' && filter !== 'trending' && !tpl.cat.includes(filter)) return false;
   if (!query) return true;
   const hay = [tpl.name, ...tpl.tags, ...tpl.cat.map((c) => CAT_LABEL[c])].join(' ').toLowerCase();
   return query.split(/\s+/).every((w) => hay.includes(w));
 }
 function render() {
   chips.querySelectorAll('.hub-chip').forEach((c) => c.setAttribute('aria-selected', String(c.dataset.f === filter)));
-  const list = filter === 'blank' ? [] : TEMPLATES.filter(matches);
+  const list = filter === 'blank' ? [] : TEMPLATES.filter(matches).sort((a,b) => (filter === 'trending' ? Number(isTrending(b)) - Number(isTrending(a)) : 0));
   grid.hidden = filter === 'blank';
   countEl.textContent = filter === 'blank' ? '' : `${list.length} template${list.length === 1 ? '' : 's'}`;
   if (filter !== 'blank' && !list.length) grid.replaceChildren(h('div', { class: 'studio-empty' }, icon('search', 28), h('h3', { text: 'Nothing matches' }), h('p', { text: 'Try another word or category — or start from a blank size below.' })));

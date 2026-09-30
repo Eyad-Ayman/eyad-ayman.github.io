@@ -105,12 +105,9 @@ export async function handleFiles(app, files, { dropped = false } = {}) {
     if (info.kind === 'psd') await openPsd(app, f);
     else if (info.kind === 'eyad') await openEyadFile(app, f);
     else if (info.kind === 'image') imgs.push({ f, info });
-<<<<<<< HEAD
     else if (info.kind === 'lut') { if (app.doc) { const m = await import('./filmlab.js'); await m.colorLookupDialog(app, f); } else toast('Open an image first, then load the .cube LUT (Image ▸ Adjustments ▸ Color Lookup).', { timeout: 6000 }); }
     else if (info.kind === 'pdf' || info.kind === 'fig') { const id = await putHandoff([f]); location.href = ROUTES.vector + '?handoff=' + id; return; }
     else if (info.kind === 'model3d') { const id = await putHandoff([f]); location.href = ROUTES['3d'] + '?handoff=' + id; return; }
-=======
->>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
     else if (info.kind === 'video' || info.kind === 'audio' || info.kind === 'prproj') forVideo.push(f);
     else {
       await alertDialog('Unsupported file', `“${sanitizeFilename(f.name)}” was not opened.`, { detail: `Detected: ${info.label}. See Help ▸ Supported Files.` });
@@ -460,14 +457,10 @@ export async function boot(app) {
     const files = await takeHandoff(q.get('handoff'));
     if (files && files.length) await handleFiles(app, files);
   }
-<<<<<<< HEAD
   const qw = Math.round(Number(q.get('w'))), qh = Math.round(Number(q.get('h')));
   if (q.get('new') && qw > 0 && qh > 0 && qw <= MAX_SIDE && qh <= MAX_SIDE && qw * qh <= MAX_AREA) {
     app.addDocument(createDoc({ name: sanitizeFilename(q.get('name') || 'Untitled', 'Untitled'), width: qw, height: qh, background: ['white', 'black', 'transparent'].includes(q.get('bg')) ? q.get('bg') : 'white' }));
   } else if (q.get('new')) await newDocDialog(app);
-=======
-  if (q.get('new')) await newDocDialog(app);
->>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
   if (q.get('psd')) await openDialog(app, 'psd');
   if (q.get('open')) await openDialog(app);
   // PWA file handling (installed app opened with a file)

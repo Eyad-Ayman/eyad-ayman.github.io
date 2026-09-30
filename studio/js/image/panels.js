@@ -139,17 +139,10 @@ export class LayersPanel {
     const name = h('span', { class: 'img-layer-name', text: n.name, title: n.name });
     const badges = h('span', { class: 'img-layer-badges' },
       n.clip ? h('span', { class: 'img-layer-badge', title: 'Clipped to layer below' }, icon('chevronDown', 11)) : null,
-<<<<<<< HEAD
       n.psd && n.psd.kind === 'text' ? h('span', { class: 'studio-badge is-muted', text: 'PSD T', title: 'PSD text layer (pixels)' }) : null,
       n.psd && n.psd.kind === 'smart' ? h('span', { class: 'studio-badge is-muted', text: 'SO', title: 'Smart object (rendered pixels)' }) : null,
       n.psd && n.psd.kind === 'adjustment' ? h('span', { class: 'studio-badge is-warn', text: 'ADJ', title: 'Adjustment layer — not applied' }) : null,
       n.psd && n.psd.effects ? h('span', { class: 'studio-badge is-warn', text: 'fx', title: 'Layer styles not rendered: ' + n.psd.effects.join(', ') }) : null,
-=======
-      n.psd && n.psd.kind === 'text' ? h('span', { class: 'studio-badge is-muted', text: n.psd.importedEditable ? 'TXT' : 'PSD T', title: n.psd.importedEditable ? 'Editable text imported from PSD' : 'PSD text layer' }) : null,
-      n.psd && n.psd.kind === 'smart' ? h('span', { class: 'studio-badge is-muted', text: 'SO', title: 'Smart object (rendered pixels)' }) : null,
-      n.psd && n.psd.kind === 'adjustment' ? h('span', { class: 'studio-badge is-warn', text: 'ADJ', title: 'Adjustment layer — not applied' }) : null,
-      n.psd && n.psd.effects ? h('span', { class: 'studio-badge is-muted', text: 'fx', title: 'Imported layer styles: ' + n.psd.effects.join(', ') }) : null,
->>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
       n.locked ? h('span', { class: 'img-layer-badge', title: 'Locked' }, icon('lock', 12)) : null);
     const row = h('div', {
       class: 'img-layer' + (active ? ' is-active' : '') + (selected && !active ? ' is-selected' : '') + (n.visible ? '' : ' is-hidden') + (n.clip ? ' is-clipped' : ''),

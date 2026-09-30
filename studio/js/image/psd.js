@@ -95,14 +95,10 @@ export async function importPsd(file, { onProgress } = {}) {
   onProgress && onProgress(null, 'Parsing PSD structures…');
   let psd;
   try {
-<<<<<<< HEAD
     // iPhone / iPad: each canvas is limited to ~16.7 MP and memory is tight
     const ios = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
     const lowMem = ios || (navigator.deviceMemory && navigator.deviceMemory <= 4);
     psd = await call({ op: 'read', buffer, maxPixels: ios ? 16_000_000 : lowMem ? 40_000_000 : 0, lowMemory: !!lowMem }, [buffer]);
-=======
-    psd = await call({ op: 'read', buffer }, [buffer]);
->>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
   } catch (e) {
     const msg = String(e.message || e);
     let reason = msg;
@@ -112,11 +108,7 @@ export async function importPsd(file, { onProgress } = {}) {
       const mode = (/:\s*(\w+)\s*$/.exec(msg) || [])[1] || 'this';
       reason = `${mode} colour mode is not supported by the PSD reader. In Photoshop choose Image ▸ Mode ▸ RGB Color, save, and open it again.`;
     }
-<<<<<<< HEAD
     else if (/memory|allocation|Array buffer|RangeError|crashed/i.test(msg)) reason = 'The document is too large for this device’s memory. Try closing other tabs/apps, or save a flattened or smaller copy of the PSD.';
-=======
-    else if (/memory|allocation|Array buffer/i.test(msg)) reason = 'The document is too large for this device’s memory.';
->>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
     const err = new Error(reason);
     err.title = 'Could not open PSD';
     throw err;
@@ -151,11 +143,7 @@ export async function importPsd(file, { onProgress } = {}) {
       stats.shapes++;
       n.visible = !l.hidden; n.opacity = l.opacity; n.blend = BLEND_IDS.includes(blend) ? blend : 'normal';
       n.clip = l.clipping; if (l.clipping) stats.clipping++;
-<<<<<<< HEAD
       if (l.effects.length && !l.effectsDisabled) { stats.effects++; l.effects.forEach((e) => stats.effectNames.add(e)); n.psd = { kind: 'shape', effects: l.effects }; }
-=======
-      if (l.effects.length && !l.effectsDisabled) { stats.effects++; l.effects.forEach((e) => stats.effectNames.add(e)); n.psd = { kind: 'shape', effects: l.effects, styleData: l.effectData || null, vectorData: vec }; }
->>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
       else n.psd = { kind: 'shape' };
       if (l.mask) attachMask(n, l, { x: n.x, y: n.y }, stats);
       return n;
@@ -174,55 +162,12 @@ export async function importPsd(file, { onProgress } = {}) {
     if (l.locked) { n.locked = true; stats.locked++; }
     if (l.fillOpacity < 1) { stats.fillOpacity++; n.opacity = l.opacity * l.fillOpacity; }
     n.psd = {};
-<<<<<<< HEAD
     if (l.text) { stats.text++; n.psd = { kind: 'text', ...l.text }; }
     else if (l.smart) { stats.smart++; n.psd = { kind: 'smart' }; }
     else if (l.adjustment) { stats.adjustment++; n.psd = { kind: 'adjustment', type: l.adjustment }; n.name = `${l.name} (adjustment — not applied)`; }
     else stats.raster++;
     if (l.effects.length && !l.effectsDisabled) { stats.effects++; l.effects.forEach((e) => stats.effectNames.add(e)); n.psd.effects = l.effects; }
     if (l.vectorMask || vec) { stats.vectorMasks++; n.psd.vectorMask = true; }
-=======
-    if (l.text) {
-      stats.text++;
-      const p = l.text;
-      const rawFont = String(p.font || '');
-      const font = /mono/i.test(rawFont) ? 'Studio Mono' : /oswald|condensed|narrow|impact|bebas/i.test(rawFont) ? 'Studio Oswald' : 'Studio Inter';
-      const editableText = String(p.text || '');
-      if (editableText.trim()) {
-        // Prefer a real editable text node. The PSD's raster pixels remain available
-        // through the hidden composite reference when the source font/metrics differ.
-        const t = makeNode('text', {
-          name: l.name,
-          text: editableText,
-          font,
-          size: Math.max(4, Number(p.size) || 36),
-          weight: 600,
-          color: p.color ? hex(p.color) : '#111111',
-          x: l.left,
-          y: l.top,
-          visible: !l.hidden,
-          opacity: l.opacity,
-          blend: BLEND_IDS.includes(blend) ? blend : 'normal',
-          clip: l.clipping,
-        });
-        if (l.locked) { t.locked = true; stats.locked++; }
-        if (l.fillOpacity < 1) { stats.fillOpacity++; t.opacity = l.opacity * l.fillOpacity; }
-        n = t;
-        n.psd = { kind: 'text', importedEditable: true, originalFont: p.font, originalSize: p.size, ...p };
-      } else {
-        n.psd = { kind: 'text', ...p };
-      }
-    }
-    else if (l.smart) { stats.smart++; n.psd = { kind: 'smart' }; }
-    else if (l.adjustment) { stats.adjustment++; n.psd = { kind: 'adjustment', type: l.adjustment, data: l.adjustmentData || null }; n.name = `${l.name} (adjustment)`; }
-    else stats.raster++;
-    if (l.effects.length && !l.effectsDisabled) {
-      stats.effects++; l.effects.forEach((e) => stats.effectNames.add(e));
-      n.psd.effects = l.effects;
-      n.psd.styleData = l.effectData || null;
-    }
-    if (l.vectorMask || vec) { stats.vectorMasks++; n.psd.vectorMask = true; if (vec) n.psd.vectorData = vec; }
->>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
     if (l.mask) attachMask(n, l, { x: n.x, y: n.y }, stats);
     return n;
   };
@@ -280,12 +225,8 @@ function buildReport(psd, s, { flattenedOnly, lossy, compositeHasPixels }) {
   const rows = [];
   const add = (status, label, detail) => rows.push({ status, label, detail });
   const mode = COLOR_MODES[psd.colorMode] || 'Unknown';
-<<<<<<< HEAD
   if (psd.scale && psd.scale < 1) add('part', `Opened at ${psd.width} × ${psd.height} px (original ${psd.fullWidth} × ${psd.fullHeight})`, 'This device limits image size, so the document was scaled down to fit. Layers, masks and positions are kept; shape layers come in as pixels.');
   else add('ok', `Canvas ${psd.width} × ${psd.height} px`);
-=======
-  add('ok', `Canvas ${psd.width} × ${psd.height} px`);
->>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
   if (psd.colorMode === 3) add('ok', 'RGB colour');
   else add('part', `${mode} colour`, 'Converted to RGB for editing; colours may shift.');
   if (psd.bitsPerChannel === 8) add('ok', '8 bits per channel');
@@ -305,7 +246,6 @@ function buildReport(psd, s, { flattenedOnly, lossy, compositeHasPixels }) {
     if (s.fillOpacity) add('part', `Fill opacity (${s.fillOpacity})`, 'Merged into layer opacity.');
     if (s.locked) add('ok', `Locked layers (${s.locked})`);
   }
-<<<<<<< HEAD
   if (s.text) add('part', `Text layers (${s.text})`, 'Imported as pixels with their text content saved. Use Layer ▸ Convert PSD Text to make an approximate editable copy.');
   if (s.smart) add('part', `Smart objects (${s.smart})`, 'Imported as their rendered pixels; the embedded source is not editable.');
   if (s.adjustment) add('part', `Adjustment layers (${s.adjustment})`, 'Kept as named placeholders; their effect is not applied.');
@@ -313,15 +253,6 @@ function buildReport(psd, s, { flattenedOnly, lossy, compositeHasPixels }) {
   if (s.shapes) add('ok', `Shape layers (${s.shapes})`, 'Rebuilt from their vector paths as editable EYAD shape layers (solid fills and strokes).');
   if (s.vectorMasks) add('part', `Vector masks (${s.vectorMasks})`, 'The vector outline is not editable; the layer’s stored pixels are used. Results can differ where Photoshop did not rasterise the mask into the pixels.');
   if (s.artboards) add('part', `Artboards (${s.artboards})`, 'Imported as ordinary groups.');
-=======
-  if (s.text) add('part', `Text layers (${s.text})`, 'Imported as editable EYAD text when usable source text data is available; font metrics may differ from the original application.');
-  if (s.smart) add('part', `Smart objects (${s.smart})`, 'Imported with their rendered pixels preserved. The embedded source is retained as PSD metadata when available, but nested editing is not yet available in the browser.');
-  if (s.adjustment) add('part', `Adjustment layers (${s.adjustment})`, 'Imported as editable document metadata with their rendered pixels preserved where the PSD provides them. Common adjustment types are tagged for future non-destructive editing.');
-  if (s.effects) add('part', `Layer styles on ${s.effects} layer(s)`, `Reconstructed where possible: ${[...s.effectNames].join(', ')}. Uncommon parameters are retained in layer metadata.`);
-  if (s.shapes) add('ok', `Shape layers (${s.shapes})`, 'Rebuilt from their vector paths as editable EYAD shape layers (solid fills and strokes).');
-  if (s.vectorMasks) add('part', `Vector masks (${s.vectorMasks})`, 'Vector path data is preserved on the imported layer and used to reconstruct vector geometry where possible. Pixel fallbacks remain available for fidelity.');
-  if (s.artboards) add('part', `Artboards (${s.artboards})`, 'Imported as groups with artboard metadata preserved so the document structure remains navigable.');
->>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
   if (s.empty) add('ok', `Empty layers (${s.empty})`);
   if (psd.hasIcc) add('part', 'Embedded ICC profile', 'Not applied — colours are shown as sRGB.');
   if (psd.resolution) add('ok', `Resolution metadata (${Math.round(psd.resolution.h)} ppi)`);

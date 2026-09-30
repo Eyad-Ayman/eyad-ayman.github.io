@@ -224,11 +224,7 @@
    media / effects / properties / audio open as bottom sheets.
    =================================================================== */
 @media (max-width: 760px) and (orientation: portrait), (max-width: 540px) {
-<<<<<<< HEAD
   .studio-app.vid-app { grid-template-rows: 48px minmax(0, 1fr) auto; }
-=======
-  .studio-app.vid-app { grid-template-rows: calc(48px + env(safe-area-inset-top)) minmax(0, 1fr) auto; }
->>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
   .vid-app .img-m-only { display: inline-grid !important; }
   .vid-app .img-m-titlewrap { display: flex !important; min-width: 0; flex: 1; }
   .vid-app .img-d-only { display: none !important; }
@@ -335,7 +331,4 @@
   .vid-meter, .vid-zoom { display: none; }
   .vp-prop.is-anim { grid-template-columns: 22px 64px 1fr 50px auto; }
 }
-<<<<<<< HEAD
 .vp-prop > select.studio-input { grid-column: 2 / -1; min-width: 0; }
-=======
->>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7

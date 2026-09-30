@@ -9,7 +9,7 @@ import { appIcon, APPS } from './appicons.js';
 
 const ROOT = new URL('../../', import.meta.url);
 const route = (k) => (k === 'home' ? ROOT.href : k === 'portfolio' ? new URL('../', ROOT).href : new URL('./' + k + '/', ROOT).href);
-export const VERSION = '3.0';
+export const VERSION = '4.0';
 const BUG_MAIL = 'eyad.ayman2019@gmail.com';
 
 export const isStandalone = () => matchMedia('(display-mode: standalone), (display-mode: fullscreen), (display-mode: window-controls-overlay), (display-mode: minimal-ui)').matches || navigator.standalone === true;
@@ -31,13 +31,17 @@ export function experienceHelp(appId) {
 
 // ------------------------------------------------------------------ window controls (editors)
 
-/** macOS-style window buttons: close → Experience home, minimise → Dock (home), zoom → full screen. */
+/** EYAD Studio controls — no macOS traffic-light chrome. */
 export function windowControls() {
-  const btn = (cls, label, glyph, fn) => h('button', { class: 'xp-wc ' + cls, type: 'button', 'aria-label': label, title: label, onclick: fn }, h('span', { 'aria-hidden': 'true', text: glyph }));
-  return h('div', { class: 'xp-wcs', role: 'group', 'aria-label': 'Window' },
-    btn('is-close', 'Close — back to EYAD Experience', '×', () => { location.href = route('home'); }),
-    btn('is-min', 'Minimise to the Dock', '–', () => { location.href = route('home'); }),
-    btn('is-zoom', 'Full screen', '+', () => {
+  const btn = (cls, label, glyph, fn) => h('button', { class: 'xp-wc ' + cls, type: 'button', 'aria-label': label, title: label, onclick: fn }, icon(glyph, 14), h('span', { text: label }));
+  return h('div', { class: 'xp-wcs', role: 'group', 'aria-label': 'Studio controls' },
+    btn('is-home', 'Studio', 'dock', () => { location.href = route('home'); }),
+    btn('is-pop', 'New window', 'window', () => {
+      const u = new URL(location.href); u.searchParams.set('eyadWindow', Date.now().toString(36));
+      const w = window.open(u.href, '_blank', 'noopener,noreferrer,width=1500,height=950');
+      if (!w) toast('Allow pop-ups to open another Studio window.', { type: 'warn' });
+    }),
+    btn('is-zoom', document.fullscreenElement ? 'Exit full screen' : 'Full screen', 'expand', () => {
       if (document.fullscreenElement) document.exitFullscreen?.();
       else document.documentElement.requestFullscreen?.().catch(() => toast('Full screen is not available here.'));
     }));

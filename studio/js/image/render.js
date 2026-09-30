@@ -71,7 +71,6 @@ function renderList(nodes, ctx, o) {
 }
 
 export function renderNode(n, ctx, o = {}, ignoreBlend = false) {
-<<<<<<< HEAD
   if (n.type === 'group' && n.artboard && !o._inArtboard) {
     // Artboard: its own background, and everything inside is clipped to its frame.
     const a = n.artboard;
@@ -83,8 +82,6 @@ export function renderNode(n, ctx, o = {}, ignoreBlend = false) {
     return;
   }
   if (o._inArtboard) o = { ...o, _inArtboard: false };
-=======
->>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
   if (n.type === 'group') {
     const isolated = n.blend !== 'pass-through' || n.opacity < 1 || (n.mask && n.maskEnabled);
     if (!isolated) { renderList(n.children, ctx, o); return; }
@@ -112,22 +109,14 @@ export function renderNode(n, ctx, o = {}, ignoreBlend = false) {
     const tg = tmp.getContext('2d');
     const base = ctx.getTransform();
     tg.setTransform(base.multiply(nodeMatrix(n)));
-<<<<<<< HEAD
     if (live) live.draw(tg, n); else drawContent(n, tg);
-=======
-    if (live) live.draw(tg, n); else drawContentStyled(n, tg);
->>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
     if (n.mask && n.maskEnabled) applyMask(tg, n, base.multiply(nodeMatrix(n)));
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.drawImage(tmp, 0, 0);
     releaseScratch(tmp);
   } else {
     ctx.transform(...matrixArgs(nodeMatrix(n)));
-<<<<<<< HEAD
     if (live) live.draw(ctx, n); else drawContent(n, ctx);
-=======
-    if (live) live.draw(ctx, n); else drawContentStyled(n, ctx);
->>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
   }
   ctx.restore();
 }
@@ -146,82 +135,6 @@ function applyMask(tg, n, maskTransform) {
 export function matrixArgs(m) { return [m.a, m.b, m.c, m.d, m.e, m.f]; }
 
 /** Draws a node's own content in its local coordinate space. */
-<<<<<<< HEAD
-=======
-function rgba(c, alpha = 1) {
-  if (!c) return `rgba(255,255,255,${alpha})`;
-  const r = Math.round(c.r ?? 255), g = Math.round(c.g ?? 255), b = Math.round(c.b ?? 255);
-  return `rgba(${r},${g},${b},${Math.max(0, Math.min(1, alpha))})`;
-}
-function styleAlpha(v) { return Math.max(0, Math.min(1, Number(v ?? 100) / 100)); }
-function styleSize(v, fallback = 0) { return Math.max(0, Number(v ?? fallback) || 0); }
-
-/** Reconstructs the most common PSD layer effects from ag-psd's decoded style data.
- * The goal is visual fidelity without depending on a proprietary editor/runtime.
- * Unsupported effect parameters remain in n.psd.styleData for future passes.
- */
-export function drawContentStyled(n, ctx) {
-  const styles = n.psd?.styleData;
-  if (!styles || styles.disabled) { drawContent(n, ctx); return; }
-  const { w, h } = localSize(n);
-  const base = makeCanvas(Math.max(1, Math.ceil(w)), Math.max(1, Math.ceil(h)));
-  const bg = base.getContext('2d');
-  drawContent(n, bg);
-
-  const drawTinted = (color, opacity, filter = 'none', dx = 0, dy = 0) => {
-    const c = makeCanvas(base.width, base.height), g = c.getContext('2d');
-    g.drawImage(base, 0, 0);
-    g.globalCompositeOperation = 'source-in';
-    g.fillStyle = rgba(color, opacity);
-    g.fillRect(0, 0, c.width, c.height);
-    ctx.save(); ctx.filter = filter; ctx.drawImage(c, dx, dy); ctx.restore();
-  };
-
-  const shadows = Array.isArray(styles.dropShadow) ? styles.dropShadow : [];
-  for (const e of shadows) if (e && e.enabled !== false) {
-    const a = styleAlpha(e.opacity ?? 75), dist = styleSize(e.distance, 5), angle = Number(e.angle ?? 120) * Math.PI / 180;
-    drawTinted(e.color || {r:0,g:0,b:0}, a, `blur(${Math.max(0, styleSize(e.size, 5))}px)`, Math.cos(angle) * dist, Math.sin(angle) * dist);
-  }
-  const glows = [styles.outerGlow, ...(Array.isArray(styles.outerGlowMulti) ? styles.outerGlowMulti : [])].filter(Boolean);
-  for (const e of glows) if (e && e.enabled !== false) {
-    drawTinted(e.color || {r:255,g:255,b:255}, styleAlpha(e.opacity ?? 75), `blur(${Math.max(0, styleSize(e.size, 5))}px)`);
-  }
-
-  // Stroke is reconstructed as an alpha dilation. It works for raster, text and shapes.
-  const strokes = Array.isArray(styles.stroke) ? styles.stroke : [];
-  for (const e of strokes) if (e && e.enabled !== false) {
-    const width = Math.max(1, styleSize(e.size, 1));
-    const c = makeCanvas(base.width + width * 2, base.height + width * 2), g = c.getContext('2d');
-    g.globalAlpha = styleAlpha(e.opacity ?? 100); g.fillStyle = rgba(e.color || {r:0,g:0,b:0}, 1);
-    for (let a = 0; a < 360; a += Math.max(8, 360 / Math.max(12, width * 2))) {
-      const rad = a * Math.PI / 180; g.drawImage(base, width + Math.cos(rad) * width / 2, width + Math.sin(rad) * width / 2);
-    }
-    ctx.drawImage(c, -width, -width);
-  }
-
-  // Solid fill / gradient overlay are clipped to the layer alpha.
-  const fills = Array.isArray(styles.solidFill) ? styles.solidFill : [];
-  for (const e of fills) if (e && e.enabled !== false) {
-    const c = makeCanvas(base.width, base.height), g = c.getContext('2d');
-    g.fillStyle = rgba(e.color || {r:255,g:255,b:255}, styleAlpha(e.opacity ?? 100)); g.fillRect(0,0,c.width,c.height);
-    g.globalCompositeOperation = 'destination-in'; g.drawImage(base,0,0); ctx.drawImage(c,0,0);
-  }
-  const grads = Array.isArray(styles.gradientOverlay) ? styles.gradientOverlay : [];
-  for (const e of grads) if (e && e.enabled !== false && e.gradient?.type === 'solid') {
-    const stops = e.gradient.colorStops || [];
-    if (stops.length >= 2) {
-      const ang = Number(e.angle ?? 90) * Math.PI / 180, len = Math.max(base.width, base.height), cx = base.width/2, cy = base.height/2;
-      const x = Math.cos(ang) * len/2, y = Math.sin(ang) * len/2;
-      const gr = ctx.createLinearGradient(cx-x, cy-y, cx+x, cy+y);
-      for (const st of stops) gr.addColorStop(Math.max(0,Math.min(1,st.location)), rgba(st.color, 1));
-      const c=makeCanvas(base.width,base.height), g=c.getContext('2d'); g.fillStyle=gr; g.globalAlpha=styleAlpha(e.opacity ?? 100); g.fillRect(0,0,c.width,c.height); g.globalCompositeOperation='destination-in'; g.drawImage(base,0,0); ctx.drawImage(c,0,0);
-    }
-  }
-  // If no colour overlay was supplied, paint the original content. Otherwise the overlay already contains the layer alpha.
-  if (!fills.length && !grads.length) ctx.drawImage(base, 0, 0);
-}
-
->>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
 export function drawContent(n, ctx) {
   if (n.type === 'raster') { ctx.drawImage(n.canvas, 0, 0); return; }
   if (n.type === 'text') { drawText(n, ctx); return; }

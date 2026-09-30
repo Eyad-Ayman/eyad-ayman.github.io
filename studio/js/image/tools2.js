@@ -168,11 +168,7 @@ const polyLassoTool = {
 // ================================================================= Spot Healing Brush
 
 const healTool = {
-<<<<<<< HEAD
   id: 'heal', label: 'Spot Heal Brush', icon: 'heal', key: 'J', cursor: 'none', showsCursor: true, wantsCoalesced: true,
-=======
-  id: 'heal', label: 'Spot Healing Brush', icon: 'heal', key: 'J', cursor: 'none', showsCursor: true, wantsCoalesced: true,
->>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
   hint: 'Paint over a blemish, object or wire — it is rebuilt from its surroundings (on this device)',
   options(app) { return [optSlider(app, 'heal', 'size', 'Size', 2, 500, 1, 'px')]; },
   down(pt) {
@@ -194,11 +190,7 @@ const healTool = {
     if (!mask) return;
     this.app.view.requestDraw();
     const { contentAwareFill } = await import('./pro.js');
-<<<<<<< HEAD
     await contentAwareFill(this.app, { label: 'Spot Heal', maskCanvas: mask });
-=======
-    await contentAwareFill(this.app, { label: 'Spot Healing', maskCanvas: mask });
->>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
   },
   cancel() { this.mask = null; this.app.view.requestDraw(); },
   overlay(ctx, view) {

@@ -1,8 +1,5 @@
 // EYAD STUDIO — shared documentation content & dialogs (help, shortcuts,
-<<<<<<< HEAD
 import { icon } from './icons.js';
-=======
->>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
 // supported files, compatibility reports). Also used by /studio/help/.
 import { h } from './dom.js';
 import { dialog } from './ui.js';
@@ -15,11 +12,7 @@ export const SUPPORTED = [
     ['WebP', 'full', 'Open, place, export'],
     ['GIF', 'partial', 'First frame only (animation is not imported)'],
     ['SVG', 'partial', 'Rasterised on import; scripts and external resources never run'],
-<<<<<<< HEAD
     ['PSD', 'partial', 'Real parser: layers, groups, masks, opacity, blend modes. Text, smart objects, adjustments and layer styles are reported and imported as pixels/placeholders'],
-=======
-    ['PSD', 'partial', 'Real parser: layered documents, masks, clipping, common blend modes, editable text where the source exposes usable text data, vector paths and selected layer styles. Unsupported features keep a reference composite.'],
->>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
     ['PSB', 'partial', 'Large-document PSD — limited by browser memory'],
     ['AVIF / HEIC', 'browser', 'Only if your browser can decode them'],
   ] },
@@ -77,29 +70,17 @@ export function shortcutsTable() {
 export function supportedFilesDialog() { return dialog({ title: 'Supported files', body: supportedTable(), width: 620 }); }
 export function shortcutsDialog() { return dialog({ title: 'Keyboard shortcuts', body: shortcutsTable(), width: 620 }); }
 export function aboutDialog() {
-<<<<<<< HEAD
   return dialog({ title: 'About EYAD Experience', width: 460, body: h('div', { class: 'studio-stack' },
     h('p', { text: 'EYAD Experience 3.0 is Eyad Ayman’s own creative suite: EYAD IMAGE (layered photo editing, PSD), EYAD VECTOR (vector design, SVG / PDF / .ai), EYAD VIDEO (timeline editing), EYAD 3D, EYAD CAMERA (film looks) and Templates. Original design and code — it runs in the browser or installed as an app.' }),
     h('p', { class: 'studio-dim', text: 'Everything runs locally in your browser. Files you open are never uploaded; projects are stored in this browser’s storage until you download them.' }),
     h('p', { class: 'studio-dim', text: 'Inspired by professional creative tools but not affiliated with, endorsed by, or compatible-certified by Adobe. “Photoshop” and “Premiere Pro” are trademarks of Adobe Inc.; their file formats are read on a best-effort basis.' }),
     h('p', { class: 'studio-dim studio-small', text: 'Open-source parts: ag-psd, pdf.js, three.js, Paper.js, MediaPipe, ONNX Runtime, fflate, fzstd (MIT / Apache-2.0). Fonts under the SIL Open Font Licence. Licences are in studio/vendor and studio/fonts.' })) });
-=======
-  return dialog({ title: 'About EYAD STUDIO', width: 460, body: h('div', { class: 'studio-stack' },
-    h('p', { text: 'EYAD STUDIO is Eyad Ayman’s own browser-based creative workspace: EYAD IMAGE for layered image editing and EYAD VIDEO for timeline editing.' }),
-    h('p', { class: 'studio-dim', text: 'Everything runs locally in your browser. Files you open are never uploaded; projects are stored in this browser’s storage until you download them.' }),
-    h('p', { class: 'studio-dim', text: 'EYAD STUDIO uses familiar professional-editor interaction patterns, but its interface, branding, icons and implementation are original and are not a visual copy of another product. It is not affiliated with or endorsed by Adobe. PSD/PSB files are parsed on a best-effort compatibility basis.' }),
-    h('p', { class: 'studio-dim studio-small', text: 'PSD parsing: ag-psd (MIT licence). Fonts: Oswald, Inter, JetBrains Mono (SIL Open Font Licence).' })) });
->>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
 }
 
 /** Compatibility / import report. report = { title, intro, stats:[[label,value]], rows:[{status,label,detail}], actions } */
 export function reportBody(report) {
   const groups = { ok: 'Supported', part: 'Partial', no: 'Unsupported' };
-<<<<<<< HEAD
   const marks = { ok: '✓', part: '!', no: '×' };
-=======
-  const marks = { ok: '✓', part: '△', no: '×' };
->>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
   return h('div', { class: 'studio-report' },
     report.intro ? h('p', { class: 'studio-dim', text: report.intro }) : null,
     report.stats ? h('div', { class: 'studio-report-stats' }, report.stats.map(([l, v]) => h('div', { class: 'studio-stat' }, h('b', { text: String(v) }), h('span', { text: l })))) : null,
@@ -107,26 +88,12 @@ export function reportBody(report) {
       const rows = report.rows.filter((r) => r.status === k);
       if (!rows.length) return null;
       return h('div', { class: 'studio-report-group' }, h('h3', { text: title }),
-<<<<<<< HEAD
         rows.map((r) => (r.detail
           // rows with details are real disclosure widgets: click / Enter / Space toggles, the chevron rotates
           ? h('details', { class: 'studio-report-row is-more ' + k, open: rows.length <= 3 || k === 'no' },
             h('summary', { class: 'studio-report-sum' }, h('span', { class: 'mk', text: marks[k] }), h('span', { class: 'lbl', text: r.label }), icon('chevronDown', 14, 'chev')),
             h('small', { text: r.detail }))
           : h('div', { class: 'studio-report-row ' + k }, h('span', { class: 'mk', text: marks[k] }), h('div', {}, h('span', { text: r.label }))))));
-=======
-        rows.map((r) => {
-          const detail = r.detail ? h('small', { class: 'studio-report-detail', text: r.detail, hidden: true }) : null;
-          const arrow = r.detail ? h('button', { class: 'studio-report-toggle', type: 'button', 'aria-expanded': 'false', 'aria-label': 'Show details', onclick: (e) => {
-            e.stopPropagation();
-            const open = !detail.hidden;
-            detail.hidden = open;
-            arrow.setAttribute('aria-expanded', String(!open));
-            arrow.setAttribute('aria-label', open ? 'Show details' : 'Hide details');
-          } }, h('span', { class: 'studio-report-chevron' }, '›')) : h('span', { class: 'studio-report-chevron is-empty', 'aria-hidden': 'true' }, '›');
-          return h('div', { class: 'studio-report-row ' + k }, h('span', { class: 'mk', text: marks[k] }), h('div', { class: 'studio-report-main' }, h('span', { text: r.label }), detail), arrow);
-        }));
->>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
     }));
 }
 
@@ -144,17 +111,10 @@ export function psdCompatDialog() {
       { status: 'ok', label: 'Groups (nested) and common blend modes' },
       { status: 'ok', label: 'Layer masks (pixel masks), clipping masks' },
       { status: 'ok', label: 'Guides and resolution metadata' },
-<<<<<<< HEAD
       { status: 'part', label: 'Text layers', detail: 'Imported as pixels; text content is kept and can be converted to an approximate editable text layer.' },
       { status: 'part', label: 'Smart objects', detail: 'Imported as rendered pixels.' },
       { status: 'part', label: 'Adjustment layers', detail: 'Kept as named placeholders — not applied.' },
       { status: 'part', label: 'Layer styles (shadows, strokes, glows…)', detail: 'Listed in the report, not rendered.' },
-=======
-      { status: 'part', label: 'Text layers', detail: 'Imported as editable EYAD text when the PSD exposes usable text data; the original composite is retained as a hidden reference when fidelity may differ.' },
-      { status: 'part', label: 'Smart objects', detail: 'Imported as rendered pixels.' },
-      { status: 'part', label: 'Adjustment layers', detail: 'Kept as named placeholders — not applied.' },
-      { status: 'part', label: 'Layer styles (shadows, strokes, glows…)', detail: 'Common shadow, glow, fill and stroke styles are reconstructed; uncommon parameters remain attached to the layer for future editing and are compared against the PSD composite.' },
->>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
       { status: 'part', label: '16/32-bit, CMYK, Grayscale', detail: 'Converted to 8-bit RGB.' },
       { status: 'no', label: 'Vector masks, layer comps, 3D, video layers' },
       { status: 'part', label: 'PSD export', detail: 'Experimental: pixel layers, groups, names, opacity, blend modes and masks. Text/shapes are rasterised.' },

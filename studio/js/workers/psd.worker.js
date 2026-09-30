@@ -21,11 +21,8 @@ function to8bit(img) {
   return { width: w, height: h, data: out, converted: true };
 }
 
-<<<<<<< HEAD
 function to8bitRaw(img) { var c = to8bit(img); return c ? { width: c.width, height: c.height, data: c.data, converted: c.converted } : null; }
 
-=======
->>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
 function packImage(img, transfers) {
   var c = to8bit(img);
   if (!c || !c.width || !c.height) return null;
@@ -46,7 +43,6 @@ function safeText(layer) {
   } catch (e) { return { text: '', font: null, size: null }; }
 }
 
-<<<<<<< HEAD
 /* ---- iPhone/iPad: canvases are capped (~16.7 MP each) and memory is tight, so
    oversized documents are box-filtered down inside the worker before any canvas exists. */
 var SCALE = 1;
@@ -74,8 +70,6 @@ function shrink(img) {
 }
 function sc(v) { return Math.round((v || 0) * SCALE); }
 
-=======
->>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
 function convertLayer(l, transfers, depth) {
   var out = {
     name: String(l.name || 'Layer').slice(0, 250),
@@ -83,11 +77,7 @@ function convertLayer(l, transfers, depth) {
     opacity: typeof l.opacity === 'number' ? l.opacity : 1,
     fillOpacity: typeof l.fillOpacity === 'number' ? l.fillOpacity : 1,
     blendMode: l.blendMode || 'normal',
-<<<<<<< HEAD
     left: sc(l.left), top: sc(l.top), right: sc(l.right), bottom: sc(l.bottom),
-=======
-    left: l.left || 0, top: l.top || 0, right: l.right || 0, bottom: l.bottom || 0,
->>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
     clipping: !!l.clipping,
     locked: !!(l.protected && (l.protected.transparency || l.protected.composite || l.protected.position)),
     isGroup: !!l.children,
@@ -95,13 +85,7 @@ function convertLayer(l, transfers, depth) {
     text: safeText(l),
     smart: !!l.placedLayer,
     adjustment: l.adjustment ? String(l.adjustment.type || 'adjustment') : null,
-<<<<<<< HEAD
     effects: l.effects ? Object.keys(l.effects).filter(function (k) { return k !== 'scale' && k !== 'disabled'; }) : [],
-=======
-    adjustmentData: l.adjustment || null,
-    effects: l.effects ? Object.keys(l.effects).filter(function (k) { return k !== 'scale' && k !== 'disabled'; }) : [],
-    effectData: l.effects || null,
->>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
     effectsDisabled: !!(l.effects && l.effects.disabled),
     vectorMask: !!l.vectorMask,
     vectorFill: !!l.vectorFill,
@@ -112,11 +96,7 @@ function convertLayer(l, transfers, depth) {
     vector: null,
   };
   try {
-<<<<<<< HEAD
     if (SCALE === 1 && l.vectorMask && l.vectorMask.paths && l.vectorMask.paths.length) {
-=======
-    if (l.vectorMask && l.vectorMask.paths && l.vectorMask.paths.length) {
->>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
       var vf = l.vectorFill, vs = l.vectorStroke;
       var col = function (c) { return c && typeof c.r === 'number' ? [c.r, c.g, c.b] : null; };
       out.vector = {
@@ -130,7 +110,6 @@ function convertLayer(l, transfers, depth) {
       };
     }
   } catch (e) { out.vector = null; }
-<<<<<<< HEAD
   if (l.imageData) { out.image = packImage(shrink(to8bitRaw(l.imageData)), transfers); l.imageData = null; }
   if (l.mask && (l.mask.imageData || typeof l.mask.defaultColor === 'number')) {
     out.mask = {
@@ -138,15 +117,6 @@ function convertLayer(l, transfers, depth) {
       defaultColor: typeof l.mask.defaultColor === 'number' ? l.mask.defaultColor : 0,
       disabled: !!l.mask.disabled,
       image: l.mask.imageData ? packImage(shrink(to8bitRaw(l.mask.imageData)), transfers) : null,
-=======
-  if (l.imageData) out.image = packImage(l.imageData, transfers);
-  if (l.mask && (l.mask.imageData || typeof l.mask.defaultColor === 'number')) {
-    out.mask = {
-      left: l.mask.left || 0, top: l.mask.top || 0, right: l.mask.right || 0, bottom: l.mask.bottom || 0,
-      defaultColor: typeof l.mask.defaultColor === 'number' ? l.mask.defaultColor : 0,
-      disabled: !!l.mask.disabled,
-      image: l.mask.imageData ? packImage(l.mask.imageData, transfers) : null,
->>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
     };
   }
   if (l.children && depth < 60) out.children = l.children.map(function (c) { return convertLayer(c, transfers, depth + 1); });
@@ -159,7 +129,6 @@ self.onmessage = function (e) {
     if (msg.op === 'read') {
       var psd = agPsd.readPsd(msg.buffer, {
         useImageData: true,
-<<<<<<< HEAD
         // the embedded JPEG thumbnail needs a canvas to decode, which older iOS workers lack
         skipThumbnail: !!msg.lowMemory,
         throwForMissingFeatures: false,
@@ -168,18 +137,11 @@ self.onmessage = function (e) {
       msg.buffer = null;
       var fullW = psd.width, fullH = psd.height, maxPx = msg.maxPixels || 0;
       SCALE = maxPx && fullW * fullH > maxPx ? Math.sqrt(maxPx / (fullW * fullH)) : 1;
-=======
-        skipThumbnail: false,
-        throwForMissingFeatures: false,
-        logMissingFeatures: false,
-      });
->>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
       var transfers = [];
       var res = psd.imageResources || {};
       var thumb = null;
       try { if (res.thumbnail && res.thumbnail instanceof ImageData) thumb = packImage(res.thumbnail, transfers); } catch (err) { thumb = null; }
       var out = {
-<<<<<<< HEAD
         width: SCALE === 1 ? psd.width : Math.max(1, Math.round(psd.width * SCALE)), height: SCALE === 1 ? psd.height : Math.max(1, Math.round(psd.height * SCALE)),
         fullWidth: fullW, fullHeight: fullH, scale: SCALE,
         bitsPerChannel: psd.bitsPerChannel || 8,
@@ -187,23 +149,12 @@ self.onmessage = function (e) {
         channels: psd.channels,
         // low-memory devices skip the composite when real layers exist (it is only a hidden reference)
         composite: psd.imageData && !(msg.lowMemory && psd.children && psd.children.length) ? packImage(shrink(to8bitRaw(psd.imageData)), transfers) : null,
-=======
-        width: psd.width, height: psd.height,
-        bitsPerChannel: psd.bitsPerChannel || 8,
-        colorMode: psd.colorMode,
-        channels: psd.channels,
-        composite: psd.imageData ? packImage(psd.imageData, transfers) : null,
->>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
         thumbnail: thumb,
         resolution: res.resolutionInfo ? { h: res.resolutionInfo.horizontalResolution, unit: res.resolutionInfo.horizontalResolutionUnit } : null,
         hasIcc: !!res.iccProfile,
         hasXmp: !!res.xmpMetadata,
         layerComps: res.layerComps ? (res.layerComps.list || []).length : 0,
-<<<<<<< HEAD
         guides: res.gridAndGuidesInformation && res.gridAndGuidesInformation.guides ? res.gridAndGuidesInformation.guides.map(function (g) { return { location: g.location * SCALE, direction: g.direction }; }) : [],
-=======
-        guides: res.gridAndGuidesInformation && res.gridAndGuidesInformation.guides ? res.gridAndGuidesInformation.guides.map(function (g) { return { location: g.location, direction: g.direction }; }) : [],
->>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
         children: (psd.children || []).map(function (c) { return convertLayer(c, transfers, 0); }),
       };
       self.postMessage({ id: msg.id, result: out }, transfers);

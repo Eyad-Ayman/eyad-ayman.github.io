@@ -2,10 +2,7 @@
 // (gl.js) so they look the same in every browser and in the export; blur and
 // glow use the 2D canvas filter where the browser supports it.
 import { defaultUniforms, toCbCr } from './gl.js';
-<<<<<<< HEAD
 import { LOOKS, getLook } from '../core/film.js';
-=======
->>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
 
 const P = (key, label, min, max, def, unit = '', step = 1) => ({ key, label, min, max, default: def, unit, step });
 const hueRGB = (deg) => { const h = ((deg % 360) + 360) % 360 / 60, x = 1 - Math.abs(h % 2 - 1); const [r, g, b] = h < 1 ? [1, x, 0] : h < 2 ? [x, 1, 0] : h < 3 ? [0, 1, x] : h < 4 ? [0, x, 1] : h < 5 ? [x, 0, 1] : [1, 0, x]; return [r, g, b]; };
@@ -39,12 +36,9 @@ export const EFFECTS = {
   // ---- Blur & light (2D canvas filter)
   blur: { label: 'Gaussian Blur', group: 'Blur & Light', params: [P('value', 'Radius', 0, 100, 8, 'px', 0.5)], filter: (p, scale) => `blur(${(p.value * scale).toFixed(2)}px)` },
   glow: { label: 'Glow', group: 'Blur & Light', params: [P('amount', 'Amount', 0, 100, 45, '%'), P('radius', 'Radius', 1, 80, 18, 'px')], glow: true },
-<<<<<<< HEAD
   // ---- Film & grades (the same 136 looks as Film Lab / EYAD CAMERA)
   film: { label: 'Film Look (136 film, camera & LUT grades)', group: 'Film & Grades', params: [P('look', 'Look', 1, LOOKS.length, (LOOKS.find((l) => l.id === 'portrait-400') || LOOKS[0]).code), P('strength', 'Strength', 0, 100, 100, '%')], film: true,
     options: { look: () => LOOKS.filter((l) => l.code <= LOOKS.length).map((l) => [l.code, l.name]) } },
-=======
->>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
   // ---- AI
   bgRemove: { label: 'Remove Background (people, AI)', group: 'AI', params: [P('feather', 'Edge softness', 0, 100, 40), P('threshold', 'Threshold', 5, 95, 50, '%')], ai: true },
 };
@@ -71,11 +65,7 @@ export function defaultParams(type) {
  */
 export function effectState(clip, fxOverride = {}, scale = 1) {
   const u = defaultUniforms();
-<<<<<<< HEAD
   let needsGL = false, glow = null, ai = null, film = null;
-=======
-  let needsGL = false, glow = null, ai = null;
->>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
   const filters = [];
   for (const e of clip.effects || []) {
     if (!e.enabled) continue;
@@ -86,14 +76,9 @@ export function effectState(clip, fxOverride = {}, scale = 1) {
     if (def.filter) filters.push(def.filter(params, scale));
     if (def.glow) glow = { amount: params.amount / 100, radius: params.radius * scale };
     if (def.ai) ai = params;
-<<<<<<< HEAD
     if (def.film) film = { key: e.id, code: Math.round(params.look), strength: params.strength };
   }
   return { needsGL, u, filter: filters.length ? filters.join(' ') : 'none', glow, ai, film };
-=======
-  }
-  return { needsGL, u, filter: filters.length ? filters.join(' ') : 'none', glow, ai };
->>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
 }
 
 /** Back-compat: CSS filter string for simple renderers. */

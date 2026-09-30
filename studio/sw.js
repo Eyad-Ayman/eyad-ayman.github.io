@@ -6,8 +6,7 @@
  * cached shell offline; static files = cache first, refreshed in the background.
  */
 "use strict";
-<<<<<<< HEAD
-var VERSION = "de18a702cf";
+var VERSION = "v4-spatial-20260930";
 var CACHE = "eyad-studio-" + VERSION;
 var SHELL = [
 "./3d/",
@@ -36,22 +35,11 @@ var SHELL = [
 "./fonts/dm-serif-display-latin-400-italic.woff2",
 "./fonts/dm-serif-display-latin-400-normal.woff2",
 "./fonts/great-vibes-latin-400-normal.woff2",
-=======
-var VERSION = "c038819397";
-var CACHE = "eyad-studio-" + VERSION;
-var SHELL = [
-"./css/hub.css",
-"./css/image.css",
-"./css/studio.css",
-"./css/vector.css",
-"./css/video.css",
->>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
 "./fonts/inter-latin-400-normal.woff2",
 "./fonts/inter-latin-500-normal.woff2",
 "./fonts/inter-latin-600-normal.woff2",
 "./fonts/inter-latin-700-normal.woff2",
 "./fonts/jetbrains-mono-latin-400-normal.woff2",
-<<<<<<< HEAD
 "./fonts/montserrat-latin-400-normal.woff2",
 "./fonts/montserrat-latin-600-normal.woff2",
 "./fonts/montserrat-latin-800-normal.woff2",
@@ -76,13 +64,6 @@ var SHELL = [
 "./icons/app-templates.png",
 "./icons/app-vector.png",
 "./icons/app-video.png",
-=======
-"./fonts/oswald-latin-500-normal.woff2",
-"./fonts/oswald-latin-600-normal.woff2",
-"./fonts/oswald-latin-700-normal.woff2",
-"./help/",
-"./help/index.html",
->>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
 "./icons/apple-touch-icon.png",
 "./icons/icon-192.png",
 "./icons/icon-512.png",
@@ -94,7 +75,6 @@ var SHELL = [
 "./img/grain-light.png",
 "./",
 "./index.html",
-<<<<<<< HEAD
 "./js/3d/anim.js",
 "./js/3d/app.js",
 "./js/3d/editor-flag.js",
@@ -123,34 +103,20 @@ var SHELL = [
 "./js/core/icons.js",
 "./js/core/inpaint.js",
 "./js/core/lut.js",
-=======
-"./js/core/ai.js",
-"./js/core/db.js",
-"./js/core/docs.js",
-"./js/core/dom.js",
-"./js/core/eyad.js",
-"./js/core/files.js",
-"./js/core/history.js",
-"./js/core/icons.js",
->>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
 "./js/core/open.js",
 "./js/core/settings.js",
+"./js/core/studio-v4.js",
 "./js/core/shell.js",
 "./js/core/ui.js",
 "./js/core/zip.js",
 "./js/file-notice.js",
 "./js/image/ai.js",
 "./js/image/app.js",
-<<<<<<< HEAD
 "./js/image/artboards.js",
 "./js/image/doc.js",
 "./js/image/filmlab.js",
 "./js/image/filters.js",
 "./js/image/generate.js",
-=======
-"./js/image/doc.js",
-"./js/image/filters.js",
->>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
 "./js/image/history.js",
 "./js/image/io.js",
 "./js/image/main.js",
@@ -163,13 +129,13 @@ var SHELL = [
 "./js/image/selection.js",
 "./js/image/tools.js",
 "./js/image/tools2.js",
+"./js/image/v4-effects.js",
 "./js/image/view.js",
 "./js/pages/common.js",
 "./js/pages/help.js",
 "./js/pages/home.js",
 "./js/pages/projects.js",
 "./js/pages/settings.js",
-<<<<<<< HEAD
 "./js/templates/data.js",
 "./js/templates/fonts.js",
 "./js/templates/kit.js",
@@ -178,10 +144,6 @@ var SHELL = [
 "./js/vector/commands.js",
 "./js/vector/import-fig.js",
 "./js/vector/import-pdf.js",
-=======
-"./js/vector/app.js",
-"./js/vector/commands.js",
->>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
 "./js/vector/io.js",
 "./js/vector/main.js",
 "./js/vector/menus.js",
@@ -192,10 +154,7 @@ var SHELL = [
 "./js/video/anim.js",
 "./js/video/app.js",
 "./js/video/captions.js",
-<<<<<<< HEAD
 "./js/video/collect.js",
-=======
->>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
 "./js/video/effects.js",
 "./js/video/engine.js",
 "./js/video/export.js",
@@ -215,15 +174,11 @@ var SHELL = [
 "./js/workers/peaks.worker.js",
 "./js/workers/psd.worker.js",
 "./manifest.webmanifest",
-<<<<<<< HEAD
 "./models/selfie_segmenter.tflite",
-=======
->>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
 "./projects/",
 "./projects/index.html",
 "./settings/",
 "./settings/index.html",
-<<<<<<< HEAD
 "./templates/",
 "./templates/index.html",
 "./vector/",
@@ -231,11 +186,6 @@ var SHELL = [
 "./vendor/ag-psd.min.js",
 "./vendor/fflate/LICENSE",
 "./vendor/fflate/fflate.js",
-=======
-"./vector/",
-"./vector/index.html",
-"./vendor/ag-psd.min.js",
->>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
 "./vendor/paper/paper-core.min.js",
 "./video/",
 "./video/index.html"
@@ -254,11 +204,7 @@ self.addEventListener("install", function (event) {
 
 self.addEventListener("activate", function (event) {
   event.waitUntil(caches.keys().then(function (names) {
-<<<<<<< HEAD
     return Promise.all(names.filter(function (n) { return n.indexOf("eyad-studio-") === 0 && n !== CACHE && n.indexOf("eyad-studio-ai-") !== 0 && n.indexOf("eyad-studio-offline-") !== 0; }).map(function (n) { return caches.delete(n); }));
-=======
-    return Promise.all(names.filter(function (n) { return n.indexOf("eyad-studio-") === 0 && n !== CACHE; }).map(function (n) { return caches.delete(n); }));
->>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
   }).then(function () { return self.clients.claim(); }));
 });
 

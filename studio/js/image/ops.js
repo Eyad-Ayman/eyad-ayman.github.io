@@ -767,17 +767,10 @@ export const ADJUSTMENTS = {
   ripple: { label: 'Ripple', fields: [R('amount', 'Amount', 1, 100, 10, ' px'), R('size', 'Size', 4, 200, 30, ' px')] },
   oilPaint: { label: 'Oil Paint', fields: [R('radius', 'Brush size', 1, 8, 3), R('levels', 'Detail', 6, 40, 20)] },
   halftone: { label: 'Halftone', fields: [R('size', 'Dot size', 3, 60, 8, ' px')] },
-<<<<<<< HEAD
   cameraRaw: { label: 'Raw Develop Filter', fields: [], custom: true },
   levels: { label: 'Levels', fields: [], custom: true },
   curves: { label: 'Curves', fields: [], custom: true },
   inpaint: { label: 'Smart Fill', fields: [], custom: true },
-=======
-  cameraRaw: { label: 'Camera Raw Filter', fields: [], custom: true },
-  levels: { label: 'Levels', fields: [], custom: true },
-  curves: { label: 'Curves', fields: [], custom: true },
-  inpaint: { label: 'Content-Aware Fill', fields: [], custom: true },
->>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
   clouds: { label: 'Clouds', fields: [R('scale', 'Scale', 20, 800, 180, ' px'), R('seed', 'Variation', 1, 999, 1)], inject: (app) => ({ fg: app.fg, bg: app.bg }) },
 };
 function R(key, label, min, max, value, unit = '', step = 1) { return { key, label, type: 'range', min, max, value, unit, step }; }

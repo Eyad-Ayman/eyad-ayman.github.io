@@ -557,11 +557,7 @@ export class ImageApp {
       'Shift+L': () => this.doc && this.selectTool(this.tool?.id === 'lasso' ? 'polylasso' : 'lasso'),
       W: () => this.doc && this.selectTool(['quick', 'wand', 'aiselect'].includes(this.tool?.id) ? this.tool.id : (this.lastSelectTool || 'aiselect')),
       'Shift+W': () => this.doc && this.selectTool({ aiselect: 'quick', quick: 'wand', wand: 'aiselect' }[this.tool?.id] || 'aiselect'), J: tool('heal'),
-<<<<<<< HEAD
       'Mod+M': () => pro.curvesDialog(this), 'Mod+Shift+A': () => pro.cameraRawDialog(this), 'Mod+Shift+F': () => import('./filmlab.js').then((m) => m.filmLabDialog(this)), 'Mod+B': () => ops.adjust(this, 'colorBalance'),
-=======
-      'Mod+M': () => pro.curvesDialog(this), 'Mod+Shift+A': () => pro.cameraRawDialog(this), 'Mod+B': () => ops.adjust(this, 'colorBalance'),
->>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
       'Mod+Alt+Shift+B': () => ops.adjust(this, 'blackWhite'), 'Mod+Shift+L': () => pro.autoAdjust(this, 'tone'), 'Mod+Alt+Shift+L': () => pro.autoAdjust(this, 'contrast'),
       'Mod+Shift+B': () => pro.autoAdjust(this, 'color'), 'Mod+Alt+G': () => this.active && ops.toggleClip(this, this.active),
       'Shift+Escape': () => this.view.setRotation(0),

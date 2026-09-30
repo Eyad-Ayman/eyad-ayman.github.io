@@ -1,13 +1,7 @@
 {
-<<<<<<< HEAD
   "name": "EYAD Experience",
   "short_name": "EYAD",
   "description": "Eyad Ayman's creative suite \u2014 photo editing (PSD), vector design (SVG, PDF, .ai), video editing, 3D scenes, a film camera and templates. Runs on your device and works offline.",
-=======
-  "name": "EYAD STUDIO",
-  "short_name": "EYAD STUDIO",
-  "description": "Eyad Ayman's browser-based image, vector and video editor — layers, PSD, pen, keyframes, timeline editing. Runs locally.",
->>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
   "id": "./",
   "start_url": "./",
   "scope": "./",
@@ -17,7 +11,6 @@
     "standalone"
   ],
   "orientation": "any",
-<<<<<<< HEAD
   "background_color": "#0b0b0c",
   "theme_color": "#0b0b0c",
   "categories": [
@@ -25,35 +18,19 @@
     "graphics",
     "productivity",
     "design"
-=======
-  "background_color": "#1a1a1a",
-  "theme_color": "#1a1a1a",
-  "categories": [
-    "photo",
-    "graphics",
-    "productivity"
->>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
   ],
   "icons": [
     {
       "src": "icons/icon-192.png",
       "sizes": "192x192",
-<<<<<<< HEAD
       "type": "image/png",
       "purpose": "any"
-=======
-      "type": "image/png"
->>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
     },
     {
       "src": "icons/icon-512.png",
       "sizes": "512x512",
-<<<<<<< HEAD
       "type": "image/png",
       "purpose": "any"
-=======
-      "type": "image/png"
->>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
     },
     {
       "src": "icons/maskable-512.png",
@@ -68,14 +45,9 @@
       "url": "./image/?new=1",
       "icons": [
         {
-<<<<<<< HEAD
           "src": "icons/app-image.png",
           "sizes": "96x96",
           "type": "image/png"
-=======
-          "src": "icons/icon-192.png",
-          "sizes": "192x192"
->>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
         }
       ]
     },
@@ -84,14 +56,9 @@
       "url": "./vector/?new=1",
       "icons": [
         {
-<<<<<<< HEAD
           "src": "icons/app-vector.png",
           "sizes": "96x96",
           "type": "image/png"
-=======
-          "src": "icons/icon-192.png",
-          "sizes": "192x192"
->>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
         }
       ]
     },
@@ -100,7 +67,6 @@
       "url": "./video/?new=1",
       "icons": [
         {
-<<<<<<< HEAD
           "src": "icons/app-video.png",
           "sizes": "96x96",
           "type": "image/png"
@@ -137,10 +103,6 @@
           "src": "icons/app-templates.png",
           "sizes": "96x96",
           "type": "image/png"
-=======
-          "src": "icons/icon-192.png",
-          "sizes": "192x192"
->>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
         }
       ]
     },
@@ -149,14 +111,9 @@
       "url": "./projects/",
       "icons": [
         {
-<<<<<<< HEAD
           "src": "icons/app-projects.png",
           "sizes": "96x96",
           "type": "image/png"
-=======
-          "src": "icons/icon-192.png",
-          "sizes": "192x192"
->>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
         }
       ]
     }
@@ -178,12 +135,9 @@
         ],
         "image/webp": [
           ".webp"
-<<<<<<< HEAD
         ],
         "application/x-cube-lut": [
           ".cube"
-=======
->>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
         ]
       }
     },
@@ -192,7 +146,6 @@
       "accept": {
         "image/svg+xml": [
           ".svg"
-<<<<<<< HEAD
         ],
         "application/pdf": [
           ".pdf"
@@ -205,8 +158,6 @@
         ],
         "application/postscript": [
           ".eps"
-=======
->>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
         ]
       }
     },
@@ -226,7 +177,6 @@
           ".webm"
         ]
       }
-<<<<<<< HEAD
     },
     {
       "action": "./3d/",
@@ -247,8 +197,6 @@
           ".fbx"
         ]
       }
-=======
->>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
     }
   ],
   "launch_handler": {
@@ -271,7 +219,6 @@
             ".psb",
             ".eyad",
             ".prproj",
-<<<<<<< HEAD
             ".svg",
             ".pdf",
             ".ai",
@@ -280,9 +227,6 @@
             ".obj",
             ".stl",
             ".cube"
-=======
-            ".svg"
->>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
           ]
         }
       ]

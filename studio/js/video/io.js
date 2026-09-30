@@ -25,17 +25,10 @@ async function confirmDiscard(app) {
   return true;
 }
 
-<<<<<<< HEAD
 export async function newProject(app, { quiet = false, width = null, height = null, fps: fpsIn = null, name: nameIn = null } = {}) {
   if (!(await confirmDiscard(app))) return false;
   const s = getSettings();
   let name = nameIn || 'Untitled project', w = width || s.videoWidth, hh = height || s.videoHeight, fps = fpsIn || s.videoFps;
-=======
-export async function newProject(app, { quiet = false } = {}) {
-  if (!(await confirmDiscard(app))) return false;
-  const s = getSettings();
-  let name = 'Untitled project', w = s.videoWidth, hh = s.videoHeight, fps = s.videoFps;
->>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
   if (!quiet) {
     const v = await formDialog({
       title: 'New video project', ok: 'Create',
@@ -215,11 +208,7 @@ async function thumbBlob(app) {
   return new Promise((r) => c.toBlob((b) => r(b), 'image/png'));
 }
 
-<<<<<<< HEAD
 export async function buildEyad(app, { embedMedia = false, onProgress } = {}) {
-=======
-async function buildEyad(app, { embedMedia = false, onProgress } = {}) {
->>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
   const assets = [];
   if (embedMedia) {
     let i = 0;
@@ -374,15 +363,11 @@ export async function boot(app) {
   const restored = await offerRecovery(app);
   if (!restored) {
     if (q.get('project')) await openProject(app, q.get('project'));
-<<<<<<< HEAD
     else if (q.get('new')) {
       const qw = Math.round(Number(q.get('w'))), qh = Math.round(Number(q.get('h')));
       if (qw >= 16 && qh >= 16 && qw <= 8192 && qh <= 8192) await newProject(app, { quiet: true, width: qw - (qw % 2), height: qh - (qh % 2), name: q.get('name') ? sanitizeFilename(q.get('name'), 'Untitled project') : null });
       else await newProject(app);
     }
-=======
-    else if (q.get('new')) await newProject(app);
->>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
   }
   if (q.get('handoff')) {
     const files = await takeHandoff(q.get('handoff'));
