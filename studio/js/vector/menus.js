@@ -1,4 +1,7 @@
+<<<<<<< HEAD
 import { experienceHelp } from '../core/experience.js';
+=======
+>>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
 // EYAD VECTOR — menus (menubar, phone menu sheet, command palette).
 import { toggleTheme, resolvedTheme } from '../core/settings.js';
 import { ROUTES, goPortfolio } from '../core/shell.js';
@@ -76,7 +79,11 @@ export function buildMenus(app) {
         { label: 'Make', shortcut: 'Mod+8', action: c('makeCompound'), enabled: has },
         { label: 'Release', shortcut: 'Mod+Alt+Shift+8', action: c('releaseCompound'), enabled: has },
       ] },
+<<<<<<< HEAD
       { label: 'Shape Builder', submenu: [
+=======
+      { label: 'Pathfinder', submenu: [
+>>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
         { label: 'Unite', action: c('pathfinder', 'unite'), enabled: has, icon: 'union' },
         { label: 'Minus Front', action: c('pathfinder', 'subtract'), enabled: has, icon: 'subtract' },
         { label: 'Intersect', action: c('pathfinder', 'intersect'), enabled: has, icon: 'intersect' },
@@ -114,7 +121,11 @@ export function buildMenus(app) {
       { label: 'Appearance', action: () => app.panels.focus('appearance'), icon: 'palette' },
       { label: 'Character', action: () => app.panels.focus('character'), icon: 'text' },
       { label: 'Align & Transform', action: () => app.panels.focus('align'), icon: 'alignCenter' },
+<<<<<<< HEAD
       { label: 'Shape Builder', action: () => app.panels.focus('pathfinder'), icon: 'union' },
+=======
+      { label: 'Pathfinder', action: () => app.panels.focus('pathfinder'), icon: 'union' },
+>>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
       { label: 'Layers', action: () => app.panels.focus('layers'), icon: 'layers' },
       { label: 'Artboards', action: () => app.panels.focus('artboards'), icon: 'artboard' },
       { label: 'Hide Panels', shortcut: 'Tab', action: () => app.root.classList.toggle('is-panels-hidden') },
@@ -131,7 +142,10 @@ export function buildMenus(app) {
       { label: 'Studio Documentation', action: () => { location.href = ROUTES.help; } },
       { separator: true },
       { label: 'About EYAD STUDIO', action: () => aboutDialog() },
+<<<<<<< HEAD
       ...experienceHelp('vector'),
+=======
+>>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
     ] },
   ];
 }

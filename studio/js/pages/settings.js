@@ -6,6 +6,7 @@ import { getSettings, setSetting, resetSettings, DEFAULTS } from '../core/settin
 import { storageInfo, requestPersist, wipeAll, db, cleanupOrphanMedia } from '../core/db.js';
 import { shortcutsTable } from '../core/docs.js';
 import { page } from './common.js';
+<<<<<<< HEAD
 import { offlineStatus, downloadOfflinePack, installGuide, bugReportDialog, startTour, isStandalone } from '../core/experience.js';
 import { progressDialog } from '../core/ui.js';
 
@@ -67,6 +68,8 @@ async function buildModelsZip() {
   } catch (e) { toast(e.message || 'Could not build the models zip.', { type: 'error' }); }
   finally { p.close(); }
 }
+=======
+>>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
 
 function field(key, label, control, hint) {
   return h('div', { class: 'hub-setting' }, h('div', { class: 'hub-setting-text' }, h('label', { class: 'hub-setting-label', htmlFor: 'set-' + key, text: label }), hint ? h('p', { class: 'studio-dim studio-small', text: hint }) : null), control);
@@ -102,6 +105,7 @@ page('settings',
       field('uiScale', 'UI scale', select('uiScale', [[80, '80%'], [90, '90%'], [100, '100%'], [110, '110%'], [125, '125%'], [150, '150%']]), 'Larger text and rows for 4K screens or tablets.'),
       field('performance', 'Performance', select('performance', [['auto', 'Automatic (Performance on phones, Balanced on computers)'], ['quality', 'High quality'], ['balanced', 'Balanced'], ['performance', 'Performance']]), 'Lower settings preview at reduced resolution for smoother playback and painting. Exports always use full quality.'),
       field('reduceMotion', 'Reduce motion', toggle('reduceMotion'), 'Turns off interface animations.')),
+<<<<<<< HEAD
     card('Look — EYAD Experience', 'star',
       field('accent', 'Accent colour', colorField('accent'), 'Used for buttons, selections and highlights across every app.'),
       field('corners', 'Corners', select('corners', [['rounded', 'Rounded (macOS-like)'], ['soft', 'Soft'], ['sharp', 'Sharp (brutalist)']])),
@@ -119,16 +123,22 @@ page('settings',
         h('button', { class: 'studio-btn is-small is-primary', type: 'button', onclick: getOfflinePack }, icon('download', 14), h('span', { text: 'Download offline pack' })),
         h('button', { class: 'studio-btn is-small', type: 'button', onclick: buildModelsZip }, icon('hdd', 14), h('span', { text: 'Build models folder for GitHub' })),
         h('button', { class: 'studio-btn is-small', type: 'button', onclick: () => installGuide(), disabled: isStandalone() }, icon('install', 14), h('span', { text: isStandalone() ? 'Installed' : 'Install as an app' })))),
+=======
+>>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
     card('Pen, stylus & touch', 'pressure',
       field('penMode', 'Pen mode', select('penMode', [['auto', 'Automatic — once a stylus is used, fingers pan'], ['finger-draw', 'Fingers draw'], ['finger-pan', 'Fingers only pan & zoom']]), 'Apple Pencil, Android stylus, Windows pen and Wacom tablets all use pressure.'),
       field('pressureSize', 'Pressure → size', toggle('pressureSize')),
       field('pressureOpacity', 'Pressure → opacity', toggle('pressureOpacity')),
       field('pressureFlow', 'Pressure → flow', toggle('pressureFlow')),
       field('pressureMin', 'Lightest touch', number('pressureMin', 0, 100, '% of full'), 'How small/faint a stroke gets at the lightest pressure.'),
+<<<<<<< HEAD
       field('touchUndoGestures', 'Two-finger tap = Undo, three-finger tap = Redo', toggle('touchUndoGestures')),
       field('pressureCurve', 'Pressure curve', select('pressureCurve', [[20, 'Very soft (light touch = big)'], [35, 'Soft'], [50, 'Normal'], [65, 'Firm'], [80, 'Very firm (press hard)']]), 'Graphics tablets (Wacom, XP-Pen, Huion), Apple Pencil and Surface pens. Plug the tablet in — no driver setup needed in the browser.'),
       field('penEraserTip', 'Pen eraser end = Eraser', toggle('penEraserTip'), 'Flip the pen (or hold its eraser button) to erase, like on desktop apps.'),
       field('tiltAngle', 'Brush angle follows pen tilt', toggle('tiltAngle'))),
+=======
+      field('touchUndoGestures', 'Two-finger tap = Undo, three-finger tap = Redo', toggle('touchUndoGestures'))),
+>>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
     card('Saving & recovery', 'save',
       field('autosave', 'Autosave', toggle('autosave'), 'Keeps a recovery copy of unsaved work so it can be restored after a crash or closed tab.'),
       field('autosaveProjects', 'Auto-save saved projects', toggle('autosaveProjects'), 'Projects already saved to Projects are updated automatically.'),
@@ -157,10 +167,13 @@ page('settings',
         h('button', { class: 'studio-btn is-small', type: 'button', text: 'Clean up unused media', onclick: async () => { const n = await cleanupOrphanMedia(); toast(n ? `Removed ${n} file(s)` : 'Nothing to clean up'); refreshStorage(); } }),
         h('button', { class: 'studio-btn is-small', type: 'button', text: 'Discard recovery copies', onclick: async () => { await db.clear('recovery'); toast('Recovery copies discarded'); refreshStorage(); } }),
         h('button', { class: 'studio-btn is-small is-danger', type: 'button', text: 'Delete all Studio data…', onclick: async () => { if (await confirmDialog('Delete all Studio data', 'This permanently deletes every project, stored media file and recovery copy in this browser. Your portfolio is not affected.', { ok: 'Delete everything', danger: true })) { await wipeAll(); toast('All Studio data deleted'); refreshStorage(); } } }))),
+<<<<<<< HEAD
     card('Help & feedback', 'bug',
       h('p', { class: 'studio-dim', text: 'Found something broken? The report includes device info and recent error logs (you can see and edit everything before sending). It opens in your mail app, addressed to Eyad.' }),
       h('div', { class: 'hub-actions' },
         h('button', { class: 'studio-btn is-small', type: 'button', onclick: () => bugReportDialog('settings') }, icon('bug', 14), h('span', { text: 'Report a bug…' })))),
+=======
+>>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
     card('Reset', 'rotate',
       h('p', { class: 'studio-dim', text: 'Restore all preferences to their defaults (projects are kept).' }),
       h('button', { class: 'studio-btn is-small', type: 'button', text: 'Reset preferences', onclick: async () => { if (await confirmDialog('Reset preferences', 'Restore default settings?', { ok: 'Reset' })) { resetSettings(); location.reload(); } } })),
@@ -171,5 +184,8 @@ async function refreshStorage() {
   storageLine.textContent = s ? `Using ${formatBytes(s.usage)}${s.quota ? ` of about ${formatBytes(s.quota)}` : ''} · ${s.persisted ? 'persistent storage' : 'best-effort storage (may be cleared by the browser when space is low)'}` : 'Storage estimate not available.';
 }
 refreshStorage();
+<<<<<<< HEAD
 refreshOffline();
 if (location.hash === '#offline') setTimeout(() => offLine.closest('section')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 200);
+=======
+>>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7

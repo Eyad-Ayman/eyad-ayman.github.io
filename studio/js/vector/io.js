@@ -1,17 +1,27 @@
 // EYAD VECTOR — files: new/open/save (.eyad), SVG import, image placing,
 // exports (SVG, PNG, WebP, vector PDF), hand-off to Image/Video, autosave.
 import { h, uid, formatBytes } from '../core/dom.js';
+<<<<<<< HEAD
 import { toast, dialog, formDialog, promptDialog, progressDialog, alertDialog, confirmDialog } from '../core/ui.js';
 import { showReport } from '../core/docs.js';
 import { getSettings } from '../core/settings.js';
 import { chooseFiles } from '../core/open.js';
 import { detectFile, sanitizeFilename, downloadBlob, LIMITS, baseName, ACCEPT } from '../core/files.js';
+=======
+import { toast, dialog, formDialog, promptDialog, progressDialog, alertDialog } from '../core/ui.js';
+import { getSettings } from '../core/settings.js';
+import { chooseFiles } from '../core/open.js';
+import { detectFile, sanitizeFilename, downloadBlob, LIMITS, baseName } from '../core/files.js';
+>>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
 import { writeEyad, readEyad } from '../core/eyad.js';
 import { saveProject, loadProjectBlob, getProject, touchProject, putRecovery, listRecovery, delRecovery, putHandoff, takeHandoff } from '../core/db.js';
 import { ROUTES } from '../core/shell.js';
 import { createDoc, validateDoc, exportSVG, bounds, unionBounds, transformNode, translate, walk, segments, textBox, apply, I } from './model.js';
 import { importSVG } from './pathops.js';
+<<<<<<< HEAD
 import { FONT_FILES } from '../templates/fonts.js';
+=======
+>>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
 
 const PRESETS = [['Instagram post', 1080, 1080], ['Instagram portrait 4:5', 1080, 1350], ['Story / Reel 9:16', 1080, 1920], ['YouTube thumbnail', 1280, 720], ['Full HD 1920×1080', 1920, 1080], ['Logo', 1000, 1000], ['A4 (96 dpi)', 794, 1123], ['A3 (96 dpi)', 1123, 1587], ['Business card', 1050, 600]];
 
@@ -38,7 +48,11 @@ async function confirmLeave(app) {
 }
 
 export async function openDialog(app) {
+<<<<<<< HEAD
   const files = await chooseFiles({ title: 'Open', accept: ACCEPT.vectorAll, multiple: true, media: 'image' });
+=======
+  const files = await chooseFiles({ title: 'Open', accept: '.eyad,.svg,image/svg+xml,.png,.jpg,.jpeg,.webp', multiple: true, media: 'image' });
+>>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
   if (files.length) handleFiles(app, files);
 }
 export async function placeImage(app) {
@@ -51,6 +65,7 @@ export async function handleFiles(app, files, { place = false } = {}) {
     let info; try { info = await detectFile(f); } catch (e) { toast('Could not read ' + sanitizeFilename(f.name), { type: 'error' }); continue; }
     if (info.kind === 'eyad') { await openEyadFile(app, f); continue; }
     if (info.format === 'svg') { if (f.size > 64e6) { toast('This SVG is too large (over 64 MB).', { type: 'error' }); continue; } await importSVGText(app, await f.text(), baseName(f.name), { place: place || !isBlank(app) }); continue; }
+<<<<<<< HEAD
     if (info.kind === 'pdf') { await importPdfFile(app, f, { place: place || !isBlank(app) }); continue; }
     if (info.kind === 'fig' || /\.fig$/i.test(f.name)) { await importFigFile(app, f, { place: place || !isBlank(app) }); continue; }
     if (info.kind === 'image') { await placeRaster(app, f); continue; }
@@ -58,6 +73,12 @@ export async function handleFiles(app, files, { place = false } = {}) {
     if (info.kind === 'video' || info.kind === 'audio' || info.kind === 'prproj') { const id = await putHandoff([f]); location.href = ROUTES.video + '?handoff=' + id; return; }
     if (info.kind === 'model3d') { const id = await putHandoff([f]); location.href = ROUTES['3d'] + '?handoff=' + id; return; }
     await alertDialog('Unsupported file', `“${sanitizeFilename(f.name)}” was not opened.`, { detail: 'EYAD VECTOR opens .eyad vector projects, SVG, PDF, .ai (PDF-compatible), EPS/legacy AI (basic paths) and .fig (experimental), and places PNG / JPEG / WebP / GIF images.' });
+=======
+    if (info.kind === 'image') { await placeRaster(app, f); continue; }
+    if (info.kind === 'psd') { toast(`${sanitizeFilename(f.name)} is a PSD — opening it in EYAD IMAGE.`); const id = await putHandoff([f]); location.href = ROUTES.image + '?handoff=' + id; return; }
+    if (info.kind === 'video' || info.kind === 'audio' || info.kind === 'prproj') { const id = await putHandoff([f]); location.href = ROUTES.video + '?handoff=' + id; return; }
+    await alertDialog('Unsupported file', `“${sanitizeFilename(f.name)}” was not opened.`, { detail: 'EYAD VECTOR opens .eyad vector projects and SVG, and places PNG / JPEG / WebP / GIF images.' });
+>>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
   }
 }
 const isBlank = (app) => !app.doc.items.length && !app.dirty;
@@ -85,6 +106,7 @@ export async function importSVGText(app, text, name = 'Imported SVG', { place = 
   finally { prog.close(); }
 }
 
+<<<<<<< HEAD
 /** Place / open an imported vector document (from PDF, .ai or .fig). */
 function adoptImported(app, doc, { place, label }) {
   if (!place) { app.newDoc(doc); updateUrl(app); return; }
@@ -154,6 +176,8 @@ async function importFigFile(app, f, { place }) {
   finally { prog.close(); }
 }
 
+=======
+>>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
 async function placeRaster(app, f) {
   if (f.size > LIMITS.image) { toast(`${sanitizeFilename(f.name)} is too large to place.`, { type: 'error' }); return; }
   const url = URL.createObjectURL(f);
@@ -294,10 +318,14 @@ export async function boot(app) {
   await offerRecovery(app);
   if (q.get('project')) await openProject(app, q.get('project'));
   if (q.get('handoff')) { const files = await takeHandoff(q.get('handoff')); if (files && files.length) await handleFiles(app, files); }
+<<<<<<< HEAD
   const qw = Math.round(Number(q.get('w'))), qh = Math.round(Number(q.get('h')));
   if (q.get('new') && qw > 0 && qh > 0 && qw <= 20000 && qh <= 20000) { app.newDoc(createDoc({ name: sanitizeFilename(q.get('name') || 'Untitled vector', 'Untitled vector'), width: qw, height: qh, bg: '#ffffff' })); updateUrl(app); }
   else if (q.get('new')) await newDocDialog(app);
   if (q.get('open')) await openDialog(app);
+=======
+  if (q.get('new')) await newDocDialog(app);
+>>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
   if ('launchQueue' in window) window.launchQueue.setConsumer(async (params) => { const files = []; for (const hnd of params.files || []) { try { files.push(await hnd.getFile()); } catch (e) { /* ignore */ } } if (files.length) handleFiles(app, files); });
   updateUrl(app);
 }
@@ -310,16 +338,26 @@ async function embeddedFonts(doc) {
   const want = [...used].filter((f) => f.startsWith('Studio '));
   if (!want.length) return '';
   if (!fontCss) fontCss = {};
+<<<<<<< HEAD
   const files = FONT_FILES;
   let css = '';
   for (const fam of want) for (const [w, file, italic, range] of files[fam] || []) {
+=======
+  const files = { 'Studio Inter': [[400, 'inter-latin-400-normal'], [500, 'inter-latin-500-normal'], [600, 'inter-latin-600-normal'], [700, 'inter-latin-700-normal']], 'Studio Oswald': [[500, 'oswald-latin-500-normal'], [600, 'oswald-latin-600-normal'], [700, 'oswald-latin-700-normal']], 'Studio Mono': [[400, 'jetbrains-mono-latin-400-normal']] };
+  let css = '';
+  for (const fam of want) for (const [w, file] of files[fam] || []) {
+>>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
     const key = file;
     if (!fontCss[key]) {
       const buf = await (await fetch(new URL(`../../fonts/${file}.woff2`, import.meta.url))).arrayBuffer();
       let bin = ''; const u8 = new Uint8Array(buf); for (let i = 0; i < u8.length; i += 0x8000) bin += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000));
       fontCss[key] = btoa(bin);
     }
+<<<<<<< HEAD
     css += `@font-face{font-family:'${fam}';font-weight:${w};font-style:${italic ? 'italic' : 'normal'};${range ? `unicode-range:${range};` : ''}src:url(data:font/woff2;base64,${fontCss[key]}) format('woff2');}`;
+=======
+    css += `@font-face{font-family:'${fam}';font-weight:${w};src:url(data:font/woff2;base64,${fontCss[key]}) format('woff2');}`;
+>>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
   }
   return css;
 }

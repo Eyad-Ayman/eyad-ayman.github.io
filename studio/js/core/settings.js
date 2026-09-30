@@ -20,6 +20,7 @@ export const DEFAULTS = {
   touchUndoGestures: true,  // two-finger tap = undo, three-finger tap = redo
   reduceMotion: false,
   tooltips: true,
+<<<<<<< HEAD
   // EYAD Experience (look & layout)
   accent: '#d02b2a',        // accent colour
   corners: 'rounded',       // rounded (macOS-like) | soft | sharp
@@ -33,6 +34,8 @@ export const DEFAULTS = {
   pressureCurve: 50,        // 0 soft … 100 firm (gamma on pen pressure)
   penEraserTip: true,       // the pen's eraser end switches to the Eraser
   tiltAngle: false,         // brush angle follows pen tilt / twist
+=======
+>>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
   // Saving
   autosave: true,           // write recovery snapshots
   autosaveProjects: true,   // also update already-saved projects automatically
@@ -109,6 +112,7 @@ export function applyUiSettings() {
   root.style.setProperty('--st-scale', String((Number(s.uiScale) || 100) / 100));
   root.classList.toggle('studio-reduce-motion', !!s.reduceMotion);
   root.classList.toggle('studio-no-tips', !s.tooltips);
+<<<<<<< HEAD
   // EYAD Experience look & layout
   const acc = /^#[0-9a-f]{6}$/i.test(s.accent || '') ? s.accent : '#d02b2a';
   if (acc.toLowerCase() !== '#d02b2a') { root.style.setProperty('--st-accent', acc); root.style.setProperty('--st-accent-hi', acc); root.style.setProperty('--st-accent-soft', `color-mix(in srgb, ${acc} 13%, transparent)`); }
@@ -117,6 +121,8 @@ export function applyUiSettings() {
   root.classList.toggle('xp-glass', s.translucency !== false);
   root.dataset.panels = s.panelSide === 'left' ? 'left' : 'right';
   root.dataset.tools = s.toolbarSide === 'right' ? 'right' : 'left';
+=======
+>>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
   const meta = document.querySelector('meta[name="theme-color"]');
   if (meta) meta.setAttribute('content', theme === 'light' ? '#f3ede1' : '#121110');
   document.documentElement.dataset.studioTheme = theme;

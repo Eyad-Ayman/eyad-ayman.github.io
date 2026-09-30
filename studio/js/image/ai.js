@@ -6,7 +6,11 @@ import { icon } from '../core/icons.js';
 import { toast, dialog, progressDialog } from '../core/ui.js';
 import { segment, selectAt, detectFaces, detectObjects, withAI, MODELS } from '../core/ai.js';
 import { makeCanvas, walk, MAX_SIDE, MAX_AREA } from './doc.js';
+<<<<<<< HEAD
 import { selectionCmd, pixelCmd } from './history.js';
+=======
+import { selectionCmd, pixelCmd, treeCmd } from './history.js';
+>>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
 import { selectionFromCanvas, combine } from './selection.js';
 import { runFilter } from './filters.js';
 import * as ops from './ops.js';
@@ -52,6 +56,7 @@ export async function selectSubject(app, { label = 'Select Subject', mode = 'new
   return withAI('Finding the subject', async (status) => {
     const src = source(app);
     // General objects first (people, animals, vehicles, furniture…); people get the finer people model.
+<<<<<<< HEAD
     let objs;
     try { objs = await segment(src, 'objects', { onStatus: status }); }
     catch (e) {
@@ -61,6 +66,9 @@ export async function selectSubject(app, { label = 'Select Subject', mode = 'new
       applySelection(app, maskSelection(app, p), label, mode);
       return true;
     }
+=======
+    const objs = await segment(src, 'objects', { onStatus: status });
+>>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
     let m = objs;
     const people = await detectObjects(src).catch(() => []);
     if (people.some((o) => o.label === 'person' && o.share > 0.01)) {
@@ -169,7 +177,11 @@ export async function removeBackground(app) {
 
 export async function removeObject(app) {
   if (!need(app)) return;
+<<<<<<< HEAD
   if (!app.doc.selection) { toast('First select what to remove — use Object Selection (click it), the Lasso, or paint with the Spot Heal Brush (J).', { type: 'warn', timeout: 7000 }); app.selectTool('aiselect'); return; }
+=======
+  if (!app.doc.selection) { toast('First select what to remove — use Object Selection (click it), the Lasso, or paint with the Spot Healing Brush (J).', { type: 'warn', timeout: 7000 }); app.selectTool('aiselect'); return; }
+>>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
   await contentAwareFill(app, { label: 'Remove Object' });
 }
 
@@ -258,6 +270,49 @@ export async function matchColor(app) {
   app.invalidate();
 }
 
+<<<<<<< HEAD
+=======
+
+// ------------------------------------------------------------------ local generator
+
+function hashSeed(str) { let h = 2166136261; for (let i = 0; i < str.length; i++) h = Math.imul(h ^ str.charCodeAt(i), 16777619); return h >>> 0; }
+function mulberry(seed) { return () => { let t = seed += 0x6D2B79F5; t = Math.imul(t ^ t >>> 15, t | 1); t ^= t + Math.imul(t ^ t >>> 7, t | 61); return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+
+export async function generateDialog(app) {
+  if (!need(app)) return;
+  const d = app.doc;
+  const body = h('div', { class: 'studio-stack' },
+    h('p', { class: 'studio-dim studio-small', text: 'Generate original backgrounds, textures and graphic surfaces locally. Nothing is uploaded.' }),
+    h('label', { class: 'studio-field' }, h('span', { class: 'studio-field-label', text: 'Type' }), h('select', { class: 'studio-input', id: 'gen-type' },
+      [['gradient','Gradient'],['noise','Film Grain'],['paper','Paper Texture'],['grid','Technical Grid'],['stars','Star Field'],['aurora','Aurora Glow']].map(([v,l]) => h('option', { value:v, text:l })))),
+    h('label', { class: 'studio-field' }, h('span', { class: 'studio-field-label', text: 'Seed / prompt' }), h('input', { class: 'studio-input', id: 'gen-seed', type:'text', value:'eyad studio', placeholder:'e.g. red black grain' })),
+    h('div', { class: 'studio-grid-2' },
+      h('label', { class: 'studio-field' }, h('span', { class: 'studio-field-label', text: 'Primary' }), h('input', { class:'studio-color', id:'gen-c1', type:'color', value:'#111111' })),
+      h('label', { class: 'studio-field' }, h('span', { class: 'studio-field-label', text: 'Secondary' }), h('input', { class:'studio-color', id:'gen-c2', type:'color', value:'#d02b2a' }))),
+    h('label', { class: 'studio-field' }, h('span', { class: 'studio-field-label', text: 'Opacity' }), h('input', { class:'studio-range', id:'gen-opacity', type:'range', min:10, max:100, value:100 }))
+  );
+  const result = await dialog({ title:'EYAD Generate', body, width:430, buttons:[{label:'Cancel',value:null},{label:'Generate',primary:true,value:()=>({ type:document.getElementById('gen-type').value, seed:document.getElementById('gen-seed').value, c1:document.getElementById('gen-c1').value, c2:document.getElementById('gen-c2').value, opacity:Number(document.getElementById('gen-opacity').value)/100 })}] });
+  if (!result) return;
+  const c = makeCanvas(d.width, d.height), g = c.getContext('2d');
+  const rnd = mulberry(hashSeed(result.seed || 'eyad'));
+  if (result.type === 'gradient') {
+    const grad = g.createLinearGradient(0, 0, d.width, d.height); grad.addColorStop(0, result.c1); grad.addColorStop(1, result.c2); g.fillStyle = grad; g.fillRect(0,0,d.width,d.height);
+  } else if (result.type === 'noise') {
+    g.fillStyle = result.c1; g.fillRect(0,0,d.width,d.height); const im=g.getImageData(0,0,d.width,d.height), px=im.data; for(let i=0;i<px.length;i+=4){ const n=(rnd()*255)|0; px[i]=Math.min(255,n+(parseInt(result.c1.slice(1,3),16))); px[i+1]=Math.min(255,n+(parseInt(result.c1.slice(3,5),16))); px[i+2]=Math.min(255,n+(parseInt(result.c1.slice(5,7),16))); px[i+3]=255; } g.putImageData(im,0,0);
+  } else if (result.type === 'paper') {
+    g.fillStyle=result.c1; g.fillRect(0,0,d.width,d.height); g.globalAlpha=.22; for(let i=0;i<Math.min(18000,d.width*d.height/3);i++){ g.fillStyle=rnd()>.5?result.c2:'#ffffff'; g.fillRect(rnd()*d.width,rnd()*d.height,1+rnd()*3,1+rnd()*3); } g.globalAlpha=1;
+  } else if (result.type === 'grid') {
+    g.fillStyle=result.c1; g.fillRect(0,0,d.width,d.height); g.strokeStyle=result.c2; g.globalAlpha=.28; g.lineWidth=1; const step=Math.max(24,Math.round(Math.min(d.width,d.height)/20)); for(let x=0;x<d.width;x+=step){g.beginPath();g.moveTo(x,0);g.lineTo(x,d.height);g.stroke()} for(let y=0;y<d.height;y+=step){g.beginPath();g.moveTo(0,y);g.lineTo(d.width,y);g.stroke()} g.globalAlpha=1;
+  } else if (result.type === 'stars') {
+    g.fillStyle=result.c1; g.fillRect(0,0,d.width,d.height); for(let i=0;i<Math.min(2500,d.width*d.height/12000);i++){const x=rnd()*d.width,y=rnd()*d.height,r=.3+rnd()*1.8;g.fillStyle=result.c2;g.globalAlpha=.25+rnd()*.75;g.beginPath();g.arc(x,y,r,0,Math.PI*2);g.fill()} g.globalAlpha=1;
+  } else {
+    const grd=g.createRadialGradient(d.width*.5,d.height*.45,0,d.width*.5,d.height*.45,Math.max(d.width,d.height)*.7); grd.addColorStop(0,result.c2); grd.addColorStop(.45,result.c1); grd.addColorStop(1,'#000000'); g.fillStyle=grd; g.fillRect(0,0,d.width,d.height);
+  }
+  const n = makeNode('raster', { name:'Generated — '+result.type, canvas:c, opacity:result.opacity });
+  app.commit(treeCmd('Generate '+result.type, d, () => { d.layers.push(n); d.activeId=n.id; })); app.invalidate();
+}
+
+>>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
 // ------------------------------------------------------------------ Object Selection tool
 
 export const objectSelectTool = {
@@ -315,8 +370,14 @@ export function aiPanel(app) {
     item('expand', 'Enlarge 4×', 'Detail-preserving upscale', () => enlarge(app, 4), 'Local'),
     item('palette', 'Match Colour', 'Match this layer’s colours to another layer', () => matchColor(app), 'Local'),
     item('aperture', 'Auto Tone', 'One-click exposure & contrast', () => import('./pro.js').then((m) => m.autoAdjust(app, 'tone')), 'Local'),
+<<<<<<< HEAD
     h('div', { class: 'ai-group', text: 'Generative' }),
     h('div', { class: 'ai-note' }, h('strong', { text: 'Generate Fill, Expand and Text-to-Image need a generation model.' }), h('span', { text: ' Those models are gigabytes in size and need a server GPU, and none is connected to this site — so they are not offered rather than faked. Remove Object and Spot Healing rebuild areas from their surroundings on this device instead.' })));
+=======
+    item('sparkle', 'Generate Texture / Background…', 'Original local gradients, grain, grids, stars and glows', () => generateDialog(app), 'Local'),
+    h('div', { class: 'ai-group', text: 'Generative' }),
+    h('div', { class: 'ai-note' }, h('strong', { text: 'Generative Fill, Expand and Text-to-Image need a generation model.' }), h('span', { text: ' Those models are gigabytes in size and need a server GPU, and none is connected to this site — so they are not offered rather than faked. Remove Object and Spot Healing rebuild areas from their surroundings on this device instead.' })));
+>>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
   if (app.mobile.matches) {
     import('../core/ui.js').then(({ openSheet }) => { const s = openSheet({ title: 'EYAD AI', content: body }); close = () => s.close(); });
   } else {

@@ -7,7 +7,10 @@ import { effectState, canvasFilterSupported, CROSS } from './effects.js';
 import { resolve, valueAt } from './anim.js';
 import { drawGen } from './gen.js';
 import { glProcess } from './gl.js';
+<<<<<<< HEAD
 import { createLiveRenderer, lookByCode } from '../core/film.js';
+=======
+>>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
 import { getAudioContext } from './media.js';
 import { perfLevel } from '../core/settings.js';
 
@@ -488,6 +491,7 @@ export class Engine {
         const g = glProcess(img, ix, iy, iw, ih, outW, outH, es.u, t);
         if (g) { img = g; ix = 0; iy = 0; iw = g.width; ih = g.height; }
       }
+<<<<<<< HEAD
       if (es.film) {
         // Film Look: the shared Film Lab engine, one live renderer per effect instance
         const look = lookByCode(es.film.code);
@@ -502,6 +506,8 @@ export class Engine {
           } catch (e) { /* keep the ungraded frame */ }
         }
       }
+=======
+>>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
       try { ctx.drawImage(img, ix, iy, iw, ih, dx, dy, cw * sc, ch * sc); } catch (e) { /* frame not ready */ }
       if (es.glow && this.filterOK) {
         ctx.globalCompositeOperation = 'lighter';

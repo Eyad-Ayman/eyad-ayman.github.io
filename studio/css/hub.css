@@ -112,7 +112,10 @@
   .hub-setting-input { width: 100%; }
 }
 @media (max-width: 340px) { .hub-recent, .hub-grid { grid-template-columns: 1fr; } }
+<<<<<<< HEAD
 .hub-swatches { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .hub-swatch { width: 22px; height: 22px; border-radius: 50%; border: 2px solid transparent; box-shadow: inset 0 0 0 1px rgba(0,0,0,.2); cursor: pointer; padding: 0; }
 .hub-swatch.is-on { border-color: var(--st-text); }
 .hub-swatches .studio-color { width: 30px; height: 24px; }
+=======
+>>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7

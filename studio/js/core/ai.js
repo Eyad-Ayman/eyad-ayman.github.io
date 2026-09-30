@@ -57,6 +57,7 @@ async function modelBytes(key, onStatus) {
   return new Uint8Array(buf);
 }
 
+<<<<<<< HEAD
 /** Offline pack: fetch every model this device can reach into Cache Storage. Returns how many are cached. */
 export async function cacheAllModels(onStatus) {
   let n = 0;
@@ -81,6 +82,8 @@ export async function modelFilesForRepo(onStatus) {
   return out;
 }
 
+=======
+>>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
 async function create(kind, key, opts, onStatus) {
   const id = kind + ':' + key + ':' + (opts.runningMode || 'IMAGE');
   if (tasks.has(id)) return tasks.get(id);

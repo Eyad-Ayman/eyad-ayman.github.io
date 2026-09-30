@@ -276,7 +276,11 @@ export function layoutText(n) {
 const NODE_KEYS = ['id', 'type', 'name', 'visible', 'opacity', 'blend', 'locked', 'x', 'y', 'sx', 'sy', 'rot', 'clip', 'maskEnabled',
   'text', 'font', 'size', 'weight', 'italic', 'color', 'align', 'lineHeight', 'tracking',
   'shape', 'w', 'h', 'fill', 'fillOn', 'stroke', 'strokeOn', 'strokeWidth', 'radius', 'points', 'closed', 'subpaths', 'fillRule',
+<<<<<<< HEAD
   'expanded', 'psd', 'artboard'];
+=======
+  'expanded', 'psd'];
+>>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
 
 export function canvasToBlob(c, type = 'image/png', q) {
   return new Promise((resolve, reject) => c.toBlob((b) => (b ? resolve(b) : reject(new Error('Could not encode image (the canvas may be too large for this device).'))), type, q));
@@ -360,7 +364,10 @@ export async function deserializeDoc(json, getAsset) {
       n.fillRule = oneOf(o.fillRule, ['nonzero', 'evenodd'], 'nonzero');
     } else if (type === 'group') {
       n.expanded = bool(o.expanded, true);
+<<<<<<< HEAD
       if (o.artboard && typeof o.artboard === 'object') n.artboard = { x: num(o.artboard.x, 0, -1e5, 1e5), y: num(o.artboard.y, 0, -1e5, 1e5), w: num(o.artboard.w, 100, 1, 30000), h: num(o.artboard.h, 100, 1, 30000), bg: o.artboard.bg ? color(o.artboard.bg, '#ffffff') : null };
+=======
+>>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
       n.children = [];
       if (Array.isArray(o.children)) for (const c of o.children) { const cn = await de(c, depth + 1); if (cn) n.children.push(cn); }
     }

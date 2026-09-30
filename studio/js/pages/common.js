@@ -1,6 +1,10 @@
 // EYAD STUDIO — shared helpers for the hub pages (home, projects, settings, help).
 import { h } from '../core/dom.js';
+<<<<<<< HEAD
 import { bootStudio, hubHeader, ROUTES, xpDock } from '../core/shell.js';
+=======
+import { bootStudio, hubHeader, ROUTES } from '../core/shell.js';
+>>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
 import { putHandoff } from '../core/db.js';
 import { detectFile, sanitizeFilename } from '../core/files.js';
 import { peekEyad } from '../core/eyad.js';
@@ -15,15 +19,21 @@ export function page(current, ...content) {
     hubHeader(current),
     main,
     h('footer', { class: 'studio-hub-footer' },
+<<<<<<< HEAD
       h('span', { text: 'EYAD Experience · by Eyad Ayman · your files stay on this device' }),
       h('span', {}, h('a', { href: ROUTES.help, text: 'Help & supported files' }), ' · ', h('a', { href: ROUTES.portfolio, text: '← Back to portfolio' }))),
     xpDock(current));
   body.classList.add('xp-has-dock');
+=======
+      h('span', { text: 'EYAD STUDIO · part of Eyad Ayman’s portfolio · files stay on this device' }),
+      h('span', {}, h('a', { href: ROUTES.help, text: 'Help & supported files' }), ' · ', h('a', { href: ROUTES.portfolio, text: '← Back to portfolio' }))));
+>>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
   return main;
 }
 
 /** Route arbitrary files to the right editor through an IndexedDB hand-off. */
 export async function routeFiles(files) {
+<<<<<<< HEAD
   const image = [], video = [], vector = [], three = [], bad = [];
   for (const f of files) {
     const info = await detectFile(f).catch(() => ({ kind: 'unknown', label: 'unreadable' }));
@@ -33,13 +43,27 @@ export async function routeFiles(files) {
     else if (info.kind === 'psd' || info.kind === 'image') image.push(f);
     else if (info.kind === 'video' || info.kind === 'audio' || info.kind === 'prproj') video.push(f);
     else if (info.kind === 'eyad') { const m = await peekEyad(f); (m && m.kind === 'video' ? video : m && m.kind === 'vector' ? vector : m && m.kind === '3d' ? three : image).push(f); }
+=======
+  const image = [], video = [], vector = [], bad = [];
+  for (const f of files) {
+    const info = await detectFile(f).catch(() => ({ kind: 'unknown', label: 'unreadable' }));
+    if (info.format === 'svg') vector.push(f);
+    else if (info.kind === 'psd' || info.kind === 'image') image.push(f);
+    else if (info.kind === 'video' || info.kind === 'audio' || info.kind === 'prproj') video.push(f);
+    else if (info.kind === 'eyad') { const m = await peekEyad(f); (m && m.kind === 'video' ? video : m && m.kind === 'vector' ? vector : image).push(f); }
+>>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
     else bad.push(`${sanitizeFilename(f.name)} (${info.label})`);
   }
   if (bad.length) toast(`Not supported: ${bad.join(', ')}`, { type: 'warn', timeout: 6000 });
   if (image.length && video.length) toast('Opening images in EYAD IMAGE — drop the video files into EYAD VIDEO afterwards.', { timeout: 5000 });
+<<<<<<< HEAD
   if (three.length && !image.length && !video.length && !vector.length) { const id = await putHandoff(three); location.href = ROUTES['3d'] + '?handoff=' + id; return; }
   if (vector.length && !image.length && !video.length) { const id = await putHandoff(vector); location.href = ROUTES.vector + '?handoff=' + id; return; }
   if (vector.length) image.push(...vector.filter((f) => /\.svg$/i.test(f.name)));
+=======
+  if (vector.length && !image.length && !video.length) { const id = await putHandoff(vector); location.href = ROUTES.vector + '?handoff=' + id; return; }
+  if (vector.length) image.push(...vector);
+>>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
   if (image.length) { const id = await putHandoff(image); location.href = ROUTES.image + '?handoff=' + id; return; }
   if (video.length) { const id = await putHandoff(video); location.href = ROUTES.video + '?handoff=' + id; }
 }
@@ -59,7 +83,11 @@ export function bindPageDrop(label = 'Drop to open in EYAD STUDIO') {
   });
 }
 
+<<<<<<< HEAD
 export function projectUrl(p) { return (ROUTES[p.kind] && p.kind !== 'home' ? ROUTES[p.kind] : ROUTES.image) + '?project=' + encodeURIComponent(p.id); }
+=======
+export function projectUrl(p) { return (p.kind === 'video' ? ROUTES.video : p.kind === 'vector' ? ROUTES.vector : ROUTES.image) + '?project=' + encodeURIComponent(p.id); }
+>>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
 
 export function thumbImg(p) {
   const wrap = h('div', { class: 'hub-thumb is-' + p.kind });

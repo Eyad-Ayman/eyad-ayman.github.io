@@ -198,15 +198,22 @@ export function progressDialog(title, { cancellable = true } = {}) {
 // ---------------------------------------------------------------- Menus
 
 let openMenu = null;
+<<<<<<< HEAD
 const floatingSubs = () => document.querySelectorAll('.studio-menu.is-float');
 function closeOpenMenu() { floatingSubs().forEach((x) => x.remove()); if (openMenu) { openMenu.close(); openMenu = null; } }
 const inFloating = (t) => Array.from(floatingSubs()).some((x) => x.contains(t));
 document.addEventListener('pointerdown', (e) => {
   if (openMenu && !openMenu.contains(e.target) && !inFloating(e.target)) closeOpenMenu();
+=======
+function closeOpenMenu() { if (openMenu) { openMenu.close(); openMenu = null; } }
+document.addEventListener('pointerdown', (e) => {
+  if (openMenu && !openMenu.contains(e.target)) closeOpenMenu();
+>>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
 }, true);
 
 function evalFlag(v) { return typeof v === 'function' ? v() : v; }
 
+<<<<<<< HEAD
 function closeChildSubs(list) {
   let c = list._child;
   while (c) { const n = c._child; c.remove(); c = n; }
@@ -214,6 +221,8 @@ function closeChildSubs(list) {
   list.querySelectorAll(':scope > .is-sub-open').forEach((b) => { b.classList.remove('is-sub-open'); b.setAttribute('aria-expanded', 'false'); });
 }
 
+=======
+>>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
 /** Renders a dropdown list for menu items. Returns the element. */
 function renderMenuList(items, onPick, depth = 0) {
   const list = h('div', { class: 'studio-menu', role: 'menu' });
@@ -234,6 +243,7 @@ function renderMenuList(items, onPick, depth = 0) {
     it.shortcut ? h('span', { class: 'studio-menu-key', text: keyLabel(it.shortcut) }) : null,
     sub ? icon('chevronRight', 14) : null);
     if (sub) {
+<<<<<<< HEAD
       btn.setAttribute('aria-haspopup', 'menu');
       // Submenus float as their own fixed layer (a scrollable dropdown would clip them).
       const openSub = (focusFirst = false) => {
@@ -263,6 +273,23 @@ function renderMenuList(items, onPick, depth = 0) {
       btn.addEventListener('keydown', (e) => { if (e.key === 'ArrowRight' || e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); openSub(true); } });
     } else {
       btn.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse') closeChildSubs(list); });
+=======
+      let subEl = null;
+      const openSub = () => {
+        list.querySelectorAll('.studio-menu.is-sub').forEach((x) => x.remove());
+        if (!sub.length) return;
+        subEl = renderMenuList(sub, onPick, depth + 1);
+        subEl.classList.add('is-sub');
+        btn.appendChild(subEl);
+        const r = subEl.getBoundingClientRect();
+        if (r.right > innerWidth - 4) subEl.classList.add('is-left');
+        if (r.bottom > innerHeight - 4) subEl.style.top = Math.max(-r.top + 4, innerHeight - 4 - r.bottom) + 'px';
+      };
+      btn.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse') openSub(); });
+      btn.addEventListener('click', (e) => { if (e.target === btn || btn.contains(e.target) && !subEl?.contains(e.target)) openSub(); });
+    } else {
+      btn.addEventListener('pointerenter', () => list.querySelectorAll(':scope > .studio-menu-item > .studio-menu.is-sub').forEach((x) => x.remove()));
+>>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
       btn.addEventListener('click', (e) => { e.stopPropagation(); if (!enabled) return; onPick(); it.action && it.action(); });
     }
     list.appendChild(btn);
@@ -307,8 +334,13 @@ export function createMenubar(host, menus) {
     root().appendChild(list);
     list.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') { closeOpenMenu(); b.focus(); }
+<<<<<<< HEAD
       if (e.key === 'ArrowRight' && !e.target.classList.contains('has-sub') && !e.target.closest('.is-float')) open((idx + 1) % menus.length, true);
       if (e.key === 'ArrowLeft' && !e.target.closest('.is-float')) open((idx - 1 + menus.length) % menus.length, true);
+=======
+      if (e.key === 'ArrowRight' && !e.target.classList.contains('has-sub')) open((idx + 1) % menus.length, true);
+      if (e.key === 'ArrowLeft') open((idx - 1 + menus.length) % menus.length, true);
+>>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
     });
     const wrapper = {
       contains: (t) => list.contains(t) || host.contains(t),

@@ -6,16 +6,22 @@ import { applyUiSettings, toggleTheme, resolvedTheme, onSettings } from './setti
 export const STUDIO_ROOT = new URL('../../', import.meta.url);       // …/studio/
 export const PORTFOLIO_ROOT = new URL('../', STUDIO_ROOT);            // site root
 
+<<<<<<< HEAD
 import { windowControls, startTour, autoOfflinePack, installGuide, bugReportDialog, dock as xpDock } from './experience.js';
 
+=======
+>>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
 export const ROUTES = {
   home: new URL('./', STUDIO_ROOT).href,
   image: new URL('./image/', STUDIO_ROOT).href,
   vector: new URL('./vector/', STUDIO_ROOT).href,
   video: new URL('./video/', STUDIO_ROOT).href,
+<<<<<<< HEAD
   '3d': new URL('./3d/', STUDIO_ROOT).href,
   camera: new URL('./camera/', STUDIO_ROOT).href,
   templates: new URL('./templates/', STUDIO_ROOT).href,
+=======
+>>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
   projects: new URL('./projects/', STUDIO_ROOT).href,
   settings: new URL('./settings/', STUDIO_ROOT).href,
   help: new URL('./help/', STUDIO_ROOT).href,
@@ -70,16 +76,23 @@ export function appSwitcher(current) {
     ['image', 'Image', 'image'],
     ['vector', 'Vector', 'vector'],
     ['video', 'Video', 'video'],
+<<<<<<< HEAD
     ['3d', '3D', 'cube'],
     ['camera', 'Camera', 'camera'],
     ['templates', 'Templates', 'grid'],
+=======
+>>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
     ['projects', 'Projects', 'folder'],
     ['settings', 'Settings', 'gear'],
   ];
   return h('nav', { class: 'studio-switcher', 'aria-label': 'Studio apps' },
     items.map(([key, label, ic]) => h('a', {
       class: 'studio-switcher-item' + (current === key ? ' is-active' : ''),
+<<<<<<< HEAD
       href: ROUTES[key], 'aria-current': current === key ? 'page' : undefined, title: 'EYAD ' + label,
+=======
+      href: ROUTES[key], 'aria-current': current === key ? 'page' : undefined,
+>>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
     }, icon(ic, 15), h('span', { text: label }))));
 }
 
@@ -95,6 +108,7 @@ addEventListener('beforeinstallprompt', (e) => {
 addEventListener('appinstalled', () => { deferredPrompt = null; installListeners.forEach((fn) => fn(false)); });
 
 export function installButton() {
+<<<<<<< HEAD
   const b = h('button', { class: 'studio-btn is-ghost is-small studio-install', type: 'button', hidden: true, onclick: async () => {
     if (!deferredPrompt) return;
     deferredPrompt.prompt();
@@ -103,6 +117,23 @@ export function installButton() {
     b.hidden = true;
   } }, icon('install', 15), h('span', { text: 'Install app' }));
   const update = (avail) => { b.hidden = !avail; };
+=======
+  const ios = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const b = h('button', { class: 'studio-btn is-ghost is-small studio-install', type: 'button', hidden: true, onclick: async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      try { await deferredPrompt.userChoice; } catch (e) { /* ignore */ }
+      deferredPrompt = null;
+      b.hidden = true;
+      return;
+    }
+    const body = h('div', { class: 'studio-stack' },
+      h('p', { text: ios ? 'On iPhone or iPad, open this site in Safari, tap Share, then choose “Add to Home Screen”.' : 'Use your browser’s Install / Add to Home Screen command. EYAD STUDIO is a PWA and works as a standalone app when the browser supports installation.' }),
+      h('p', { class: 'studio-dim studio-small', text: 'The editor remains browser-based and can cache its shell for offline use after the first visit.' }));
+    import('./ui.js').then(({ dialog }) => dialog({ title:'Install EYAD STUDIO', body, width:400, buttons:[{label:'Done',value:true,primary:true}] }));
+  } }, icon('install', 15), h('span', { text: 'Install app' }));
+  const update = (avail) => { b.hidden = !avail && !ios; };
+>>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
   installListeners.add(update);
   update(!!deferredPrompt);
   return b;
@@ -126,13 +157,18 @@ export function bootStudio() {
   // Ctrl/Cmd + Alt + 1 / 2 / 3 → Image / Vector / Video (plain Ctrl+1 stays "100%" like desktop editors)
   addEventListener('keydown', (e) => {
     if (!(e.ctrlKey || e.metaKey) || !e.altKey || e.shiftKey) return;
+<<<<<<< HEAD
     const to = { Digit1: 'image', Digit2: 'vector', Digit3: 'video', Digit4: '3d', Digit5: 'camera', Digit6: 'templates', Digit0: 'home' }[e.code];
+=======
+    const to = { Digit1: 'image', Digit2: 'vector', Digit3: 'video' }[e.code];
+>>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
     if (!to || location.href.startsWith(ROUTES[to])) return;
     e.preventDefault();
     location.href = ROUTES[to];
   });
   registerServiceWorker();
   matchMedia('(prefers-color-scheme: light)').addEventListener?.('change', applyUiSettings);
+<<<<<<< HEAD
   // EYAD Experience: window buttons on every editor, first-run tour, offline pack after install
   const app = (location.pathname.match(/\/studio\/(image|vector|video|3d)\//) || [])[1];
   if (app) {
@@ -152,6 +188,8 @@ export function bootStudio() {
   document.documentElement.classList.toggle('xp-standalone', matchMedia('(display-mode: standalone), (display-mode: window-controls-overlay)').matches || navigator.standalone === true);
   autoOfflinePack();
   requestAnimationFrame(() => dispatchEvent(new Event('eyad:ready')));
+=======
+>>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
 }
 
 /** "Dark" / "Light" toggle — same wording as the portfolio nav, kept in sync with it. */
@@ -164,6 +202,7 @@ export function themeToggle() {
   return b;
 }
 
+<<<<<<< HEAD
 /** Header used by the non-editor pages (home, projects, settings, help): the EYAD Experience menu bar. */
 export function hubHeader(current) {
   const clock = h('span', { class: 'xp-clock studio-mono', 'aria-hidden': 'true' });
@@ -186,6 +225,18 @@ export { xpDock };
 /** Navigate to an editor, passing files through IndexedDB hand-off. */
 export function editorUrl(kind, params = {}) {
   const u = new URL(ROUTES[kind] || ROUTES.image);
+=======
+/** Header used by the non-editor pages (home, projects, settings, help). */
+export function hubHeader(current) {
+  return h('header', { class: 'studio-hub-header' },
+    h('div', { class: 'studio-hub-header-left' }, brandMark(), appSwitcher(current)),
+    h('div', { class: 'studio-hub-header-right' }, installButton(), themeToggle(), backToPortfolio()));
+}
+
+/** Navigate to an editor, passing files through IndexedDB hand-off. */
+export function editorUrl(kind, params = {}) {
+  const u = new URL(kind === 'video' ? ROUTES.video : ROUTES.image);
+>>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
   for (const [k, v] of Object.entries(params)) if (v != null) u.searchParams.set(k, v);
   return u.href;
 }

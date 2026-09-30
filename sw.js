@@ -46,8 +46,12 @@ self.addEventListener("activate", function (event) {
     caches.keys().then(function (names) {
       return Promise.all(
         names
+<<<<<<< HEAD
           // only this worker's own old caches — never EYAD STUDIO's (offline app, AI models)
           .filter(function (name) { return name !== CACHE_NAME && name.indexOf("eyad-studio-") !== 0; })
+=======
+          .filter(function (name) { return name !== CACHE_NAME; })
+>>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
           .map(function (name) { return caches.delete(name); })
       );
     })

@@ -59,7 +59,11 @@ html[data-theme="dark"] .btw .full-bleed-break { filter: none; }
 
 /* ---------------------------------------------------------------- Studio portal card */
 .studio-portal {
+<<<<<<< HEAD
   position: relative; z-index: 2; display: grid; grid-template-columns: 1.25fr 1fr; min-height: 440px; margin: 8px 0 34px;
+=======
+  position: relative; display: grid; grid-template-columns: 1.25fr 1fr; min-height: 440px; margin: 8px 0 34px;
+>>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
   background: #0b0b0b; color: #f3ede1; text-decoration: none; overflow: hidden; isolation: isolate;
   border: 1px solid #000; box-shadow: 10px 10px 0 #d02b2a;
   transition: box-shadow .35s ease, transform .35s cubic-bezier(.2, .7, .2, 1);
@@ -138,6 +142,7 @@ html[data-theme="dark"] .studio-portal { filter: invert(1) hue-rotate(180deg); }
 .eyad-curtain.is-lift.is-go .eyad-curtain-bg { transition: transform .6s cubic-bezier(.7, 0, .2, 1) .05s; transform: scaleY(0); }
 .eyad-curtain.is-fade .eyad-curtain-bg { transform: none; opacity: 0; }
 .eyad-curtain.is-fade.is-run .eyad-curtain-bg { transition: opacity .18s linear; opacity: 1; }
+<<<<<<< HEAD
 
 /* the Tools section's decorative side photo sits BEHIND the Studio card (it used to cover its top edge) */
 @media screen and (min-width: 1300px) {
@@ -146,3 +151,5 @@ html[data-theme="dark"] .studio-portal { filter: invert(1) hue-rotate(180deg); }
 .sp-chrome em { display: inline-flex; align-items: center; gap: 6px; }
 .sp-chrome em::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; animation: sp-live 1.6s ease-in-out infinite; }
 @keyframes sp-live { 50% { opacity: .25; } }
+=======
+>>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7

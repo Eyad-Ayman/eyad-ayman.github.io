@@ -289,7 +289,11 @@ export async function autoAdjust(app, kind) {
 
 // ------------------------------------------------------------------ Content-Aware Fill
 
+<<<<<<< HEAD
 export async function contentAwareFill(app, { label = 'Smart Fill', maskCanvas = null } = {}) {
+=======
+export async function contentAwareFill(app, { label = 'Content-Aware Fill', maskCanvas = null } = {}) {
+>>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
   if (!need(app)) return false;
   const doc = app.doc;
   if (!maskCanvas && !doc.selection) { toast('Select the area to fill first (lasso around the object).', { type: 'warn' }); return false; }
@@ -446,7 +450,11 @@ export async function cameraRawDialog(app) {
   const toggleBefore = (v) => { showBefore = v === undefined ? !showBefore : v; beforeBtn.classList.toggle('is-primary', showBefore); paint(showBefore ? src : lastOut); };
 
   return new Promise((resolve) => {
+<<<<<<< HEAD
     const overlay = h('div', { class: 'cr-overlay', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Raw Develop Filter' },
+=======
+    const overlay = h('div', { class: 'cr-overlay', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Camera Raw Filter' },
+>>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
       h('header', { class: 'cr-top' },
         h('div', { class: 'cr-brand' }, icon('aperture', 18), h('span', { text: 'CAMERA RAW' }), h('em', { class: 'studio-faint', text: ctx.node.name })),
         h('div', { class: 'cr-actions' }, beforeBtn,
@@ -473,12 +481,20 @@ export async function cameraRawDialog(app) {
       document.removeEventListener('keydown', onKey, true);
       ro.disconnect(); clearTimeout(timer); token++;
       if (!ok) { overlay.remove(); resolve(false); return; }
+<<<<<<< HEAD
       const prog = progressDialog('Raw Develop', { cancellable: false });
+=======
+      const prog = progressDialog('Camera Raw', { cancellable: false });
+>>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
       prog.set(0.4, 'Developing at full resolution…');
       try {
         let out = await ctx.run(P);
         if (P.rotate || P.scale !== 100) out = straighten(out, P.rotate, P.scale);
+<<<<<<< HEAD
         finishPixelOp(app, ctx, out, 'Raw Develop Filter', 'cameraRaw', P);
+=======
+        finishPixelOp(app, ctx, out, 'Camera Raw Filter', 'cameraRaw', P);
+>>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
         app.lastRaw = JSON.parse(JSON.stringify(P));
       } catch (e) { toast(e.message, { type: 'error' }); }
       finally { prog.close(); overlay.remove(); resolve(true); }

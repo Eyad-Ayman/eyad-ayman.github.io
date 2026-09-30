@@ -8,7 +8,11 @@
     var st = JSON.parse(localStorage.getItem('eyad-studio:settings:v2') || '{}') || {};
     var t = st.theme || 'portfolio';
     // Editors (Image / Vector / Video) use a pro dark workspace by default.
+<<<<<<< HEAD
     if (/\/studio\/(image|video|vector|3d)\//.test(location.pathname)) {
+=======
+    if (/\/studio\/(image|video|vector)\//.test(location.pathname)) {
+>>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
       document.documentElement.setAttribute('data-studio-editor', '');
       var ws = st.workspaceTheme || 'dark';
       if (ws === 'dark' || ws === 'light') t = ws;
@@ -27,6 +31,7 @@
     }
   } catch (e) { /* ignore */ }
 })();
+<<<<<<< HEAD
 /* ---- Diagnostics: keep the last errors of this session for “Report a bug”. */
 (function () {
   function push(k, m, src) {
@@ -115,6 +120,8 @@
   setTimeout(hide, 7000);
 })();
 
+=======
+>>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
 (function () {
   if (location.protocol !== 'file:') return;
   function show() {

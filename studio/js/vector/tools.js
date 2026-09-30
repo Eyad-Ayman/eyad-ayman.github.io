@@ -45,7 +45,11 @@ const HANDLES = [[0, 0], [0.5, 0], [1, 0], [1, 0.5], [1, 1], [0.5, 1], [0, 1], [
 const selectTool = {
   id: 'select', label: 'Selection', icon: 'cursor', key: 'V', cursor: 'default',
   hint: 'Click or drag a box to select · drag to move (Alt duplicates) · handles scale · knob rotates · double-click edits',
+<<<<<<< HEAD
   options(app) { return [note('Align & Shape Builder are in the right panel'), h('button', { class: 'studio-btn is-small', type: 'button', text: 'Group', onclick: () => app.cmd('group') }), h('button', { class: 'studio-btn is-small', type: 'button', text: 'Ungroup', onclick: () => app.cmd('ungroup') })]; },
+=======
+  options(app) { return [note('Align & Pathfinder are in the right panel'), h('button', { class: 'studio-btn is-small', type: 'button', text: 'Group', onclick: () => app.cmd('group') }), h('button', { class: 'studio-btn is-small', type: 'button', text: 'Ungroup', onclick: () => app.cmd('ungroup') })]; },
+>>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
   handleAt(app, p) {
     const b = app.selBounds(); if (!b) return null;
     const s0 = app.view.toScreen(b.x, b.y), s1 = app.view.toScreen(b.x + b.w, b.y + b.h);

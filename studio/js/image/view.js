@@ -274,12 +274,16 @@ export class View {
 
   ptFrom(e) {
     const p = this.screenToDoc(e.clientX, e.clientY);
+<<<<<<< HEAD
     if (e.pointerType === 'pen') {
       // pressure curve (Settings ▸ Pen): 50 = linear, lower = soft (light touch goes further), higher = firm
       const st = getSettings(), g = Math.pow(2, ((Number(st.pressureCurve) || 50) - 50) / 30);
       p.pressure = Math.pow(Math.max(0.001, Math.min(1, e.pressure || 0.5)), g);
       if (st.tiltAngle && (e.tiltX || e.tiltY || e.twist)) p.angle = e.twist ? e.twist * Math.PI / 180 : Math.atan2(e.tiltY || 0, e.tiltX || 0);
     } else p.pressure = 1;
+=======
+    p.pressure = e.pointerType === 'pen' ? (e.pressure || 0.5) : 1;
+>>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
     p.type = e.pointerType;
     p.shift = e.shiftKey; p.alt = e.altKey; p.mod = e.ctrlKey || e.metaKey;
     p.clientX = e.clientX; p.clientY = e.clientY;
@@ -293,10 +297,13 @@ export class View {
     this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, type: e.pointerType, t: performance.now() });
     clearTimeout(this.longPressTimer);
     if (e.pointerType === 'pen') this.stylusSeen = true;
+<<<<<<< HEAD
     // pen eraser end (or eraser barrel button) → Eraser while it touches, like desktop apps
     if (e.pointerType === 'pen' && (e.buttons & 32 || e.button === 5) && getSettings().penEraserTip !== false && this.app.tool && this.app.tool.id !== 'eraser' && !this._eraserFrom) {
       this._eraserFrom = this.app.tool.id; this.app.selectTool('eraser');
     }
+=======
+>>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
     const touches = Array.from(this.pointers.values()).filter((q) => q.type === 'touch');
     // multi-finger tap tracking (2 = undo, 3 = redo)
     if (e.pointerType === 'touch') {
@@ -426,7 +433,10 @@ export class View {
       if (cancelled) { tool.cancel && tool.cancel(); }
       else if (tool.up) tool.up(this.ptFrom(e), e);
     }
+<<<<<<< HEAD
     if (this._eraserFrom && e.pointerType === 'pen') { const back = this._eraserFrom; this._eraserFrom = null; setTimeout(() => this.app.selectTool(back), 0); }
+=======
+>>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
     // double-tap (touch)
     if (!cancelled && p && e.pointerType === 'touch' && Math.hypot(p.x - p.sx, p.y - p.sy) < 10 && performance.now() - p.t < 300) {
       const now = performance.now();

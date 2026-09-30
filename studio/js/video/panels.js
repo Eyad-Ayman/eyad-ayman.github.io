@@ -541,10 +541,14 @@ export class PropertiesPanel {
           h('button', { class: 'studio-icon-btn is-small', type: 'button', 'aria-label': 'Reset ' + def.label, title: 'Reset', onclick: () => ops.setEffect(app, c.id, e.id, { params: defaultParams(e.type) }, 'Reset Effect') }, icon('rotate', 13)),
           h('button', { class: 'studio-icon-btn is-small', type: 'button', 'aria-label': 'Remove ' + def.label, title: 'Remove', onclick: () => ops.removeEffect(app, c.id, e.id) }, icon('trash', 13))),
         def.ai ? h('p', { class: 'studio-small studio-faint', text: 'Runs an on-device people-segmentation model (downloaded once, then cached). Preview may lag on slow phones; export uses full quality.' }) : null,
+<<<<<<< HEAD
         ...def.params.map((p) => (def.options && def.options[p.key]
           ? h('div', { class: 'vp-prop' }, h('span', { class: 'vp-prop-label', text: p.label }),
             this.sel(e.params[p.key] ?? p.default, def.options[p.key](), (v) => ops.setEffect(app, c.id, e.id, { params: { [p.key]: Number(v) } }, def.label), p.label))
           : this.anim(c, `fx:${e.id}:${p.key}`, p.label, { min: p.min, max: p.max, step: p.step || 1, unit: p.unit || '' })))));
+=======
+        ...def.params.map((p) => this.anim(c, `fx:${e.id}:${p.key}`, p.label, { min: p.min, max: p.max, step: p.step || 1, unit: p.unit || '' }))));
+>>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
     });
     const add = h('select', { class: 'studio-input', 'aria-label': 'Add effect' }, h('option', { value: '', text: '+ Add effect…' }), Object.entries(EFFECTS).map(([k, d]) => h('option', { value: k, text: d.group + ' › ' + d.label })));
     add.addEventListener('change', () => { if (add.value) ops.addEffect(app, add.value); });

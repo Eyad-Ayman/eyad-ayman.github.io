@@ -1,4 +1,7 @@
+<<<<<<< HEAD
 import { experienceHelp } from '../core/experience.js';
+=======
+>>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
 import { toggleTheme, resolvedTheme } from '../core/settings.js';
 // EYAD VIDEO — menus (menubar, mobile menu sheet, command palette).
 import * as ops from './ops.js';
@@ -45,12 +48,18 @@ export function buildMenus(app) {
         { label: 'Video (real-time render)…', shortcut: 'Mod+M', action: () => exportVideoDialog(app), enabled: has },
         { label: 'Audio Mixdown (WAV)', action: () => exportWav(app), enabled: has },
         { label: 'Current Frame (PNG)', action: () => exportFrame(app), enabled: has },
+<<<<<<< HEAD
         { label: 'XML for Other Editors (FCP 7 XML)…', action: () => import('./collect.js').then((m) => m.exportXML(app)), enabled: has },
+=======
+>>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
         { label: 'Captions (SRT)', action: () => exportCaptions(app, 'srt'), enabled: has },
         { label: 'Captions (WebVTT)', action: () => exportCaptions(app, 'vtt'), enabled: has },
       ] },
       { separator: true },
+<<<<<<< HEAD
       { label: 'Collect Files (project + media, .zip)…', action: () => import('./collect.js').then((m) => m.collectFiles(app)), enabled: has, icon: 'folder' },
+=======
+>>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
       { label: 'Relink Media…', action: () => app.relinkDialog(), enabled: () => has() && app.project.media.some((m) => m.offline) },
       { label: 'Project Import Report', action: () => io.showImportReport(app), enabled: () => has() && !!app.importReport },
       { label: 'Rename Project…', action: () => io.renameProject(app), enabled: has },
@@ -166,7 +175,10 @@ export function buildMenus(app) {
       { label: 'Studio Documentation', action: () => { location.href = ROUTES.help; } },
       { separator: true },
       { label: 'About EYAD STUDIO', action: () => aboutDialog() },
+<<<<<<< HEAD
       ...experienceHelp('video'),
+=======
+>>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
     ] },
   ];
 }

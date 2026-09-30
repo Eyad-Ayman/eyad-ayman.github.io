@@ -36,7 +36,11 @@ export function extOf(name) {
 
 /**
  * Sniff a file. Returns { kind, format, label }
+<<<<<<< HEAD
  * kind: 'psd' | 'image' | 'video' | 'audio' | 'eyad' | 'prproj' | 'pdf' | 'fig' | 'model3d' | 'lut' | 'unknown'
+=======
+ * kind: 'psd' | 'image' | 'video' | 'audio' | 'eyad' | 'prproj' | 'unknown'
+>>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
  */
 export async function detectFile(file) {
   const ext = extOf(file.name);
@@ -54,6 +58,7 @@ export async function detectFile(file) {
   if (ext === 'prproj' && !(head[0] === 0x1f && head[1] === 0x8b) && !/<\?xml|<PremiereData/.test(ascii(0, 64))) {
     return { kind: 'unknown', format: 'prproj', label: 'Not a valid Premiere project (the file is not compressed project XML — it may be damaged or renamed)' };
   }
+<<<<<<< HEAD
   // PDF (and .ai saved with PDF compatibility) → EYAD VECTOR
   if (ascii(0, 5) === '%PDF-' || (ext === 'pdf' || ext === 'ai') && (await file.slice(0, 1024).text()).includes('%PDF-')) return { kind: 'pdf', format: ext === 'ai' ? 'ai' : 'pdf', label: ext === 'ai' ? 'Illustrator-compatible artwork (PDF-based .ai)' : 'PDF document' };
   if (ascii(0, 10) === '%!PS-Adobe' && (ext === 'ai' || ext === 'eps')) return { kind: 'pdf', format: ext, label: 'Legacy PostScript artwork (.' + ext + ')' };
@@ -64,6 +69,10 @@ export async function detectFile(file) {
   if (head[0] === 0x50 && head[1] === 0x4b && head[2] === 0x03 && head[3] === 0x04) {
     if (ext === 'eyad') return { kind: 'eyad', format: 'eyad', label: 'EYAD project' };
     if (ext === 'fig') return { kind: 'fig', format: 'fig', label: 'Design file (.fig, zipped)' };
+=======
+  if (head[0] === 0x50 && head[1] === 0x4b && head[2] === 0x03 && head[3] === 0x04) {
+    if (ext === 'eyad') return { kind: 'eyad', format: 'eyad', label: 'EYAD project' };
+>>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
     return { kind: 'unknown', format: 'zip', label: 'ZIP archive' };
   }
   if (head[0] === 0x1f && head[1] === 0x8b) {
@@ -155,9 +164,12 @@ export const ACCEPT = {
   media: '.mp4,.webm,.mov,.m4v,.mkv,.mp3,.wav,.aac,.m4a,.ogg,.oga,.opus,.flac,.weba,.png,.jpg,.jpeg,.webp,.gif,.svg,video/*,audio/*',
   eyad: '.eyad',
   prproj: '.prproj',
+<<<<<<< HEAD
   vectorAll: '.eyad,.svg,.pdf,.ai,.eps,.fig,image/svg+xml,application/pdf,.png,.jpg,.jpeg,.webp',
   model3d: '.glb,.gltf,.obj,.stl,.fbx',
   lut: '.cube',
+=======
+>>>>>>> 7f07ded4bc629fd2a61d72f4fcdbf337594d4cc7
   any: '',
 };
 
