@@ -4,10 +4,12 @@
 import { uid, timecode } from '../core/dom.js';
 import { toast, formDialog, confirmDialog } from '../core/ui.js';
 import { makeClip, makeTrack, clipEnd, clipDur, srcTime, trackById, mediaById, linked, resolveOverlaps, seqDuration, TICK } from './model.js';
-import { EFFECTS, defaultParams } from './effects.js';
+import { EFFECTS, defaultParams, LOOK_PRESETS, MASK_MODES } from './effects.js';
 import { getSettings } from '../core/settings.js';
 import { TRANSITIONS } from './effects.js';
-import { GEN_TEMPLATES, genLabel } from './gen.js';
+import { GEN_TEMPLATES, genLabel, TEXT_STYLES, textStylePatch } from './gen.js';
+import { LOOKS } from '../core/film.js';
+import { sanitizeFilename, baseName } from '../core/files.js';
 import { PROPS, PRESETS, setKey, removeKeyAt, valueAt, hasKeys } from './anim.js';
 
 export function edit(app, label, fn, { coalesce } = {}) {
@@ -262,6 +264,56 @@ export function addEffect(app, type) {
   edit(app, 'Add ' + EFFECTS[type].label, (seq) => { for (const c of seq.clips) if (ids.includes(c.id)) c.effects = [...(c.effects || []), { id: uid('e'), type, enabled: true, params: defaultParams(type) }]; });
   app.showProperties();
 }
+const selFx = (app, mediaOnly = false) => app.seq.clips.filter((c) => app.selection.has(c.id) && trackById(app.seq, c.trackId).kind === 'video' && !(mediaOnly && c.gen)).map((c) => c.id);
+
+/** Ready look: swap in a tuned stack of effects (replaces the effects a previous look added). */
+export function applyLook(app, key) {
+  const L = LOOK_PRESETS[key]; if (!L) return;
+  const ids = selFx(app);
+  if (!ids.length) { toast('Select a clip (or an adjustment layer) to apply “' + L.label + '”.'); return; }
+  edit(app, 'Look: ' + L.label, (seq) => {
+    for (const c of seq.clips) if (ids.includes(c.id)) c.effects = [...(c.effects || []).filter((e) => !e.look), ...L.fx.map(([type, params]) => ({ id: uid('e'), type, enabled: true, look: key, params: { ...defaultParams(type), ...params } }))];
+  });
+  toast(L.label + ' applied', { timeout: 1200 });
+  app.showProperties();
+}
+export function clearLook(app) {
+  const ids = selFx(app);
+  if (!ids.some((id) => app.seq.clips.find((c) => c.id === id).effects.some((e) => e.look))) { toast('The selected clip has no ready look.'); return; }
+  edit(app, 'Remove Look', (seq) => { for (const c of seq.clips) if (ids.includes(c.id)) c.effects = c.effects.filter((e) => !e.look); });
+}
+/** Film look by code: sets the look on the clip's Film Look effect, adding the effect when it has none. */
+export function setFilmLook(app, code) {
+  const ids = selFx(app);
+  if (!ids.length) { toast('Select a clip to apply a film look.'); return; }
+  const look = code == null ? null : LOOKS.find((l) => l.code === code);
+  edit(app, 'Film Look' + (look ? ': ' + look.name : ''), (seq) => {
+    for (const c of seq.clips) {
+      if (!ids.includes(c.id)) continue;
+      const e = (c.effects || []).find((x) => x.type === 'film');
+      if (e) { if (look) e.params = { ...e.params, look: look.code }; e.enabled = true; }
+      else c.effects = [...(c.effects || []), { id: uid('e'), type: 'film', enabled: true, params: { ...defaultParams('film'), ...(look ? { look: look.code } : {}) } }];
+    }
+  });
+  if (look) toast(look.name + ' applied', { timeout: 1200 });
+  app.showProperties();
+}
+/** Auto mask (AI people) in the given mode — reuses the clip's existing auto-mask effect. */
+export function addAutoMask(app, mode = 0) {
+  const ids = selFx(app, true);
+  if (!ids.length) { toast('Select a video or image clip for Auto mask.'); return; }
+  edit(app, 'Auto Mask: ' + MASK_MODES[mode], (seq) => {
+    for (const c of seq.clips) {
+      if (!ids.includes(c.id)) continue;
+      const e = (c.effects || []).find((x) => x.type === 'bgRemove');
+      const extra = mode === 5 ? { light: 100, amount: 35 } : {};
+      if (e) { e.params = { ...e.params, mode, ...extra }; e.enabled = true; }
+      else c.effects = [{ id: uid('e'), type: 'bgRemove', enabled: true, params: { ...defaultParams('bgRemove'), mode, ...extra } }, ...(c.effects || [])];
+    }
+  });
+  app.showProperties();
+}
+
 export function removeEffect(app, clipId, effId) { edit(app, 'Remove Effect', (seq) => { const c = seq.clips.find((x) => x.id === clipId); if (c) c.effects = c.effects.filter((e) => e.id !== effId); }); }
 export function setEffect(app, clipId, effId, patch, label = 'Effect') {
   edit(app, label, (seq) => { const c = seq.clips.find((x) => x.id === clipId); if (!c) return false; c.effects = c.effects.map((e) => (e.id === effId ? { ...e, ...patch, params: { ...e.params, ...(patch.params || {}) } } : e)); }, { coalesce: clipId + ':' + effId });
@@ -281,6 +333,14 @@ export async function sequenceSettings(app) {
   if (!v) return;
   const [w, hh] = v.preset.split('x').map(Number);
   edit(app, 'Sequence Settings', (seq) => { seq.name = v.name || seq.name; seq.width = w; seq.height = hh; seq.fps = Number(v.fps); seq.background = v.background; });
+  app.layoutMonitor();
+}
+
+export const ASPECTS = [['16:9', 1920, 1080], ['9:16', 1080, 1920], ['1:1', 1080, 1080], ['4:5', 1080, 1350], ['4:3', 1440, 1080], ['21:9', 2560, 1080]];
+/** Quick aspect switch (clips stay fitted to the new frame; use Fill frame to crop in). */
+export function setAspect(app, w, hh) {
+  if (!app.seq || (app.seq.width === w && app.seq.height === hh)) return;
+  edit(app, `Frame ${w} × ${hh}`, (seq) => { seq.width = w; seq.height = hh; });
   app.layoutMonitor();
 }
 
@@ -317,6 +377,53 @@ export function updateGen(app, id, patch, label = 'Edit Title') {
   }, { coalesce: id + ':gen:' + Object.keys(patch).join(',') });
 }
 
+const TEXT_DEF_CAPTION = { ...textStylePatch('subtitleBg'), ...GEN_TEMPLATES.caption.gen, bgOp: 100, bgRadius: 0, bgLine: true, wrap: 86 }; // the plain boxed caption
+const isText = (c) => c.gen && (c.gen.type === 'text' || c.gen.type === 'caption');
+
+/** New title at the playhead in a text style. */
+export function addStyledText(app, key, { dur = 5 } = {}) {
+  const S = TEXT_STYLES[key]; if (!S) return;
+  const s = app.seq, at = app.engine.time;
+  const open = s.tracks.filter((t) => t.kind === 'video' && !t.lock);
+  let tr = [...open].reverse().find((t) => !s.clips.some((c) => c.trackId === t.id && c.start < at + dur - TICK && clipEnd(c) > at + TICK));
+  let newTrack = null;
+  if (!tr) { newTrack = makeTrack('video', 'V' + (s.tracks.filter((t) => t.kind === 'video').length + 1)); tr = newTrack; }
+  const gen = { type: 'text', text: S.sample || 'Your text here', ...textStylePatch(key) };
+  const c = makeClip({ trackId: tr.id, name: genLabel(gen), start: at, in: 0, out: dur, gen });
+  if (S.pos) { c.transform.x = Math.round(S.pos.x * s.width); c.transform.y = Math.round(S.pos.y * s.height); } else if (S.cap) c.transform.y = Math.round(s.height * 0.36);
+  edit(app, 'New ' + S.label, (seq) => {
+    if (newTrack) { const lastV = seq.tracks.map((x) => x.kind).lastIndexOf('video'); seq.tracks.splice(lastV + 1, 0, newTrack); }
+    seq.clips.push(c);
+  });
+  app.select([c.id]);
+  app.showProperties();
+  return c.id;
+}
+/** Apply a text style to the selected titles/captions (keeps their words), or make a new title when none is selected. */
+export function applyTextStyle(app, key) {
+  const S = TEXT_STYLES[key]; if (!S) return;
+  const ids = app.seq.clips.filter((c) => app.selection.has(c.id) && isText(c)).map((c) => c.id);
+  if (!ids.length) return addStyledText(app, key);
+  edit(app, 'Text Style: ' + S.label, (seq) => { for (const c of seq.clips) if (ids.includes(c.id)) c.gen = { ...c.gen, ...textStylePatch(key, c.gen) }; });
+  app.props.refresh(true);
+}
+/** One caption look for the whole sequence: a style key, or copy the style of clip `fromId`. */
+export function styleAllCaptions(app, key, fromId = null) {
+  const src = fromId ? app.seq.clips.find((c) => c.id === fromId) : null;
+  const n = app.seq.clips.filter((c) => c.gen && c.gen.type === 'caption').length;
+  if (!n) { toast('There are no caption clips in this sequence.'); return; }
+  edit(app, 'Caption Style', (seq) => {
+    for (const c of seq.clips) {
+      if (!c.gen || c.gen.type !== 'caption') continue;
+      if (src) { if (c.id !== src.id) { c.gen = { ...structuredClone(src.gen), text: c.gen.text }; c.transform = { ...c.transform, x: src.transform.x, y: src.transform.y, scale: src.transform.scale }; } }
+      else if (key === 'classic') c.gen = { ...structuredClone(GEN_TEMPLATES.caption.gen), ...TEXT_DEF_CAPTION, text: c.gen.text };
+      else c.gen = { ...c.gen, ...textStylePatch(key, c.gen) };
+    }
+  });
+  app.props.refresh(true);
+  toast(`Style applied to ${n} caption${n === 1 ? '' : 's'}`, { type: 'ok', timeout: 1500 });
+}
+
 export async function editGenText(app, c) {
   const v = await formDialog({ title: 'Edit text', ok: 'Apply', fields: [{ key: 'text', label: 'Text', type: 'textarea', value: c.gen.text, maxLength: 5000 }] });
   if (v) updateGen(app, c.id, { text: String(v.text).slice(0, 5000) }, 'Edit Text');
@@ -333,13 +440,19 @@ const selVideo = (app) => app.seq.clips.filter((c) => app.selection.has(c.id) &&
 export function applyTransition(app, type = 'dissolve', { edge = 'both', dur = null } = {}) {
   const s = app.seq;
   let targets = selVideo(app);
+  app.lastTransition = type;
   if (!targets.length) {
-    // no selection: the edit point nearest the playhead on the top-most video track that has one
-    const t = app.engine.time;
-    const cands = s.clips.filter((c) => trackById(s, c.trackId).kind === 'video').map((c) => ({ c, d: Math.min(Math.abs(c.start - t), Math.abs(clipEnd(c) - t)) })).sort((a, b) => a.d - b.d);
-    if (cands.length && cands[0].d < 1.5) targets = [cands[0].c];
+    // no selection: the cut nearest the playhead (a real cut between two clips wins over a free edge)
+    const t = app.engine.time, vid = s.clips.filter((c) => trackById(s, c.trackId).kind === 'video' && !trackById(s, c.trackId).lock);
+    const touches = (c) => vid.some((o) => o.trackId === c.trackId && o !== c && Math.abs(clipEnd(o) - c.start) < 1e-3);
+    const cuts = vid.filter(touches).map((c) => ({ c, d: Math.abs(c.start - t) })).sort((a, b) => a.d - b.d);
+    if (cuts.length) { targets = [cuts[0].c]; edge = 'in'; }
+    else {
+      const cands = vid.map((c) => ({ c, d: Math.min(Math.abs(c.start - t), Math.abs(clipEnd(c) - t)) })).sort((a, b) => a.d - b.d);
+      if (cands.length) targets = [cands[0].c];
+    }
   }
-  if (!targets.length) { toast('Select a video clip (or park the playhead on a cut) to add a transition.'); return; }
+  if (!targets.length) { toast('Add a clip to the timeline first, then pick a transition.'); return; }
   const D = dur ?? (getSettings().transitionDuration || 0.5);
   const ids = targets.map((c) => c.id);
   edit(app, 'Add ' + TRANSITIONS[type].label, (seq) => {
@@ -354,6 +467,21 @@ export function applyTransition(app, type = 'dissolve', { edge = 'both', dur = n
     }
   });
   toast(TRANSITIONS[type].label + ' applied', { timeout: 1200 });
+}
+/** The same transition on every cut (where two clips touch on a video track) — one undo step. */
+export function applyTransitionAll(app, type = 'dissolve', { dur = null } = {}) {
+  const s = app.seq, D = dur ?? (getSettings().transitionDuration || 0.5);
+  app.lastTransition = type;
+  let n = 0;
+  const isCut = (seq, c) => trackById(seq, c.trackId).kind === 'video' && seq.clips.find((o) => o.trackId === c.trackId && o !== c && Math.abs(clipEnd(o) - c.start) < 1e-3);
+  if (!s.clips.some((c) => isCut(s, c))) { toast('No cuts yet — put two clips next to each other on a video track.'); return; }
+  edit(app, TRANSITIONS[type].label + ' on All Cuts', (seq) => {
+    for (const c of seq.clips) {
+      const prev = isCut(seq, c); if (!prev) continue;
+      c.transIn = { type, dur: Math.max(0.04, Math.min(D, clipDur(c) / 2, clipDur(prev) / 2)) }; prev.transOut = undefined; n++;
+    }
+  });
+  toast(`${TRANSITIONS[type].label} applied to ${n} cut${n === 1 ? '' : 's'}`, { type: 'ok', timeout: 1600 });
 }
 export function setTransition(app, id, which, patch) {
   edit(app, 'Transition', (seq) => {
@@ -425,6 +553,40 @@ export function applyPreset(app, key) {
   if (!ids.length) { toast(P.text ? 'Select a title clip for this preset.' : 'Select a video, image or title clip first.'); return; }
   edit(app, 'Preset: ' + P.label, (seq) => { for (const c of seq.clips) if (ids.includes(c.id)) P.apply(c, clipDur(c), s); });
   app.showProperties();
+}
+
+// ------------------------------------------------------------------ freeze frame
+
+/** Hold the frame under the playhead for `dur` seconds: the frame becomes a still that is rippled in at the playhead. */
+export async function freezeFrame(app, dur = 2) {
+  const s = app.seq, t = app.engine.time;
+  const under = s.clips.filter((c) => !c.gen && t > c.start + TICK && t < clipEnd(c) - TICK && trackById(s, c.trackId).kind === 'video' && mediaById(app.project, c.mediaId)?.kind === 'video');
+  const c = under.find((x) => app.selection.has(x.id)) || under[under.length - 1];
+  if (!c) { toast('Park the playhead inside a video clip to freeze its frame.'); return; }
+  const rec = app.engine.els.get(c.id + ':video');
+  if (!rec || rec.el.readyState < 2 || rec.el.seeking) { toast('The frame is still loading — try again in a moment.'); return; }
+  const cv = document.createElement('canvas'); cv.width = rec.el.videoWidth; cv.height = rec.el.videoHeight;
+  let blob = null;
+  try { cv.getContext('2d').drawImage(rec.el, 0, 0); blob = await new Promise((r) => cv.toBlob(r, 'image/png')); } catch (e) { blob = null; }
+  if (!blob) { toast('This video can’t be captured (linked from another site).', { type: 'error' }); return; }
+  const file = new File([blob], sanitizeFilename(baseName(c.name) + ' freeze.png'), { type: 'image/png' });
+  const [still] = await app.importFiles([file]);
+  if (!still) return;
+  let id = null;
+  edit(app, 'Freeze Frame', (seq) => {
+    const links = new Map();
+    for (const o of [...seq.clips]) { // ripple every unlocked track so picture and sound stay in sync
+      if (trackById(seq, o.trackId).lock) continue;
+      if (o.start >= t - TICK) o.start += dur;
+      else if (clipEnd(o) > t + TICK && o.gen) o.out += dur * (o.speed || 1); // titles, mattes and adjustment layers just last longer
+      else if (clipEnd(o) > t + TICK) { const r = splitInto(seq, o, t); r.start += dur; if (o.linkId) { if (!links.has(o.linkId)) links.set(o.linkId, uid('L')); r.linkId = links.get(o.linkId); } }
+    }
+    const src = seq.clips.find((x) => x.id === c.id);
+    const f = makeClip({ trackId: c.trackId, mediaId: still.id, name: still.name, start: t, in: 0, out: dur, transform: { ...src.transform }, crop: { ...src.crop }, effects: (src.effects || []).map((e) => ({ ...structuredClone(e), id: uid('e') })) });
+    seq.clips.push(f); id = f.id;
+  });
+  if (id) app.select([id]);
+  toast(`Freeze frame added (${dur} s)`, { type: 'ok', timeout: 1500 });
 }
 
 // ------------------------------------------------------------------ audio

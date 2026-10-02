@@ -3,7 +3,7 @@ import { uid } from '../core/dom.js';
 import { toast, progressDialog, formDialog } from '../core/ui.js';
 import { pickFiles, sanitizeFilename, downloadBlob } from '../core/files.js';
 import { makeClip, makeTrack, clipEnd, clipDur, srcTime, trackById, mediaById, TICK } from './model.js';
-import { GEN_TEMPLATES } from './gen.js';
+import { GEN_TEMPLATES, TEXT_STYLES, textStylePatch } from './gen.js';
 import { edit } from './ops.js';
 
 const TC = /(\d{1,2}:)?(\d{1,2}):(\d{2})[.,](\d{1,3})/;
@@ -28,25 +28,41 @@ export function parseCaptions(text) {
   return cues.sort((a, b) => a.start - b.start);
 }
 
-export async function importCaptions(app, file) {
+/** Caption looks offered on import ('classic' = the plain boxed caption). */
+export const CAPTION_STYLES = [['classic', 'Classic box'], ...Object.entries(TEXT_STYLES).filter(([, st]) => st.cap).map(([k, st]) => [k, st.label])];
+const CAP_POS = { bottom: 0.37, middle: 0, top: -0.37 };
+
+/**
+ * Import an SRT / WebVTT file as caption clips on a new “Captions” track.
+ * opts.style / opts.position override the default look.
+ */
+export async function importCaptions(app, file, opts = {}) {
   if (!file) { const f = await pickFiles({ accept: '.srt,.vtt,text/vtt,application/x-subrip,text/plain', multiple: false }); file = f[0]; }
   if (!file) return;
   if (file.size > 5 * 1024 * 1024) { toast('Caption file is too large (max 5 MB).', { type: 'error' }); return; }
   const cues = parseCaptions(await file.text());
   if (!cues.length) { toast(`No captions found in ${sanitizeFilename(file.name)} (expected SRT or WebVTT).`, { type: 'error' }); return; }
+  // default look: readable boxed subtitles (the Arabic variant when the file is Arabic); the style
+  // picker for all captions is in Properties and in Effects ▸ Titles & graphics — no dialog in the way
+  const rtl = cues.some((q) => /[\u0591-\u07FF\uFB50-\uFDFF\uFE70-\uFEFC]/.test(q.text));
+  const style = opts.style || (rtl ? 'arabicCaption' : 'subtitleBg'), position = opts.position || 'bottom';
   if (!app.project) await app.ensureProject();
   const tpl = GEN_TEMPLATES.caption;
+  const look = style && style !== 'classic' && TEXT_STYLES[style] ? textStylePatch(style) : { wrap: 86 };
   const track = makeTrack('video', 'Captions');
+  const ids = [];
   edit(app, 'Import Captions', (seq) => {
     const lastV = seq.tracks.map((x) => x.kind).lastIndexOf('video');
     seq.tracks.splice(lastV + 1, 0, track);
     for (const q of cues) {
-      const c = makeClip({ trackId: track.id, name: q.text.split('\n')[0].slice(0, 40), start: q.start, in: 0, out: q.end - q.start, gen: { ...structuredClone(tpl.gen), text: q.text } });
-      Object.assign(c.transform, tpl.transform || {});
-      seq.clips.push(c);
+      const c = makeClip({ trackId: track.id, name: q.text.split('\n')[0].slice(0, 40), start: q.start, in: 0, out: q.end - q.start, gen: { ...structuredClone(tpl.gen), ...look, type: 'caption', text: q.text } });
+      c.transform.y = Math.round(seq.height * (CAP_POS[position] ?? CAP_POS.bottom));
+      seq.clips.push(c); ids.push(c.id);
     }
   });
-  toast(`Imported ${cues.length} caption${cues.length === 1 ? '' : 's'} on a new “Captions” track`, { type: 'ok' });
+  if (ids.length) app.select([ids[0]]);
+  toast(`Imported ${cues.length} caption${cues.length === 1 ? '' : 's'} on a new “Captions” track`, { type: 'ok', detail: 'Pick a look for all of them under “Style for all captions”.', timeout: 6000, action: { label: 'Caption style', fn: () => app.showProperties() } });
+  return ids;
 }
 
 function fmt(t, vtt) {

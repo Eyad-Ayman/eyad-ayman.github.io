@@ -31,6 +31,7 @@ export class View {
     this.hover = null;
     this.antsPhase = 0;
     this.showGrid = getSettings().showRulersGrid;
+    try { this.showRulers = localStorage.getItem('eyad-studio:image:rulers') !== '0'; } catch (e) { this.showRulers = true; }
     this.showGuides = true;
     this.snap = true;
     this.lastTap = null;
@@ -179,6 +180,7 @@ export class View {
     const d = this.dpr;
     ctx.setTransform(d, 0, 0, d, 0, 0);
     const styles = getComputedStyle(this.stage);
+    ctx.clearRect(0, 0, this.cssW, this.cssH); // the pasteboard colour may be translucent (spatial look)
     ctx.fillStyle = styles.getPropertyValue('--st-canvas-bg').trim() || '#070708';
     ctx.fillRect(0, 0, this.cssW, this.cssH);
     if (!doc) return;
@@ -207,6 +209,44 @@ export class View {
     ctx.restore();
     const tool = this.app.tool;
     if (tool && tool.overlay) { ctx.save(); tool.overlay(ctx, this); ctx.restore(); }
+    if (this.showRulers && !this.rotation) this.drawRulers(ctx);
+  }
+
+  drawRulers(ctx) {
+    const T = 18, z = this.zoom, W = this.cssW, H = this.cssH;
+    const cs = getComputedStyle(this.stage);
+    const bg = cs.getPropertyValue('--st-panel').trim() || 'rgba(30,30,34,.9)', fg = cs.getPropertyValue('--st-dim').trim() || '#aaa';
+    // tick spacing: a "nice" step in document pixels that is at least ~50 screen px apart
+    const raw = 50 / z, pow = Math.pow(10, Math.floor(Math.log10(raw)));
+    const step = [1, 2, 5, 10].map((m) => m * pow).find((v) => v >= raw) || 10 * pow;
+    ctx.save();
+    ctx.fillStyle = bg; ctx.fillRect(0, 0, W, T); ctx.fillRect(0, 0, T, H);
+    ctx.fillStyle = fg; ctx.strokeStyle = fg; ctx.globalAlpha = 0.85; ctx.lineWidth = 1;
+    ctx.font = '9px ui-monospace, monospace'; ctx.textBaseline = 'top';
+    ctx.beginPath();
+    const x0 = Math.floor(-this.panX / z / step) * step;
+    for (let v = x0; this.panX + v * z < W; v += step / 5) {
+      const sx = Math.round(this.panX + v * z) + 0.5; if (sx < T) continue;
+      const major = Math.abs(v / step - Math.round(v / step)) < 1e-6;
+      ctx.moveTo(sx, T); ctx.lineTo(sx, major ? 4 : T - 5);
+      if (major) ctx.fillText(String(Math.round(v)), sx + 2, 2);
+    }
+    const y0 = Math.floor(-this.panY / z / step) * step;
+    for (let v = y0; this.panY + v * z < H; v += step / 5) {
+      const sy = Math.round(this.panY + v * z) + 0.5; if (sy < T) continue;
+      const major = Math.abs(v / step - Math.round(v / step)) < 1e-6;
+      ctx.moveTo(T, sy); ctx.lineTo(major ? 4 : T - 5, sy);
+      if (major) { ctx.save(); ctx.translate(2, sy + 2); ctx.rotate(Math.PI / 2); ctx.fillText(String(Math.round(v)), 0, -8); ctx.restore(); }
+    }
+    ctx.stroke();
+    // pointer position markers
+    if (this.hover) {
+      ctx.strokeStyle = '#19c3ff'; ctx.globalAlpha = 1; ctx.beginPath();
+      const hx = Math.round(this.panX + this.hover.x * z) + 0.5, hy = Math.round(this.panY + this.hover.y * z) + 0.5;
+      ctx.moveTo(hx, 0); ctx.lineTo(hx, T); ctx.moveTo(0, hy); ctx.lineTo(T, hy); ctx.stroke();
+    }
+    ctx.globalAlpha = 1; ctx.fillStyle = bg; ctx.fillRect(0, 0, T, T);
+    ctx.restore();
   }
 
   drawGrid(ctx) {

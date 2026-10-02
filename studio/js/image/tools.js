@@ -12,6 +12,7 @@ import { selectionFromRect, selectionFromPath, combine } from './selection.js';
 import { drawShape, getScratch, releaseScratch, matrixArgs } from './render.js';
 import { getSettings } from '../core/settings.js';
 import { EXTRA_TOOLS, EXTRA_DEFAULTS } from './tools2.js';
+import { RETOUCH_TOOLS, RETOUCH_DEFAULTS } from './tools3.js';
 
 // ---------------------------------------------------------------- option controls
 
@@ -58,6 +59,7 @@ const sep = () => h('span', { class: 'img-opt-sep' });
 
 export const TOOL_DEFAULTS = {
   ...EXTRA_DEFAULTS,
+  ...RETOUCH_DEFAULTS,
   move: { autoSelect: true, showTransform: true },
   marquee: { shape: 'rect', mode: 'new', feather: 0 },
   lasso: { mode: 'new', feather: 0 },
@@ -393,9 +395,16 @@ const moveTool = {
       if (Math.hypot(sp.x - rot.x, sp.y - rot.y) < HANDLE + 2) { this.begin('rotate', node, pt); return; }
       for (const hd of hs) if (Math.abs(sp.x - hd.p.x) < HANDLE && Math.abs(sp.y - hd.p.y) < HANDLE) { this.begin('scale', node, pt, hd); return; }
     }
-    if (o.autoSelect && !pt.mod) {
+    if (pt.shift && !pt.mod) {
+      // Shift-click: add / remove a layer from the multi-selection (like the Layers panel)
       const hit = hitTest(doc, pt.x, pt.y);
-      if (hit) { if (hit.id !== doc.activeId) app.setActive(hit.id); node = hit; }
+      if (hit && hit.id !== doc.activeId && app.selectedIds.size && !app.selectedIds.has(hit.id)) { app.setActive(hit.id, { additive: true }); node = hit; }
+      else if (hit) node = app.selectedIds.has(hit.id) ? hit : node;
+    } else if (o.autoSelect && !pt.mod) {
+      const hit = hitTest(doc, pt.x, pt.y);
+      // clicking a layer that is already part of the multi-selection keeps the whole selection
+      if (hit && app.selectedIds.size > 1 && app.selectedIds.has(hit.id)) node = hit;
+      else if (hit) { if (hit.id !== doc.activeId) app.setActive(hit.id); node = hit; }
     } else if (pt.mod) {
       const hit = hitTest(doc, pt.x, pt.y); if (hit) { app.setActive(hit.id); node = hit; }
     }
@@ -404,7 +413,16 @@ const moveTool = {
     this.begin('move', node, pt);
   },
   begin(kind, node, pt, handle) {
-    const targets = node.type === 'group' ? collectLeaves(node) : [node];
+    let targets = node.type === 'group' ? collectLeaves(node) : [node];
+    // several layers selected → move them all together
+    if (kind === 'move' && this.app.selectedIds.size > 1 && this.app.selectedIds.has(node.id)) {
+      const set = new Set();
+      for (const id of this.app.selectedIds) {
+        const f = findNode(this.app.doc, id); if (!f || this.app.isLocked(f.node)) continue;
+        for (const n of f.node.type === 'group' ? collectLeaves(f.node) : [f.node]) set.add(n);
+      }
+      targets = [...set];
+    }
     this.op = {
       kind, node, start: pt, handle, targets,
       before: targets.map((n) => ({ n, v: { x: n.x, y: n.y, sx: n.sx, sy: n.sy, rot: n.rot } })),
@@ -958,7 +976,8 @@ const textTool = {
     weight.addEventListener('change', () => { o.weight = Number(weight.value); apply('weight'); });
     const align = optSeg(app, 'text', 'align', [['left', 'alignLeft', 'Align left'], ['center', 'alignCenter', 'Center'], ['right', 'alignRight', 'Align right']]);
     align.addEventListener('click', () => apply('align'));
-    return [h('label', { class: 'img-opt' }, fontSel), h('label', { class: 'img-opt' }, size, h('span', { class: 'studio-dim', text: 'px' })), h('label', { class: 'img-opt' }, weight), align,
+    const moreFonts = h('button', { class: 'studio-icon-btn is-small', type: 'button', title: 'Add fonts (device or Google Fonts)', 'aria-label': 'Add fonts', onclick: async () => { const m = await import('../core/fonts.js'); await m.fontManagerDialog(); app.selectTool('text'); } }, icon('plus', 14));
+    return [h('label', { class: 'img-opt' }, fontSel), moreFonts, h('label', { class: 'img-opt' }, size, h('span', { class: 'studio-dim', text: 'px' })), h('label', { class: 'img-opt' }, weight), align,
       h('span', { class: 'studio-dim studio-small', text: 'Colour = foreground colour' })];
   },
   down(pt) {
@@ -1177,6 +1196,7 @@ export function createTools() {
     paintTool('clone', 'Clone Stamp', 'clone', 'S', 'clone'),
     textTool, shapeTool, penTool, eyedropperTool, handTool, zoomTool,
     ...EXTRA_TOOLS,
+    ...RETOUCH_TOOLS,
   ];
 }
 

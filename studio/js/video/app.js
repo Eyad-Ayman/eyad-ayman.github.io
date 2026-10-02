@@ -18,6 +18,7 @@ import * as io from './io.js';
 import { exportFrame } from './export.js';
 import { linkMediaDialog, linkLocalFiles, canLinkLocal, reconnectLocal } from './link.js';
 import { PROPS, valueAt } from './anim.js';
+import { onGenFontLoad } from './gen.js';
 
 export class VideoApp {
   constructor(root) {
@@ -73,6 +74,8 @@ export class VideoApp {
     this.props = new PropertiesPanel(this);
     this.source = new SourceMonitor(this);
     this.engine = new Engine(this);
+    onGenFontLoad(() => this.engine.invalidate()); // a title's web font finished loading → repaint
+    this.onAIError = (e) => toast('Auto mask could not start: ' + String(e && e.message || e).slice(0, 160), { type: 'error', timeout: 7000 });
     this.timeline = new Timeline(this);
 
     this.leftTabs = this.tabs([['media', 'Media', this.bin.el], ['effects', 'Effects', this.effects.el], ['audio', 'Audio', this.mixer.el]], 'media', (k) => { if (k === 'audio') this.mixer.refresh(); });
@@ -99,6 +102,7 @@ export class VideoApp {
     clear(this.root);
     this.root.append(top, this.main, this.dock, this.emptyEl);
     this.bindResizer();
+    this.bindPanelEdges(left, right);
 
     new ResizeObserver(() => this.layoutMonitor()).observe(this.progScreen);
     this.engine.on((kind) => this.onEngine(kind));
@@ -207,6 +211,7 @@ export class VideoApp {
           h('button', { class: 'studio-btn is-primary', type: 'button', onclick: () => io.newProject(this) }, icon('plus', 16), 'New project'),
           h('button', { class: 'studio-btn', type: 'button', onclick: () => io.openDialog(this) }, icon('folder', 16), 'Open .eyad / .prproj'),
           h('button', { class: 'studio-btn', type: 'button', onclick: async () => { await io.newProject(this, { quiet: true }); this.importDialog(); } }, icon('upload', 16), 'Import media'),
+          h('button', { class: 'studio-btn', type: 'button', onclick: () => import('./captions.js').then((m) => m.importCaptions(this)) }, icon('captions', 16), 'Import SRT / VTT'),
           h('a', { class: 'studio-btn is-ghost', href: ROUTES.projects }, icon('folder', 16), 'Projects')),
         h('p', { class: 'studio-dim studio-small img-empty-hint', text: 'Drop MP4, WebM, MOV, MP3, WAV, images, an .eyad project or a Premiere .prproj anywhere. Nothing is uploaded.' })));
   }
@@ -215,6 +220,24 @@ export class VideoApp {
     this.root.classList.toggle('is-mobile', this.mobile.matches);
     if (this.mobile.matches) { this.monitorTabs.show('program'); }
     this.layoutMonitor();
+  }
+
+  /** Drag the inner edges of the side panels to resize them (saved in this browser). */
+  bindPanelEdges(left, right) {
+    const KEY = 'eyad-studio:video:panels';
+    let st0 = {};
+    try { st0 = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { st0 = {}; }
+    const apply = () => { for (const [k, v] of Object.entries({ '--vid-lw': st0.l, '--vid-rw': st0.r })) { if (v) this.root.style.setProperty(k, v + 'px'); else this.root.style.removeProperty(k); } this.layoutMonitor(); };
+    apply();
+    for (const [el, side] of [[left, 'l'], [right, 'r']]) {
+      const edge = h('div', { class: 'vid-edge', role: 'separator', 'aria-orientation': 'vertical', title: 'Drag to resize (double-click resets)' });
+      let d = null;
+      edge.addEventListener('pointerdown', (e) => { d = { x: e.clientX, w: el.getBoundingClientRect().width, mirror: this.root.dataset.panels === 'left' }; edge.setPointerCapture(e.pointerId); edge.classList.add('is-drag'); });
+      edge.addEventListener('pointermove', (e) => { if (!d) return; let dx = e.clientX - d.x; if ((side === 'r') !== d.mirror) dx = -dx; st0[side] = Math.max(180, Math.min(560, Math.round(d.w + dx))); apply(); });
+      edge.addEventListener('pointerup', () => { if (!d) return; d = null; edge.classList.remove('is-drag'); try { localStorage.setItem(KEY, JSON.stringify(st0)); } catch (e) { /* ignore */ } });
+      edge.addEventListener('dblclick', () => { delete st0[side]; apply(); try { localStorage.setItem(KEY, JSON.stringify(st0)); } catch (e) { /* ignore */ } });
+      el.appendChild(edge);
+    }
   }
 
   bindResizer() {
@@ -383,7 +406,7 @@ export class VideoApp {
   }
 
   onHistory(kind) {
-    if (kind === 'undo' || kind === 'redo') { this.changed(true); }
+    if (kind === 'undo' || kind === 'redo') { this.changed(true); this.layoutMonitor(); } // (frame size may have changed)
     this.updateChrome();
   }
 

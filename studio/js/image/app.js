@@ -9,6 +9,7 @@ import { History, propCmd, treeCmd } from './history.js';
 import { View } from './view.js';
 import { createTools, TOOL_DEFAULTS, resetTransform } from './tools.js';
 import { buildMenus } from './menus.js';
+import { loadWorkspace, saveWorkspace, enableCustomisation, applyWidth, DEFAULT_TOOLS, TOOL_GROUPS, TOOL_GROUP_OF } from './workspace.js';
 import { LayersPanel, PropertiesPanel, ColorPanel, HistoryPanel } from './panels.js';
 import * as ops from './ops.js';
 import * as io from './io.js';
@@ -37,6 +38,8 @@ export class ImageApp {
     this.tool = null;
     this.lastFillTool = 'gradient';
     this.panelVis = { color: true, properties: true, layers: true, history: true, options: true };
+    this.ws = loadWorkspace();
+    if (this.ws.vis) this.panelVis = { ...this.panelVis, ...this.ws.vis };
   }
 
   // ------------------------------------------------------------ getters
@@ -129,6 +132,7 @@ export class ImageApp {
     this.selectTool('move');
     this.refresh();
     this.mobile.addEventListener?.('change', () => { closeSheet(); this.buildPanels(); this.view.resize(); });
+    addEventListener('resize', () => applyWidth(this));
     onSettings(() => { this.view._checker = null; this.view.requestDraw(); this.updateStatus(); });
     addEventListener('beforeunload', (e) => {
       if (getSettings().warnOnLeave && this.records.some((r2) => r2.history.dirty)) { io.autosaveNow(this); e.preventDefault(); e.returnValue = ''; }
@@ -155,13 +159,14 @@ export class ImageApp {
     clear(this.panelsEl);
     if (this.mobile.matches) { this.root.classList.add('is-mobile'); return; }
     this.root.classList.remove('is-mobile');
-    const order = ['color', 'properties', 'layers', 'history'];
-    for (const k of order) {
+    for (const k of this.ws.order) {
       const p = this.panels[k];
       p.el.hidden = !this.panelVis[k];
       this.panelsEl.appendChild(p.el);
     }
     this.optionsBar.hidden = !this.panelVis.options;
+    this.ws.vis = { ...this.panelVis }; saveWorkspace(this.ws);
+    enableCustomisation(this);
   }
 
   openPanelSheet(key) {
@@ -176,12 +181,35 @@ export class ImageApp {
 
   buildToolbar() {
     clear(this.toolbarEl);
-    const order = ['move', 'marquee', 'lasso', 'polylasso', 'aiselect', 'quick', 'wand', 'crop', null, 'brush', 'eraser', 'heal', 'clone', 'gradient', 'bucket', null, 'text', 'shape', 'pen', null, 'eyedropper', 'hand', 'zoom'];
+    // Tools are grouped like a desktop photo editor: one button per group shows the
+    // group's current tool; right-click / long-press (or the small corner mark) lists the others.
+    this.groupSel = this.groupSel || {};
+    const order = (this.ws.tools || DEFAULT_TOOLS).filter((id, i, a) => id !== null || (i > 0 && a[i - 1] !== null));
+    const seen = new Set();
     for (const id of order) {
       if (!id) { this.toolbarEl.appendChild(h('div', { class: 'img-toolbar-sep' })); continue; }
-      const t = this.tools.find((x) => x.id === id);
-      const b = h('button', { class: 'img-tool', type: 'button', 'aria-label': t.label, 'aria-pressed': 'false', dataset: { tool: id }, onclick: () => this.selectTool(id) }, icon(t.icon, 19));
-      b.title = `${t.label} (${t.id === 'bucket' ? 'Shift+G' : t.key})`;
+      const g = TOOL_GROUP_OF[id] || id;
+      if (seen.has(g)) continue;
+      seen.add(g);
+      const members = (TOOL_GROUPS[g] || [id]).filter((m) => this.tools.some((x) => x.id === m));
+      if (!members.length) continue;
+      const cur = members.includes(this.groupSel[g]) ? this.groupSel[g] : (members.includes(id) ? id : members[0]);
+      this.groupSel[g] = cur;
+      const t = this.tools.find((x) => x.id === cur);
+      const b = h('button', { class: 'img-tool' + (members.length > 1 ? ' has-group' : ''), type: 'button', 'aria-label': t.label, 'aria-pressed': 'false', dataset: { tool: cur, group: g }, onclick: () => this.selectTool(this.groupSel[g]) }, icon(t.icon, 19));
+      b.title = `${t.label} (${t.id === 'bucket' ? 'Shift+G' : t.key || '—'})${members.length > 1 ? ' · right-click or hold for more' : ''}`;
+      if (members.length > 1) {
+        const open = () => {
+          const r = b.getBoundingClientRect();
+          contextMenu(r.right + 6, r.top, members.map((m) => { const mt = this.tools.find((x) => x.id === m); return { label: mt.label + (mt.key ? '   ' + mt.key : ''), checked: () => this.tool && this.tool.id === m, action: () => this.selectTool(m) }; }));
+        };
+        b.addEventListener('contextmenu', (e) => { e.preventDefault(); open(); });
+        let hold = 0;
+        b.addEventListener('pointerdown', () => { hold = setTimeout(() => { hold = -1; open(); }, 480); });
+        const stop = () => { if (hold > 0) clearTimeout(hold); };
+        b.addEventListener('pointerup', stop); b.addEventListener('pointerleave', stop);
+        b.addEventListener('click', (e) => { if (hold === -1) { e.stopImmediatePropagation(); e.preventDefault(); hold = 0; } }, true);
+      }
       this.toolbarEl.appendChild(b);
     }
     this.toolbarEl.appendChild(h('div', { class: 'img-toolbar-sep' }));
@@ -206,7 +234,7 @@ export class ImageApp {
   buildDock() {
     clear(this.dockEl);
     const tools = h('div', { class: 'img-dock-tools' });
-    for (const id of ['move', 'brush', 'eraser', 'marquee', 'lasso', 'aiselect', 'quick', 'wand', 'heal', 'text', 'shape', 'crop', 'gradient', 'bucket', 'clone', 'pen', 'polylasso', 'eyedropper', 'hand', 'zoom']) {
+    for (const id of ['move', 'brush', 'eraser', 'marquee', 'lasso', 'aiselect', 'quick', 'wand', 'heal', 'text', 'shape', 'crop', 'gradient', 'bucket', 'clone', 'historybrush', 'dodge', 'burn', 'sponge', 'blurtool', 'sharpentool', 'smudge', 'pen', 'polylasso', 'eyedropper', 'ruler', 'hand', 'zoom']) {
       const t = this.tools.find((x) => x.id === id);
       const short = { marquee: 'Select', bucket: 'Fill', clone: 'Clone', eyedropper: 'Picker', quick: 'Quick', wand: 'Wand', heal: 'Heal', polylasso: 'Polygon', aiselect: 'AI Select' }[id] || t.label.split(' ')[0];
       tools.appendChild(h('button', { class: 'img-dock-tool', type: 'button', 'aria-label': t.label, dataset: { tool: id }, onclick: () => this.selectTool(id) }, icon(t.icon, 22), h('span', { text: short })));
@@ -228,6 +256,12 @@ export class ImageApp {
     this.tool = t;
     if (t.group === 'fill') this.lastFillTool = id;
     if (['quick', 'wand', 'aiselect'].includes(id)) this.lastSelectTool = id;
+    const g = TOOL_GROUP_OF[id];
+    if (g && this.toolbarEl) {
+      this.groupSel = this.groupSel || {}; this.groupSel[g] = id;
+      const gb = this.toolbarEl.querySelector(`[data-group="${g}"]`);
+      if (gb && gb.dataset.tool !== id) { gb.dataset.tool = id; gb.setAttribute('aria-label', t.label); gb.title = `${t.label} (${t.key || '—'}) · right-click or hold for more`; gb.replaceChildren(icon(t.icon, 19)); }
+    }
     this.root.querySelectorAll('[data-tool]').forEach((b) => { const on = b.dataset.tool === id; b.classList.toggle('is-active', on); b.setAttribute('aria-pressed', String(on)); });
     this.renderOptions();
     this.updateCursor();
@@ -557,11 +591,13 @@ export class ImageApp {
       'Shift+L': () => this.doc && this.selectTool(this.tool?.id === 'lasso' ? 'polylasso' : 'lasso'),
       W: () => this.doc && this.selectTool(['quick', 'wand', 'aiselect'].includes(this.tool?.id) ? this.tool.id : (this.lastSelectTool || 'aiselect')),
       'Shift+W': () => this.doc && this.selectTool({ aiselect: 'quick', quick: 'wand', wand: 'aiselect' }[this.tool?.id] || 'aiselect'), J: tool('heal'),
-      'Mod+M': () => pro.curvesDialog(this), 'Mod+Shift+A': () => pro.cameraRawDialog(this), 'Mod+Shift+F': () => import('./filmlab.js').then((m) => m.filmLabDialog(this)), 'Mod+B': () => ops.adjust(this, 'colorBalance'),
+      'Mod+M': () => pro.curvesDialog(this), 'Mod+Shift+A': () => pro.cameraRawDialog(this), 'Mod+Shift+F': () => import('./filmlab.js').then((m) => m.filmLabDialog(this)), 'Mod+Alt+A': () => import('./multi.js').then((m) => m.selectAllLayers(this)), 'Mod+Alt+N': () => import('./multi.js').then((m) => m.newWindow()), 'Mod+B': () => ops.adjust(this, 'colorBalance'),
       'Mod+Alt+Shift+B': () => ops.adjust(this, 'blackWhite'), 'Mod+Shift+L': () => pro.autoAdjust(this, 'tone'), 'Mod+Alt+Shift+L': () => pro.autoAdjust(this, 'contrast'),
-      'Mod+Shift+B': () => pro.autoAdjust(this, 'color'), 'Mod+Alt+G': () => this.active && ops.toggleClip(this, this.active),
+      'Mod+Shift+B': () => pro.autoAdjust(this, 'color'), 'Mod+Alt+G': () => this.active && ops.toggleClip(this, this.active), 'Mod+Alt+Shift+S': () => import('./styles.js').then((m) => m.layerStyleDialog(this)), 'Mod+R': () => { this.view.showRulers = !this.view.showRulers; try { localStorage.setItem('eyad-studio:image:rulers', this.view.showRulers ? '1' : '0'); } catch (e) { /* ignore */ } this.view.requestDraw(); },
       'Shift+Escape': () => this.view.setRotation(0),
       T: tool('text'), U: tool('shape'), P: tool('pen'), I: tool('eyedropper'), H: tool('hand'), Z: tool('zoom'),
+      O: tool('dodge'), 'Shift+O': () => this.doc && this.selectTool({ dodge: 'burn', burn: 'sponge', sponge: 'dodge' }[this.tool?.id] || 'dodge'),
+      Y: tool('historybrush'), 'Shift+I': () => this.doc && this.selectTool(this.tool?.id === 'ruler' ? 'eyedropper' : 'ruler'),
       G: () => this.doc && this.selectTool(this.lastFillTool), 'Shift+G': () => this.doc && this.selectTool(this.tool.id === 'gradient' ? 'bucket' : 'gradient'),
       'Shift+M': () => { const o = this.opt('marquee'); o.shape = o.shape === 'rect' ? 'ellipse' : 'rect'; this.selectTool('marquee'); },
       X: () => this.swapColors(), D: () => this.resetColors(), F: () => ops.fullscreen(this),

@@ -216,6 +216,9 @@ export async function openProject(app, id) {
 
 // ================================================================= save
 
+/** The current document as an .eyad blob (for opening it in another window). */
+export async function eyadBlobFor(app) { return (await buildEyad(app, app.rec)).blob; }
+
 async function buildEyad(app, rec) {
   const { json, assets } = await serializeDoc(rec.doc);
   const thumb = await canvasToBlob(thumbCanvas(rec.doc));

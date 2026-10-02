@@ -161,7 +161,7 @@ export function deserializeProject(o) {
         transform: { x: num(t.x), y: num(t.y), scale: num(t.scale, 100, 0, 2000), rotation: num(t.rotation, 0, -3600, 3600), opacity: num(t.opacity, 100, 0, 100), ax: num(t.ax, 0, -8000, 8000), ay: num(t.ay, 0, -8000, 8000) },
         crop: { l: num(cr.l, 0, 0, 100), t: num(cr.t, 0, 0, 100), r: num(cr.r, 0, 0, 100), b: num(cr.b, 0, 0, 100) },
         fadeIn: num(c.fadeIn, 0, 0, 3600), fadeOut: num(c.fadeOut, 0, 0, 3600), volume: num(c.volume, 0, -60, 24), muted: bool(c.muted),
-        effects: Array.isArray(c.effects) ? c.effects.slice(0, 50).filter((e) => e && typeof e.type === 'string').map((e) => ({ id: str(e.id, uid('e'), 64), type: str(e.type, '', 40), enabled: bool(e.enabled, true), params: sanitizeParams(e.params) })) : [],
+        effects: Array.isArray(c.effects) ? c.effects.slice(0, 50).filter((e) => e && typeof e.type === 'string').map((e) => ({ id: str(e.id, uid('e'), 64), type: str(e.type, '', 40), enabled: bool(e.enabled, true), params: sanitizeParams(e.params), ...(typeof e.look === 'string' && /^[a-zA-Z0-9]{1,40}$/.test(e.look) ? { look: e.look } : {}) })) : [],
         offline: c.offline ? true : undefined, missing: c.missing ? str(c.missing, '', 300) : undefined,
         keys: sanitizeKeys(c.keys), gen: sanitizeGen(c.gen),
         transIn: sanTrans(c.transIn), transOut: sanTrans(c.transOut),

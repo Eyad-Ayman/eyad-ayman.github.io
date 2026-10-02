@@ -1,7 +1,7 @@
 /* EYAD VECTOR — reuses the EYAD IMAGE workspace layout (.img-*) and adds the
    vector canvas, overlay, swatches and panels. Scoped to .vec-app. */
 
-.vec-app .img-main { grid-template-columns: 46px minmax(0, 1fr) 300px; }
+.vec-app .img-main { grid-template-columns: 52px minmax(0, 1fr) 300px; }
 .vec-stage { touch-action: none; }
 .vec-svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; background: var(--st-canvas-bg); }
 .vec-ab-shadow { fill: rgba(0, 0, 0, .35); transform: translate(0, 3px); filter: blur(10px); }

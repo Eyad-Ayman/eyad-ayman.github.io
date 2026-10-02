@@ -12,7 +12,7 @@ export class Timeline {
     host.classList.add('t3-timeline');
     const btn = (ic, label, fn, cls = '') => { const b = h('button', { class: 'studio-icon-btn t3-tl-btn ' + cls, type: 'button', 'aria-label': label, title: label, onclick: fn }, icon(ic, 16)); return b; };
     this.playBtn = btn('play', 'Play (Space)', () => app.togglePlay(), 't3-tl-play');
-    this.startBtn = btn('first', 'Go to start (Home)', () => app.setTime(0));
+    this.startBtn = btn('first', 'Go to start (Shift+←)', () => app.setTime(0));
     this.timeEl = h('span', { class: 'studio-mono t3-tl-time' });
     this.track = h('div', { class: 't3-tl-track', role: 'slider', tabindex: '0', 'aria-label': 'Timeline', 'aria-valuemin': '0' });
     this.ruler = h('div', { class: 't3-tl-ruler' });
@@ -20,8 +20,8 @@ export class Timeline {
     this.rowCam = h('div', { class: 't3-tl-row is-cam' });
     this.head = h('div', { class: 't3-tl-head' });
     this.track.append(this.ruler, this.rowObj, this.rowCam, this.head);
-    this.keyBtn = h('button', { class: 'studio-btn is-small t3-tl-key', type: 'button', title: 'Key the selected object at the playhead (K)', onclick: () => app.keySelected() }, icon('keyPlus', 14), h('span', { text: 'Key' }));
-    this.camBtn = h('button', { class: 'studio-btn is-small t3-tl-key', type: 'button', title: 'Key the camera at the playhead (Shift+K)', onclick: () => app.keyCamera() }, icon('camera', 14), h('span', { text: 'Cam' }));
+    this.keyBtn = h('button', { class: 'studio-btn is-small t3-tl-key', type: 'button', title: 'Insert a keyframe for the selected object at the playhead (I)', onclick: () => app.keySelected() }, icon('keyPlus', 14), h('span', { text: 'Key' }));
+    this.camBtn = h('button', { class: 'studio-btn is-small t3-tl-key', type: 'button', title: 'Key the active camera (or the viewport view when the scene has no camera) at the playhead (Shift+K)', onclick: () => app.keyCamera() }, icon('camera', 14), h('span', { text: 'Cam' }));
     this.autoBtn = h('button', { class: 'studio-btn is-small t3-tl-auto', type: 'button', title: 'Auto-key: moving a keyed object records a key at the playhead', onclick: () => app.setAutoKey(!app.autoKey) }, h('span', { class: 't3-rec-dot' }), h('span', { text: 'Auto' }));
     this.moreBtn = btn('dots', 'Animation options', (e) => { const r = e.currentTarget.getBoundingClientRect(); contextMenu(r.left, r.top - 8, app.animMenuItems()); });
     host.append(h('div', { class: 't3-tl-transport' }, this.startBtn, this.playBtn, this.timeEl), this.track, h('div', { class: 't3-tl-tools' }, this.keyBtn, this.camBtn, this.autoBtn, this.moreBtn));
@@ -42,7 +42,7 @@ export class Timeline {
       if (dia) {
         // drag a key to retime it
         const kind = dia.dataset.kind, idx = Number(dia.dataset.i);
-        const keys = kind === 'cam' ? app.anim.camera : app.anim.tracks[app.selected?.userData.eyadId];
+        const keys = app.keysFor(kind);
         if (!keys || !keys[idx]) return;
         const k = keys[idx];
         let moved = false;
@@ -72,13 +72,13 @@ export class Timeline {
       const dia = e.target.closest('.t3-dia');
       if (!dia) return;
       const kind = dia.dataset.kind, idx = Number(dia.dataset.i);
-      const keysRef = () => (kind === 'cam' ? app.anim.camera : app.anim.tracks[app.selected?.userData.eyadId]);
+      const keysRef = () => app.keysFor(kind);
       const k = keysRef()?.[idx]; if (!k) return;
       contextMenu(e.clientX, e.clientY, [
         { heading: `${kind === 'cam' ? 'Camera' : 'Object'} key · ${k.t.toFixed(2)} s` },
         ...EASES.map(([id, label]) => ({ label, checked: () => k.ease === id, action: () => app.animChange('Key easing', () => { k.ease = id; }) })),
         { separator: true },
-        { label: 'Delete key', action: () => app.animChange('Delete key', () => { const ks = keysRef(); const i = ks.indexOf(k); if (i >= 0) ks.splice(i, 1); if (kind !== 'cam' && !ks.length) delete app.anim.tracks[app.selected.userData.eyadId]; }) },
+        { label: 'Delete key', action: () => app.animChange('Delete key', () => { const ks = keysRef(); const i = ks.indexOf(k); if (i >= 0) ks.splice(i, 1); for (const [id, tr] of Object.entries(app.anim.tracks)) if (!tr.length) delete app.anim.tracks[id]; }) },
       ]);
     });
     this.track.addEventListener('keydown', (e) => {
@@ -109,7 +109,8 @@ export class Timeline {
     this.playBtn.title = app.playing ? 'Pause (Space)' : 'Play (Space)';
     if (full || !app.playing) {
       this.diamonds(this.rowObj, app.selected ? a.tracks[app.selected.userData.eyadId] : null, 'obj');
-      this.diamonds(this.rowCam, a.camera, 'cam');
+      this.diamonds(this.rowCam, app.keysFor('cam'), 'cam');
+      this.rowCam.dataset.label = app.activeCamera() ? app.activeCamera().name : 'View camera';
       this.rowObj.dataset.label = app.selected ? app.selected.name : 'No selection';
       this.keyBtn.disabled = !app.selected;
       this.autoBtn.classList.toggle('is-on', app.autoKey);

@@ -1,3 +1,4 @@
+import { setIconLook } from './appicons.js';
 // EYAD STUDIO — application settings (small, so kept in localStorage;
 // projects and media live in IndexedDB).
 
@@ -20,10 +21,12 @@ export const DEFAULTS = {
   touchUndoGestures: true,  // two-finger tap = undo, three-finger tap = redo
   reduceMotion: false,
   tooltips: true,
-  // EYAD Experience (look & layout)
-  accent: '#d02b2a',        // accent colour
-  corners: 'rounded',       // rounded (macOS-like) | soft | sharp
-  translucency: true,       // frosted menus, dialogs and bars
+  // EYAD Studio (look & layout)
+  look: 'spatial',          // spatial (frosted glass over a blurred room, pill toolbars)
+  accent: '#d02b2a',        // accent colour (the default means "use the look's own accent")
+  corners: 'rounded',
+  translucency: true,       // real-time frosted glass (turn off on slow devices)
+  wallpaper: 'work',        // work (blurred portfolio work) | plain
   panelSide: 'right',       // right | left  (editors' panel column)
   toolbarSide: 'left',      // left | right  (tools column)
   forceDesktop: false,      // phones: show the full desktop interface (zoomed out)
@@ -109,16 +112,19 @@ export function applyUiSettings() {
   root.style.setProperty('--st-scale', String((Number(s.uiScale) || 100) / 100));
   root.classList.toggle('studio-reduce-motion', !!s.reduceMotion);
   root.classList.toggle('studio-no-tips', !s.tooltips);
-  // EYAD Experience look & layout
+  // EYAD Studio look & layout
   const acc = /^#[0-9a-f]{6}$/i.test(s.accent || '') ? s.accent : '#d02b2a';
   if (acc.toLowerCase() !== '#d02b2a') { root.style.setProperty('--st-accent', acc); root.style.setProperty('--st-accent-hi', acc); root.style.setProperty('--st-accent-soft', `color-mix(in srgb, ${acc} 13%, transparent)`); }
   else { root.style.removeProperty('--st-accent'); root.style.removeProperty('--st-accent-hi'); root.style.removeProperty('--st-accent-soft'); }
-  root.dataset.corners = s.corners || 'rounded';
+  root.dataset.corners = 'rounded';
+  root.dataset.look = 'spatial';
+  root.dataset.wall = s.wallpaper === 'plain' ? 'plain' : 'work';
+  setIconLook(root.dataset.look);
   root.classList.toggle('xp-glass', s.translucency !== false);
   root.dataset.panels = s.panelSide === 'left' ? 'left' : 'right';
   root.dataset.tools = s.toolbarSide === 'right' ? 'right' : 'left';
   const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.setAttribute('content', theme === 'light' ? '#f3ede1' : '#121110');
+  if (meta) meta.setAttribute('content', theme === 'light' ? '#dcdde1' : '#16171b');
   document.documentElement.dataset.studioTheme = theme;
 }
 

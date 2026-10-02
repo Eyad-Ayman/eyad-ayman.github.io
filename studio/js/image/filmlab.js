@@ -42,57 +42,98 @@ const slider = (spec, value, onInput) => {
   return { el: h('label', { class: 'fl-slider' }, h('span', { text: spec.label }), out, r), set: (v) => { r.value = v; out.textContent = Math.round(v) + (spec.unit || ''); } };
 };
 
-// ================================================================= Film Lab
+// ================================================================= Film Lab (studio)
 
+const FAV_KEY = 'eyad-studio:film:favs', MINE_KEY = 'eyad-studio:film:mine';
+const readJSON = (k, d) => { try { return JSON.parse(localStorage.getItem(k) || '') ?? d; } catch (e) { return d; } };
+const writeJSON = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* ignore */ } };
+let mineLoaded = false;
+function loadMine() {
+  if (mineLoaded) return; mineLoaded = true;
+  for (const m of readJSON(MINE_KEY, [])) { try { registerLook({ id: m.id, name: m.name, group: 'mine', desc: 'Saved look', params: m.params }); } catch (e) { /* skip */ } }
+}
+
+/** Full-screen Film Lab: big preview with a draggable before/after split, look strip, favourites, saved looks. */
 export async function filmLabDialog(app) {
   if (!need(app)) return;
   const node = await app.ensureRasterTarget('Film Lab');
   if (!node) return;
-  const src = downscale(node.canvas);
+  loadMine();
+  const isMobile = matchMedia('(max-width: 760px)').matches;
+  const src = downscale(node.canvas, isMobile ? 1000 : 1600);
   const thumbSrc = downscale(node.canvas, 180);
   let lookId = getLook(lastLook).id;
   let P = lastParams && lastParams.__look === lookId ? { ...lastParams } : defaultParams(lookId);
-  const preview = makeCanvas(src.width, src.height);
-  let token = 0, timer = 0;
+  let favs = new Set(readJSON(FAV_KEY, []));
+  let rendered = null, token = 0, timer = 0, split = 0.5, compare = true;
+
+  // --- stage with before/after split
+  const view = h('canvas', { class: 'fls-view' });
+  const stage = h('div', { class: 'fls-stage' }, view);
+  const vg = view.getContext('2d');
+  const paint = () => {
+    const r = stage.getBoundingClientRect(); if (r.width < 2) return;
+    const dpr = Math.min(2, devicePixelRatio || 1);
+    view.width = Math.max(1, r.width * dpr); view.height = Math.max(1, r.height * dpr);
+    const img = rendered || src;
+    const k = Math.min(view.width * 0.94 / img.width, view.height * 0.94 / img.height);
+    const w = img.width * k, hh = img.height * k, x = (view.width - w) / 2, y = (view.height - hh) / 2;
+    vg.setTransform(1, 0, 0, 1, 0, 0); vg.clearRect(0, 0, view.width, view.height);
+    vg.imageSmoothingQuality = 'high';
+    vg.drawImage(img, x, y, w, hh);
+    if (compare && rendered && rendered.width === src.width && rendered.height === src.height) {
+      const sx = x + w * split;
+      vg.save(); vg.beginPath(); vg.rect(x, y, sx - x, hh); vg.clip(); vg.drawImage(src, x, y, w, hh); vg.restore();
+      vg.fillStyle = '#f3ede1'; vg.fillRect(sx - 1 * dpr, y, 2 * dpr, hh);
+      vg.fillStyle = '#d02b2a'; vg.fillRect(sx - 10 * dpr, y + hh / 2 - 10 * dpr, 20 * dpr, 20 * dpr);
+      vg.font = `700 ${10 * dpr}px ui-monospace, monospace`; vg.fillStyle = '#f3ede1';
+      vg.fillText('BEFORE', x + 10 * dpr, y + 18 * dpr); vg.fillText('AFTER', x + w - 52 * dpr, y + 18 * dpr);
+    }
+  };
+  let dragging = false;
+  const setSplit = (e) => { const r = view.getBoundingClientRect(); const img = rendered || src; const k = Math.min(r.width * 0.94 / img.width, r.height * 0.94 / img.height); const w = img.width * k, x = r.left + (r.width - w) / 2; split = Math.max(0, Math.min(1, (e.clientX - x) / w)); paint(); };
+  view.addEventListener('pointerdown', (e) => { dragging = true; view.setPointerCapture(e.pointerId); setSplit(e); });
+  view.addEventListener('pointermove', (e) => { if (dragging) setSplit(e); });
+  view.addEventListener('pointerup', () => { dragging = false; });
   const update = () => {
     clearTimeout(timer);
     timer = setTimeout(async () => {
       const my = ++token;
       try {
-        const out = await applyLook(src, lookId, { ...P, frame: 'none', dateStamp: false });
+        const out = await applyLook(src, lookId, { ...P, frame: compare ? 'none' : P.frame, dateStamp: compare ? false : P.dateStamp });
         if (my !== token) return;
-        preview.width = out.width; preview.height = out.height;
-        preview.getContext('2d').drawImage(out, 0, 0);
-        app.setLive({ nodeId: node.id, draw: (c) => { c.imageSmoothingQuality = 'high'; c.drawImage(preview, 0, 0, node.canvas.width, node.canvas.height); } });
-        status.textContent = getLook(lookId).name + (P.frame !== 'none' ? ' · frame added on apply' : '');
+        rendered = out; paint();
+        status.textContent = getLook(lookId).name + (P.frame !== 'none' && compare ? ' · frame shows when compare is off' : '');
       } catch (e) { status.textContent = 'Preview failed: ' + e.message; }
-    }, 60);
+    }, 50);
   };
 
-  // --- look browser
+  // --- look strip
   const groupsBar = h('div', { class: 'fl-groups', role: 'tablist' });
-  const grid = h('div', { class: 'fl-grid' });
+  const grid = h('div', { class: 'fls-strip' });
   const search = h('input', { class: 'studio-input fl-search', type: 'search', placeholder: `Search ${LOOKS.length} looks…`, 'aria-label': 'Search looks' });
-  let group = getLook(lookId).group || LOOK_GROUPS[0].id;
+  let group = favs.size ? 'favs' : (getLook(lookId).group || LOOK_GROUPS[0].id);
   const thumbs = new Map();
+  const inGroup = (l) => (group === 'favs' ? favs.has(l.id) : group === 'all' ? true : l.group === group);
   const renderGrid = () => {
     const q = search.value.trim().toLowerCase();
-    const list = LOOKS.filter((l) => (q ? (l.name + ' ' + (l.desc || '')).toLowerCase().includes(q) : l.group === group));
+    const list = LOOKS.filter((l) => (q ? (l.name + ' ' + (l.desc || '') + ' ' + l.group).toLowerCase().includes(q) : inGroup(l)));
     clear(grid);
     for (const l of list) {
       const img = h('canvas', { class: 'fl-thumb', width: 112, height: 112 });
-      const b = h('button', { class: 'fl-look' + (l.id === lookId ? ' is-active' : ''), type: 'button', title: l.desc || l.name, dataset: { id: l.id }, onclick: () => pick(l.id) }, img, h('span', { text: l.name }));
+      const star = h('span', { class: 'fls-star' + (favs.has(l.id) ? ' is-on' : ''), role: 'button', title: favs.has(l.id) ? 'Remove from favourites' : 'Add to favourites', text: '★', onclick: (e) => { e.stopPropagation(); if (favs.has(l.id)) favs.delete(l.id); else favs.add(l.id); writeJSON(FAV_KEY, [...favs]); star.classList.toggle('is-on', favs.has(l.id)); if (group === 'favs') renderGrid(); } });
+      const b = h('button', { class: 'fl-look' + (l.id === lookId ? ' is-active' : ''), type: 'button', title: l.desc || l.name, dataset: { id: l.id }, onclick: () => pick(l.id) }, img, star, h('span', { text: l.name }));
       grid.appendChild(b);
       const draw = (c) => { img.width = c.width; img.height = c.height; img.getContext('2d').drawImage(c, 0, 0); };
       if (thumbs.has(l.id)) draw(thumbs.get(l.id));
       else lookThumbnail(thumbSrc, l.id, 112).then((c) => { thumbs.set(l.id, c); draw(c); }).catch(() => {});
     }
-    if (!list.length) grid.appendChild(h('p', { class: 'studio-dim studio-small', text: 'No looks match.' }));
+    if (!list.length) grid.appendChild(h('p', { class: 'studio-dim studio-small fls-empty', text: group === 'favs' ? 'Tap ★ on any look to keep it here.' : group === 'mine' ? 'Adjust a look and press “Save look” to keep it here.' : 'No looks match.' }));
   };
-  for (const g of LOOK_GROUPS) {
-    if (!LOOKS.some((l) => l.group === g.id)) continue;
-    groupsBar.appendChild(h('button', { class: 'fl-group' + (g.id === group ? ' is-active' : ''), type: 'button', dataset: { g: g.id }, text: g.name, onclick: (e) => {
-      group = g.id; search.value = '';
+  const groups = [['favs', '★ Favourites'], ['mine', 'My looks'], ['all', 'All'], ...LOOK_GROUPS.filter((g) => LOOKS.some((l) => l.group === g.id)).map((g) => [g.id, g.name])];
+  for (const [id, name] of groups) {
+    groupsBar.appendChild(h('button', { class: 'fl-group' + (id === group ? ' is-active' : ''), type: 'button', dataset: { g: id }, text: name, onclick: (e) => {
+      group = id; search.value = '';
       groupsBar.querySelectorAll('.fl-group').forEach((x) => x.classList.toggle('is-active', x === e.currentTarget));
       renderGrid();
     } }));
@@ -106,8 +147,8 @@ export async function filmLabDialog(app) {
   for (const [gid, gname] of Object.entries(sections)) {
     const box = h('div', { class: 'fl-sec' }, h('div', { class: 'fl-sec-title', text: gname }));
     for (const spec of LOOK_PARAMS.filter((p) => p.group === gid)) {
-      const s = slider(spec, P[spec.key], (v) => { P[spec.key] = v; update(); });
-      sliders.set(spec.key, s); box.appendChild(s.el);
+      const sl = slider(spec, P[spec.key], (v) => { P[spec.key] = v; update(); });
+      sliders.set(spec.key, sl); box.appendChild(sl.el);
     }
     controls.appendChild(box);
   }
@@ -120,7 +161,7 @@ export async function filmLabDialog(app) {
   controls.appendChild(h('div', { class: 'fl-sec' }, h('div', { class: 'fl-sec-title', text: 'Frame & date stamp' }),
     h('label', { class: 'fl-row' }, h('span', { text: 'Frame' }), frameSel),
     h('label', { class: 'fl-row' }, stamp, h('span', { text: 'Date stamp' }), stampText),
-    h('p', { class: 'studio-small studio-faint', text: 'Frames and the stamp change the image size, so they are applied as a new document.' })));
+    h('p', { class: 'studio-small studio-faint', text: 'Frames and the stamp change the image size, so they are applied as a new document. Turn Compare off to preview them.' })));
 
   const syncControls = () => { for (const spec of LOOK_PARAMS) sliders.get(spec.key)?.set(P[spec.key]); frameSel.value = P.frame || 'none'; stamp.checked = !!P.dateStamp; };
   function pick(id) {
@@ -130,6 +171,25 @@ export async function filmLabDialog(app) {
     grid.querySelectorAll('.fl-look').forEach((b) => b.classList.toggle('is-active', b.dataset.id === id));
     syncControls(); update();
   }
+  const randomize = () => {
+    const pool = LOOKS.filter((l) => l.group !== 'luts');
+    pick(pool[Math.floor(Math.random() * pool.length)].id);
+    for (const spec of LOOK_PARAMS) if (['grain', 'halation', 'bloom', 'leak', 'vignette', 'fade'].includes(spec.key)) { P[spec.key] = Math.round(Math.random() * spec.max * 0.6); }
+    syncControls(); update();
+  };
+  const saveLook = async () => {
+    const nm = await (await import('../core/ui.js')).promptDialog('Save look', 'Name', getLook(lookId).name + ' (mine)', { maxLength: 40 });
+    if (!nm) return;
+    const id = 'mine-' + Date.now().toString(36);
+    const params = { ...P }; delete params.lut;
+    const base = getLook(lookId);
+    if (base.params && base.params.lut && typeof base.params.lut === 'string') params.lut = base.params.lut;
+    registerLook({ id, name: nm, group: 'mine', desc: 'Saved look', params });
+    const mine = readJSON(MINE_KEY, []); mine.push({ id, name: nm, params }); writeJSON(MINE_KEY, mine);
+    group = 'mine'; groupsBar.querySelectorAll('.fl-group').forEach((x) => x.classList.toggle('is-active', x.dataset.g === 'mine'));
+    renderGrid(); pick(id);
+    toast(`Saved “${nm}” — find it under My looks (also in EYAD KAMERA’s look list after reload).`, { type: 'ok' });
+  };
   const importBtn = h('button', { class: 'studio-btn is-small', type: 'button', onclick: async () => {
     const f = (await pickFiles({ accept: '.cube', multiple: false }))[0]; if (!f) return;
     try {
@@ -139,35 +199,62 @@ export async function filmLabDialog(app) {
       group = 'luts'; renderGrid(); pick(id);
       toast(`LUT “${lut.title}” added to Imported LUTs.`, { type: 'ok' });
     } catch (e) { toast(e.message || 'Could not read that LUT.', { type: 'error' }); }
-  } }, icon('upload', 13), h('span', { text: 'Import .cube' }));
-  const resetBtn = h('button', { class: 'studio-btn is-small is-ghost', type: 'button', text: 'Reset look', onclick: () => pick(lookId) });
+  } }, icon('upload', 13), h('span', { text: '.cube' }));
+  const cmpBtn = h('button', { class: 'studio-btn is-small is-primary', type: 'button', onclick: () => { compare = !compare; cmpBtn.classList.toggle('is-primary', compare); update(); } }, icon('swap', 13), h('span', { text: 'Compare' }));
   const status = h('div', { class: 'fl-status studio-small studio-dim', role: 'status' });
 
-  const body = h('div', { class: 'fl-root' },
-    h('div', { class: 'fl-left' }, h('div', { class: 'fl-top' }, search, importBtn), groupsBar, grid),
-    h('div', { class: 'fl-right' }, h('div', { class: 'fl-top' }, h('b', { text: 'Adjust' }), resetBtn), controls, status));
-  renderGrid(); syncControls(); update();
-
-  const v = await dialog({ title: `Film Lab — ${LOOKS.length} film & camera looks`, body, width: 980, className: 'fl-dialog studio-dialog-wide',
-    buttons: [{ label: 'Cancel', value: null }, { label: 'New layer', value: 'layer' }, { label: 'Apply', value: 'apply', primary: true }] });
-  clearTimeout(timer); token++;
-  app.setLive(null);
-  if (!v) return;
-  lastParams = { ...P, __look: lookId };
-  const prog = progressDialog('Developing', { cancellable: false });
-  try {
-    const out = await applyLook(node.canvas, lookId, P, { onProgress: (f) => prog.set(f, 'Rendering at full resolution…') });
-    const label = 'Film Lab: ' + getLook(lookId).name;
-    if (out.width !== node.canvas.width || out.height !== node.canvas.height) {
-      const doc = createDoc({ name: (app.doc.name || 'Image') + ' — ' + getLook(lookId).name, width: out.width, height: out.height, background: 'transparent' });
-      doc.layers[0].canvas = out; doc.layers[0].name = getLook(lookId).name;
-      app.addDocument(doc);
-      toast('Opened as a new document (the frame changes the size).', { type: 'ok' });
-    } else if (v === 'layer') {
-      addGeneratedLayer(app, out, { x: node.x || 0, y: node.y || 0, name: getLook(lookId).name, label });
-    } else commitCanvas(app, node, out, label);
-  } catch (e) { toast('Film Lab failed: ' + e.message, { type: 'error' }); }
-  finally { prog.close(); }
+  return new Promise((resolve) => {
+    const overlay = h('div', { class: 'fls-overlay', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Film Lab' },
+      h('header', { class: 'fls-top' },
+        h('div', { class: 'fls-brand' }, h('b', { text: 'Film Lab' }), h('span', { class: 'fls-count', text: `${LOOKS.length} looks` }), h('em', { text: node.name })),
+        h('div', { class: 'fls-actions' }, cmpBtn,
+          h('button', { class: 'studio-btn is-small', type: 'button', onclick: randomize }, icon('sparkle', 13), h('span', { text: 'Surprise me' })),
+          h('button', { class: 'studio-btn is-small', type: 'button', onclick: saveLook }, icon('star', 13), h('span', { text: 'Save look' })),
+          importBtn,
+          h('button', { class: 'studio-btn is-small is-ghost', type: 'button', text: 'Reset', onclick: () => pick(lookId) }),
+          h('button', { class: 'studio-btn is-small', type: 'button', text: 'Cancel', onclick: () => close(null) }),
+          h('button', { class: 'studio-btn is-small', type: 'button', text: 'New layer', onclick: () => close('layer') }),
+          h('button', { class: 'studio-btn is-small is-primary', type: 'button', text: 'Apply', onclick: () => close('apply') }))),
+      h('div', { class: 'fls-main' },
+        h('div', { class: 'fls-center' }, stage, h('div', { class: 'fls-browser' }, h('div', { class: 'fl-top' }, search), groupsBar, grid)),
+        h('aside', { class: 'fls-side' }, controls, status)));
+    const onKey = (e) => {
+      e.stopPropagation(); // the editor behind must not react (nudge, tool keys…)
+      if (e.target.tagName === 'INPUT' && (e.target.type === 'text' || e.target.type === 'search')) return;
+      if (e.target.tagName === 'INPUT' && e.target.type === 'range' && e.key.startsWith('Arrow')) return;
+      if (e.key === 'Escape') { e.preventDefault(); close(null); }
+      if (e.key === 'Enter') { e.preventDefault(); close('apply'); }
+      if (e.key === '\\' || e.key === 'y' || e.key === 'Y') { e.preventDefault(); cmpBtn.click(); }
+      if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+        const btns = [...grid.querySelectorAll('.fl-look')]; const i = btns.findIndex((b) => b.dataset.id === lookId);
+        const nb = btns[Math.max(0, Math.min(btns.length - 1, i + (e.key === 'ArrowRight' ? 1 : -1)))]; if (nb) { e.preventDefault(); pick(nb.dataset.id); nb.scrollIntoView({ block: 'nearest', inline: 'nearest' }); }
+      }
+    };
+    window.addEventListener('keydown', onKey, true);
+    app.root.appendChild(overlay);
+    const ro = new ResizeObserver(paint); ro.observe(stage);
+    requestAnimationFrame(() => { overlay.classList.add('is-in'); renderGrid(); syncControls(); update(); });
+    async function close(v) {
+      window.removeEventListener('keydown', onKey, true); ro.disconnect(); clearTimeout(timer); token++;
+      overlay.remove();
+      if (!v) { resolve(false); return; }
+      lastParams = { ...P, __look: lookId };
+      const prog = progressDialog('Developing', { cancellable: false });
+      try {
+        const out = await applyLook(node.canvas, lookId, P, { onProgress: (f) => prog.set(f, 'Rendering at full resolution…') });
+        const label = 'Film Lab: ' + getLook(lookId).name;
+        if (out.width !== node.canvas.width || out.height !== node.canvas.height) {
+          const doc = createDoc({ name: (app.doc.name || 'Image') + ' — ' + getLook(lookId).name, width: out.width, height: out.height, background: 'transparent' });
+          doc.layers[0].canvas = out; doc.layers[0].name = getLook(lookId).name;
+          app.addDocument(doc);
+          toast('Opened as a new document (the frame changes the size).', { type: 'ok' });
+        } else if (v === 'layer') {
+          addGeneratedLayer(app, out, { x: node.x || 0, y: node.y || 0, name: getLook(lookId).name, label });
+        } else commitCanvas(app, node, out, label);
+      } catch (e) { toast('Film Lab failed: ' + e.message, { type: 'error' }); }
+      finally { prog.close(); resolve(true); }
+    }
+  });
 }
 
 // ================================================================= Color Lookup

@@ -6,6 +6,7 @@
 import { uid } from '../core/dom.js';
 import { num, str, bool, oneOf, color } from '../core/eyad.js';
 import { EXTRA_FONTS } from '../templates/fonts.js';
+import { extendFontList, onFontsChanged } from '../core/fonts.js';
 
 export const FONTS = [
   ['Studio Inter', 'Inter'], ['Studio Oswald', 'Oswald'], ['Studio Mono', 'Mono'],
@@ -13,6 +14,8 @@ export const FONTS = [
   ['Courier New', 'Courier New'], ['Verdana', 'Verdana'], ['Trebuchet MS', 'Trebuchet MS'], ['Impact', 'Impact'],
   ...EXTRA_FONTS,
 ];
+extendFontList(FONTS);
+onFontsChanged(() => extendFontList(FONTS));
 export const BLENDS = ['normal', 'multiply', 'screen', 'overlay', 'darken', 'lighten', 'color-dodge', 'color-burn', 'hard-light', 'soft-light', 'difference', 'exclusion', 'hue', 'saturation', 'color', 'luminosity'];
 export const PATTERNS = ['dots', 'lines', 'grid', 'checker', 'diagonal', 'waves'];
 export const I = [1, 0, 0, 1, 0, 0];

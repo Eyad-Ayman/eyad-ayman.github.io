@@ -11,6 +11,10 @@ import * as ai from './ai.js';
 import * as gen from './generate.js';
 import * as film from './filmlab.js';
 import * as artboards from './artboards.js';
+import * as ws from './workspace.js';
+import * as multi from './multi.js';
+import * as styles from './styles.js';
+import * as selmod from './selmodify.js';
 import { experienceHelp } from '../core/experience.js';
 
 export function buildMenus(app) {
@@ -32,7 +36,7 @@ export function buildMenus(app) {
       { label: 'Open…', shortcut: 'Mod+O', action: () => io.openDialog(app), icon: 'folder' },
       { label: 'Open PSD…', action: () => io.openDialog(app, 'psd'), icon: 'layers' },
       { label: 'New from Template…', action: () => { location.href = ROUTES.templates; }, icon: 'grid' },
-      { label: 'Take a Photo (EYAD CAMERA)…', action: () => { location.href = ROUTES.camera; }, icon: 'camera' },
+      { label: 'Take a Photo (EYAD KAMERA)…', action: () => { location.href = ROUTES.camera; }, icon: 'camera' },
       { label: 'Open Recent', submenu: () => (recent.length ? recent.map((p) => ({ label: p.name, action: () => io.openProject(app, p.id) })) : [{ label: 'No recent image projects', enabled: false }]).concat([{ separator: true }, { label: 'Browse Projects…', action: () => { location.href = ROUTES.projects; } }]) },
       { label: 'Place as Layer…', action: () => io.placeDialog(app), enabled: hasDoc, icon: 'image' },
       { separator: true },
@@ -55,6 +59,8 @@ export function buildMenus(app) {
       { label: 'Back to Portfolio', action: () => goPortfolio() },
     ] },
     { label: 'Edit', items: [
+      { label: 'Fonts… (add from device / Google Fonts)', action: () => import('../core/fonts.js').then((m) => m.fontManagerDialog()), icon: 'text' },
+      { separator: true },
       { label: () => (app.history && app.history.canUndo ? 'Undo ' + app.history.stack[app.history.index].label : 'Undo'), shortcut: 'Mod+Z', action: () => app.undo(), enabled: () => !!(app.history && app.history.canUndo), icon: 'undo' },
       { label: () => (app.history && app.history.canRedo ? 'Redo ' + app.history.stack[app.history.index + 1].label : 'Redo'), shortcut: 'Mod+Shift+Z', action: () => app.redo(), enabled: () => !!(app.history && app.history.canRedo), icon: 'redo' },
       { separator: true },
@@ -102,12 +108,21 @@ export function buildMenus(app) {
       ] },
       { label: 'Crop to Selection', action: () => ops.cropToSelection(app), enabled: hasSel },
       { label: 'Rename Document…', action: () => ops.renameDoc(app), enabled: hasDoc },
+      { label: 'Duplicate Document', action: () => multi.duplicateDocument(app), enabled: hasDoc },
     ] },
     { label: 'Layer', items: [
       { label: 'New Layer', shortcut: 'Mod+Shift+N', action: () => ops.newLayer(app), enabled: hasDoc, icon: 'plus' },
       { label: 'New Group', action: () => ops.newGroup(app), enabled: hasDoc, icon: 'folder' },
       { label: 'New Text Layer', action: () => ops.addTextCenter(app), enabled: hasDoc, icon: 'text' },
       { label: 'New Artboard…', action: () => artboards.newArtboardDialog(app), enabled: hasDoc, icon: 'artboard' },
+      { label: 'Duplicate Layers To…', action: () => multi.duplicateTo(app), enabled: hasLayer, icon: 'copy' },
+      { label: 'Align', submenu: [
+        { label: 'Left Edges', action: () => multi.align(app, 'left'), enabled: hasLayer }, { label: 'Horizontal Centres', action: () => multi.align(app, 'hcenter'), enabled: hasLayer }, { label: 'Right Edges', action: () => multi.align(app, 'right'), enabled: hasLayer },
+        { separator: true },
+        { label: 'Top Edges', action: () => multi.align(app, 'top'), enabled: hasLayer }, { label: 'Vertical Centres', action: () => multi.align(app, 'vcenter'), enabled: hasLayer }, { label: 'Bottom Edges', action: () => multi.align(app, 'bottom'), enabled: hasLayer },
+        { label: 'Tip: one layer aligns to the canvas', enabled: false },
+      ] },
+      { label: 'Distribute', submenu: [{ label: 'Horizontally', action: () => multi.distribute(app, 'h'), enabled: hasLayer }, { label: 'Vertically', action: () => multi.distribute(app, 'v'), enabled: hasLayer }] },
       { label: 'New Generated Layer…', action: () => gen.generateImageDialog(app), enabled: hasDoc, icon: 'sparkle' },
       { label: 'Place 3D Model (EYAD 3D)…', action: () => { location.href = ROUTES['3d']; }, icon: 'cube' },
       { label: 'Layer via Copy', shortcut: 'Mod+J', action: () => ops.layerViaCopy(app), enabled: hasLayer },
@@ -127,6 +142,15 @@ export function buildMenus(app) {
       ] },
       { label: 'Blend Mode', submenu: () => BLEND_MODES.map(([id, label]) => ({ label, checked: () => app.active?.blend === id, action: () => ops.setProp(app, app.active, 'blend', id, 'Blend Mode'), enabled: hasLayer })) },
       { label: () => (app.active?.clip ? 'Release Clipping Mask' : 'Create Clipping Mask'), action: () => ops.toggleClip(app, app.active), enabled: () => hasLayer() && app.active.type !== 'group' },
+      { label: 'Layer Style', submenu: [
+        { label: 'Blending Options…', shortcut: 'Mod+Alt+Shift+S', action: () => styles.layerStyleDialog(app), enabled: () => hasLayer() && app.active.type !== 'group' },
+        { separator: true },
+        ...Object.keys(styles.PRESETS).map((name) => ({ label: name, action: () => { const n = app.active; const p = styles.PRESETS[name]; app._styleClip = { fx: p, fillOpacity: 1 }; styles.pasteStyle(app); void n; }, enabled: () => hasLayer() && app.active.type !== 'group' })),
+        { separator: true },
+        { label: 'Copy Layer Style', action: () => styles.copyStyle(app), enabled: () => !!app.active?.fx },
+        { label: 'Paste Layer Style', action: () => styles.pasteStyle(app), enabled: () => hasLayer() && !!app._styleClip },
+        { label: 'Clear Layer Style', action: () => { const n = app.active; if (!n) return; app._styleClip = { fx: {}, fillOpacity: 1 }; styles.pasteStyle(app); app._styleClip = null; }, enabled: () => !!app.active?.fx },
+      ] },
       { label: 'Layer Mask', submenu: [
         { label: 'Reveal All', action: () => ops.addMask(app, 'reveal'), enabled: () => hasLayer() && !hasMask() },
         { label: 'Hide All', action: () => ops.addMask(app, 'hide'), enabled: () => hasLayer() && !hasMask() },
@@ -150,10 +174,19 @@ export function buildMenus(app) {
     { label: 'Select', items: [
       { label: 'All', shortcut: 'Mod+A', action: () => ops.selectAll(app), enabled: hasDoc },
       { label: 'Deselect', shortcut: 'Mod+D', action: () => ops.deselect(app), enabled: hasSel },
+      { label: 'All Layers', shortcut: 'Mod+Alt+A', action: () => multi.selectAllLayers(app), enabled: hasDoc },
       { label: 'Reselect', shortcut: 'Mod+Shift+D', action: () => ops.reselect(app), enabled: () => hasDoc() && !!app.lastSelection },
       { label: 'Inverse', shortcut: 'Mod+Shift+I', action: () => ops.invert(app), enabled: hasDoc },
       { separator: true },
       { label: 'Layer Pixels', action: () => ops.selectLayerPixels(app), enabled: hasLayer },
+      { label: 'Color Range…', action: () => selmod.colorRange(app), enabled: hasDoc },
+      { label: 'Modify', submenu: [
+        { label: 'Border…', action: () => selmod.modifySelection(app, 'border'), enabled: hasSel },
+        { label: 'Smooth…', action: () => selmod.modifySelection(app, 'smooth'), enabled: hasSel },
+        { label: 'Expand…', action: () => selmod.modifySelection(app, 'expand'), enabled: hasSel },
+        { label: 'Contract…', action: () => selmod.modifySelection(app, 'contract'), enabled: hasSel },
+        { label: 'Feather…', shortcut: 'Shift+F6', action: () => ops.featherDialog(app), enabled: hasSel },
+      ] },
       { label: 'Feather…', shortcut: 'Shift+F6', action: () => ops.featherDialog(app), enabled: hasSel },
       { separator: true },
       { label: 'Rectangular Marquee', shortcut: 'M', action: () => app.selectTool('marquee'), enabled: hasDoc },
@@ -223,6 +256,7 @@ export function buildMenus(app) {
         { label: 'Tip: hold R and drag, or twist two fingers', enabled: false },
       ] },
       { separator: true },
+      { label: 'Rulers', shortcut: 'Mod+R', checked: () => !!app.view.showRulers, action: () => { app.view.showRulers = !app.view.showRulers; try { localStorage.setItem('eyad-studio:image:rulers', app.view.showRulers ? '1' : '0'); } catch (e) { /* ignore */ } app.view.requestDraw(); } },
       { label: 'Grid', shortcut: "Mod+'", checked: () => app.view.showGrid, action: () => ops.toggleGrid(app) },
       { label: 'Guides', shortcut: 'Mod+;', checked: () => app.view.showGuides, action: () => ops.toggleGuides(app) },
       { label: 'Snap', checked: () => app.view.snap, action: () => ops.toggleSnap(app) },
@@ -237,7 +271,12 @@ export function buildMenus(app) {
       { label: 'Options Bar', checked: () => app.panelVis.options, action: () => { app.panelVis.options = !app.panelVis.options; app.buildPanels(); app.view.resize(); } },
       { label: 'Hide All Panels', shortcut: 'Tab', action: () => ops.togglePanels(app) },
       { separator: true },
-      { label: 'Reset Workspace', action: () => { app.panelVis = { color: true, properties: true, layers: true, history: true, options: true }; app.root.classList.remove('is-panels-hidden'); app.buildPanels(); app.view.resize(); } },
+      { label: 'New Window', shortcut: 'Mod+Alt+N', action: () => multi.newWindow() },
+      { label: 'Move Document to New Window', action: () => multi.moveToNewWindow(app), enabled: hasDoc },
+      { separator: true },
+      { label: 'Workspace', submenu: () => ws.workspaceMenu(app) },
+      { label: 'Reset Workspace', action: () => ws.applyPreset(app, ws.PRESETS.essentials) },
+      { label: 'Edit Toolbar…', action: () => ws.editToolbarDialog(app) },
       { separator: true },
       { label: () => (resolvedTheme() === 'dark' ? 'Light Theme' : 'Dark Theme'), action: () => toggleTheme(), icon: 'brightness' },
       { label: 'Command Palette', shortcut: 'Mod+K', action: () => app.palette.show(), icon: 'command' },

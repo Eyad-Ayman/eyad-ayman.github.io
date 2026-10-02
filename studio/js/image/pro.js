@@ -335,7 +335,71 @@ const RAW_DEFAULTS = {
   sharpen: 0, sharpenRadius: 1, nrLum: 0, nrColor: 0,
   distortion: 0, lensVignette: 0, vignette: 0, vignetteMid: 50, grain: 0, grainSize: 1.5,
   rotate: 0, scale: 100,
+  glow: 0, glowRadius: 40, glowThreshold: 70, halation: 0, bloom: 0, leak: 0, leakHue: 25, leakPos: 15, aberration: 0, fade: 0,
 };
+
+/* ---- Light & glow (runs after the develop step, same in preview and at full size).
+   Blur = repeated downscale/upscale, so it works in every browser (incl. iPhone). */
+function blurDown(src, radius) {
+  const W = src.width, H = src.height;
+  const k = Math.max(1 / 64, Math.min(1, 6 / Math.max(1, radius)));
+  const w = Math.max(2, Math.round(W * k)), hh = Math.max(2, Math.round(H * k));
+  const a = makeCanvas(w, hh), ga = a.getContext('2d'); ga.imageSmoothingQuality = 'high'; ga.drawImage(src, 0, 0, w, hh);
+  const b = makeCanvas(Math.max(2, w >> 1), Math.max(2, hh >> 1)); b.getContext('2d').drawImage(a, 0, 0, b.width, b.height);
+  ga.clearRect(0, 0, w, hh); ga.drawImage(b, 0, 0, w, hh);
+  const out = makeCanvas(W, H), go = out.getContext('2d'); go.imageSmoothingQuality = 'high'; go.drawImage(a, 0, 0, W, H);
+  return out;
+}
+export function lightFX(img, P) {
+  if (!(P.glow || P.halation || P.bloom || P.leak || P.aberration || P.fade)) return img;
+  const W = img.width, H = img.height;
+  const base = makeCanvas(W, H), g = base.getContext('2d', { willReadFrequently: true });
+  g.putImageData(img, 0, 0);
+  const diag = Math.hypot(W, H);
+  if (P.glow || P.halation) {
+    // highlights only
+    const k = Math.min(1, 512 / Math.max(W, H));
+    const sw = Math.max(2, Math.round(W * k)), sh = Math.max(2, Math.round(H * k));
+    const hl = makeCanvas(sw, sh), hg = hl.getContext('2d', { willReadFrequently: true });
+    hg.drawImage(base, 0, 0, sw, sh);
+    const d = hg.getImageData(0, 0, sw, sh), a = d.data, thr = (P.glowThreshold ?? 70) / 100 * 255;
+    for (let i = 0; i < a.length; i += 4) {
+      const L = 0.2126 * a[i] + 0.7152 * a[i + 1] + 0.0722 * a[i + 2];
+      const f = Math.max(0, (L - thr) / Math.max(1, 255 - thr));
+      a[i] *= f; a[i + 1] *= f; a[i + 2] *= f;
+    }
+    hg.putImageData(d, 0, 0);
+    const r = (P.glowRadius || 40) / 100 * diag * 0.06 + 2;
+    if (P.glow) { const bl = blurDown(hl, r * k); g.save(); g.globalCompositeOperation = 'screen'; g.globalAlpha = Math.min(1, P.glow / 60); g.drawImage(bl, 0, 0, W, H); g.globalAlpha = Math.min(1, P.glow / 120); g.drawImage(blurDown(hl, r * k * 2.5), 0, 0, W, H); g.restore(); }
+    if (P.halation) {
+      const bl = blurDown(hl, r * k * 0.6);
+      const tint = makeCanvas(bl.width, bl.height), tg = tint.getContext('2d');
+      tg.drawImage(bl, 0, 0); tg.globalCompositeOperation = 'multiply'; tg.fillStyle = '#ff3a12'; tg.fillRect(0, 0, bl.width, bl.height);
+      g.save(); g.globalCompositeOperation = 'screen'; g.globalAlpha = Math.min(1, P.halation / 50); g.drawImage(tint, 0, 0, W, H); g.restore();
+    }
+  }
+  if (P.bloom) { const bl = blurDown(base, diag * 0.02); g.save(); g.globalCompositeOperation = 'soft-light'; g.globalAlpha = Math.min(1, P.bloom / 70); g.drawImage(bl, 0, 0); g.globalCompositeOperation = 'screen'; g.globalAlpha = P.bloom / 400; g.drawImage(bl, 0, 0); g.restore(); }
+  if (P.leak) {
+    const x = W * (P.leakPos / 100), hue = P.leakHue;
+    const grd = g.createRadialGradient(x, H * 0.15, 0, x, H * 0.15, diag * 0.7);
+    grd.addColorStop(0, `hsla(${hue},100%,62%,${Math.min(0.9, P.leak / 110)})`); grd.addColorStop(0.45, `hsla(${hue + 20},100%,50%,${P.leak / 300})`); grd.addColorStop(1, 'hsla(0,0%,0%,0)');
+    g.save(); g.globalCompositeOperation = 'screen'; g.fillStyle = grd; g.fillRect(0, 0, W, H); g.restore();
+  }
+  let out = g.getImageData(0, 0, W, H);
+  if (P.aberration || P.fade) {
+    const src = out.data, o = new Uint8ClampedArray(src.length);
+    const sh = Math.round(P.aberration / 100 * Math.max(W, H) * 0.006), f = (P.fade || 0) / 100;
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      const i = (y * W + x) * 4;
+      const xr = Math.min(W - 1, Math.max(0, x - sh)), xb = Math.min(W - 1, Math.max(0, x + sh));
+      let r = src[(y * W + xr) * 4], gg = src[i + 1], b = src[(y * W + xb) * 4 + 2];
+      if (f) { r = r * (1 - f * 0.35) + 38 * f; gg = gg * (1 - f * 0.35) + 34 * f; b = b * (1 - f * 0.35) + 40 * f; }
+      o[i] = r; o[i + 1] = gg; o[i + 2] = b; o[i + 3] = src[i + 3];
+    }
+    out = new ImageData(o, W, H);
+  }
+  return out;
+}
 
 export async function cameraRawDialog(app) {
   if (!need(app)) return;
@@ -378,7 +442,7 @@ export async function cameraRawDialog(app) {
       const my = ++token;
       busy.textContent = 'Rendering…';
       try {
-        const out = await runFilter('cameraRaw', src, P);
+        const out = lightFX(await runFilter('cameraRaw', src, P), P);
         if (my !== token) return;
         lastOut = out;
         busy.textContent = '';
@@ -431,6 +495,10 @@ export async function cameraRawDialog(app) {
     section('Optics', false, row('distortion', 'Distortion', -100, 100), row('lensVignette', 'Lens vignetting', -100, 100)),
     section('Geometry', false, row('rotate', 'Straighten', -45, 45, { step: 0.1, format: (v) => v.toFixed(1) + '°' }), row('scale', 'Scale', 50, 150, { format: (v) => Math.round(v) + '%' }),
       h('p', { class: 'studio-faint studio-small', text: 'Straightening crops to fill the frame. For free crops use the Crop tool (C).' })),
+    section('Light & glow', false, row('glow', 'Glow', 0, 100), row('glowRadius', 'Glow radius', 1, 100), row('glowThreshold', 'Glow threshold', 0, 100),
+      row('halation', 'Halation (film glow)', 0, 100), row('bloom', 'Bloom (dreamy)', 0, 100),
+      row('leak', 'Light leak', 0, 100), row('leakHue', 'Leak colour', 0, 360, { track: HUE_TRACK, format: (v) => Math.round(v) + '°' }), row('leakPos', 'Leak position', 0, 100),
+      row('aberration', 'Chromatic aberration', 0, 100), row('fade', 'Film fade', 0, 100)),
     section('Effects', false, row('vignette', 'Vignette', -100, 100), row('vignetteMid', 'Midpoint', 0, 100), row('grain', 'Grain', 0, 100), row('grainSize', 'Grain size', 0.5, 5, { step: 0.1, format: (v) => v.toFixed(1) })));
 
   const resetAll = () => {
@@ -448,7 +516,7 @@ export async function cameraRawDialog(app) {
   return new Promise((resolve) => {
     const overlay = h('div', { class: 'cr-overlay', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Raw Develop Filter' },
       h('header', { class: 'cr-top' },
-        h('div', { class: 'cr-brand' }, icon('aperture', 18), h('span', { text: 'CAMERA RAW' }), h('em', { class: 'studio-faint', text: ctx.node.name })),
+        h('div', { class: 'cr-brand' }, icon('aperture', 18), h('span', { text: 'RAW DEVELOP' }), h('em', { class: 'studio-faint', text: ctx.node.name })),
         h('div', { class: 'cr-actions' }, beforeBtn,
           h('button', { class: 'studio-btn is-small', type: 'button', text: 'Auto', onclick: auto }),
           h('button', { class: 'studio-btn is-small', type: 'button', text: 'Reset', onclick: resetAll }),
@@ -476,7 +544,7 @@ export async function cameraRawDialog(app) {
       const prog = progressDialog('Raw Develop', { cancellable: false });
       prog.set(0.4, 'Developing at full resolution…');
       try {
-        let out = await ctx.run(P);
+        let out = lightFX(await ctx.run(P), P);
         if (P.rotate || P.scale !== 100) out = straighten(out, P.rotate, P.scale);
         finishPixelOp(app, ctx, out, 'Raw Develop Filter', 'cameraRaw', P);
         app.lastRaw = JSON.parse(JSON.stringify(P));

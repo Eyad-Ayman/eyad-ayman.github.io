@@ -100,6 +100,7 @@ export async function handleFiles(app, files) {
     if (info.kind === 'prproj') await openPrproj(app, f);
     else if (info.kind === 'eyad') await openEyadFile(app, f);
     else if (['video', 'audio', 'image'].includes(info.kind)) media.push(f);
+    else if (/\.(srt|vtt)$/i.test(f.name)) await (await import('./captions.js')).importCaptions(app, f); // dropped subtitles → caption clips
     else if (info.kind === 'psd') {
       toast(`${sanitizeFilename(f.name)} is a PSD — open it in EYAD IMAGE?`, { timeout: 9000, action: { label: 'Open in Image', fn: async () => { const id = await putHandoff([f]); location.href = ROUTES.image + '?handoff=' + id; } } });
     } else {

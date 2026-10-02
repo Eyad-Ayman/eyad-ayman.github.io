@@ -1,48 +1,73 @@
-// EYAD Experience — original app icons (squircle tiles, drawn as SVG so they
-// stay sharp at any size and can be rasterised for the install manifest).
+// EYAD Studio — app icons, in the same glass language as the interface:
+// round glass discs with a soft colour body, a frosted rim, a top gloss and a
+// two-layer glyph (a translucent back layer and a solid front layer that
+// lifts on hover, so every icon has real depth). Pure SVG — sharp at any size,
+// and rasterised for the install manifest.
 
 const NS = 'http://www.w3.org/2000/svg';
 
 export const APPS = {
-  home: { name: 'EYAD Experience', short: 'Experience', bg: ['#2a2a2e', '#070708'], route: 'home' },
-  image: { name: 'EYAD IMAGE', short: 'Image', bg: ['#ff6a55', '#b3121c'], route: 'image', desc: 'Layers, PSD, Raw Develop, Film Lab, AI' },
-  vector: { name: 'EYAD VECTOR', short: 'Vector', bg: ['#ffc15e', '#e0661b'], route: 'vector', desc: 'Pen, shapes, type, PDF · AI · SVG' },
-  video: { name: 'EYAD VIDEO', short: 'Video', bg: ['#a78bfa', '#4c1d95'], route: 'video', desc: 'Timeline, keyframes, titles, colour' },
-  '3d': { name: 'EYAD 3D', short: '3D', bg: ['#5eead4', '#0f5f59'], route: '3d', desc: 'Models, scenes, lights, render' },
-  camera: { name: 'EYAD CAMERA', short: 'Camera', bg: ['#4a4a50', '#141416'], route: 'camera', desc: '136 film & camera looks, live' },
-  templates: { name: 'Templates', short: 'Templates', bg: ['#fbf6ec', '#d8ccb6'], route: 'templates', desc: 'Posts, stories, posters, CVs' },
-  projects: { name: 'Projects', short: 'Projects', bg: ['#7cb8ff', '#1d4ed8'], route: 'projects', desc: 'Everything saved on this device' },
-  settings: { name: 'Settings', short: 'Settings', bg: ['#9ca3af', '#3f4450'], route: 'settings', desc: 'Look, layout, pen, offline' },
-  help: { name: 'Help', short: 'Help', bg: ['#34d399', '#047857'], route: 'help', desc: 'Guides & supported files' },
+  home: { name: 'EYAD Studio', short: 'Home', route: 'home', code: 'EYD', c: ['#f4f5f9', '#8e95a8'] },
+  image: { code: 'IMG', name: 'EYAD IMAGE', short: 'Image', route: 'image', desc: 'Layers, PSD, Raw Develop, Film Lab, AI', c: ['#ff8a7a', '#e2366b'] },
+  vector: { code: 'VEC', name: 'EYAD VECTOR', short: 'Vector', route: 'vector', desc: 'Pen, shapes, type, PDF · AI · SVG', c: ['#ffc56b', '#f0762e'] },
+  video: { code: 'VID', name: 'EYAD VIDEO', short: 'Video', route: 'video', desc: 'Timeline, keyframes, titles, colour', c: ['#b49bff', '#5a3fd6'] },
+  '3d': { code: '3D', name: 'EYAD 3D', short: '3D', route: '3d', desc: 'Models, scenes, lights, render', c: ['#6ff0da', '#1690a8'] },
+  camera: { code: 'CAM', name: 'EYAD KAMERA', short: 'Kamera', route: 'camera', desc: 'Film looks, AI filters, flash, pro controls', c: ['#5b5d66', '#1b1c21'] },
+  templates: { code: 'TPL', name: 'Templates', short: 'Templates', route: 'templates', desc: 'Trends, posts, stories, posters', c: ['#d9ff7a', '#3fb86a'] },
+  projects: { code: 'PRJ', name: 'Projects', short: 'Projects', route: 'projects', desc: 'Everything saved on this device', c: ['#8fd0ff', '#2e6ff0'] },
+  settings: { code: 'SET', name: 'Settings', short: 'Settings', route: 'settings', desc: 'Look, layout, pen, offline', c: ['#c9ccd4', '#6b707c'] },
+  help: { code: 'HLP', name: 'Help', short: 'Help', route: 'help', desc: 'Guides & supported files', c: ['#9ff5c8', '#1f9e6e'] },
 };
 
-const CREAM = '#fbf5ea', INK = '#141414', RED = '#d02b2a';
-
-const GLYPHS = {
-  home: `<text x="50" y="68" text-anchor="middle" font-family="Oswald,'Studio Oswald',Impact,sans-serif" font-weight="700" font-size="54" fill="${CREAM}" letter-spacing="-1">E</text><rect x="62" y="24" width="12" height="12" rx="2" fill="${RED}"/>`,
-  image: `<rect x="23" y="27" width="54" height="46" rx="7" fill="none" stroke="${CREAM}" stroke-width="5"/><circle cx="62" cy="41" r="6" fill="${CREAM}"/><path d="M26 69l17-19 12 12 7-7 13 14z" fill="${CREAM}"/>`,
-  vector: `<path d="M22 66C30 38 48 30 78 34" fill="none" stroke="${CREAM}" stroke-width="4" stroke-linecap="round"/><rect x="17" y="61" width="10" height="10" rx="1.5" fill="${INK}" stroke="${CREAM}" stroke-width="3"/><rect x="73" y="29" width="10" height="10" rx="1.5" fill="${INK}" stroke="${CREAM}" stroke-width="3"/><path d="M50 44l10 22-10 12-10-12z" fill="${CREAM}"/><circle cx="50" cy="61" r="3" fill="#e0661b"/><path d="M50 52v7" stroke="#e0661b" stroke-width="2.5"/>`,
-  video: `<rect x="20" y="30" width="60" height="40" rx="8" fill="none" stroke="${CREAM}" stroke-width="5"/><path d="M45 40l15 10-15 10z" fill="${CREAM}"/><path d="M20 78h60" stroke="${CREAM}" stroke-width="4" stroke-linecap="round" opacity=".55"/><path d="M34 74v8" stroke="${CREAM}" stroke-width="4" stroke-linecap="round"/>`,
-  '3d': `<path d="M50 20l27 15v30L50 80 23 65V35z" fill="none" stroke="${CREAM}" stroke-width="5" stroke-linejoin="round"/><path d="M23 35l27 15 27-15M50 50v30" fill="none" stroke="${CREAM}" stroke-width="5" stroke-linejoin="round"/><path d="M50 50L77 35 50 20 23 35z" fill="${CREAM}" opacity=".3"/>`,
-  camera: `<circle cx="50" cy="52" r="23" fill="#0b0b0c" stroke="${CREAM}" stroke-width="5"/><circle cx="50" cy="52" r="12" fill="#1e2a3a"/><circle cx="46" cy="48" r="4" fill="${CREAM}" opacity=".85"/><rect x="66" y="22" width="12" height="7" rx="2" fill="${RED}"/>`,
-  templates: `<rect x="21" y="22" width="26" height="32" rx="4" fill="${RED}"/><rect x="53" y="22" width="26" height="18" rx="4" fill="${INK}"/><rect x="53" y="46" width="26" height="32" rx="4" fill="#e9a23b"/><rect x="21" y="60" width="26" height="18" rx="4" fill="${INK}" opacity=".85"/>`,
-  projects: `<path d="M20 34a6 6 0 0 1 6-6h14l6 6h28a6 6 0 0 1 6 6v28a6 6 0 0 1-6 6H26a6 6 0 0 1-6-6z" fill="${CREAM}"/><path d="M20 42h60" stroke="#1d4ed8" stroke-width="3" opacity=".35"/>`,
-  settings: `<g fill="none" stroke="${CREAM}" stroke-width="5"><circle cx="50" cy="50" r="10"/><path d="M50 22v8M50 70v8M22 50h8M70 50h8M30 30l6 6M64 64l6 6M30 70l6-6M64 36l6-6" stroke-linecap="round"/><circle cx="50" cy="50" r="20"/></g>`,
-  help: `<circle cx="50" cy="50" r="26" fill="none" stroke="${CREAM}" stroke-width="5"/><path d="M41 42a9 9 0 1 1 13 8c-3 2-4 3-4 7" fill="none" stroke="${CREAM}" stroke-width="5" stroke-linecap="round"/><circle cx="50" cy="66" r="3.5" fill="${CREAM}"/>`,
+// Glyphs: [back layer, front layer] — drawn in a 100×100 box, white.
+const W = 'fill="#fff"', S = (w) => `fill="none" stroke="#fff" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round"`;
+const GLYPH = {
+  home: [`<rect x="29" y="29" width="42" height="42" rx="12" ${W}/>`,
+    `<path d="M41 38h19M41 50h15M41 62h19M41 38v24" ${S(6)}/>`],
+  image: [`<rect x="27" y="31" width="46" height="38" rx="9" ${W}/>`,
+    `<circle cx="60" cy="43" r="5" ${W}/><path d="M30 66l14-15 10 10 6-6 11 11z" ${W}/>`],
+  vector: [`<path d="M28 66C33 44 49 34 72 34" ${S(4)}/><rect x="24" y="62" width="9" height="9" rx="2" ${W}/><rect x="68" y="30" width="9" height="9" rx="2" ${W}/>`,
+    `<path d="M50 40l11 23-11 10-11-10z" ${W}/><circle cx="50" cy="59" r="3" fill="#f0762e"/>`],
+  video: [`<rect x="25" y="31" width="50" height="38" rx="10" ${W}/>`,
+    `<path d="M45 41l15 9-15 9z" ${W}/>`],
+  '3d': [`<path d="M50 24l24 13v26L50 76 26 63V37z" ${W}/>`,
+    `<path d="M26 37l24 13 24-13M50 50v26" ${S(4.5)}/>`],
+  camera: [`<rect x="24" y="33" width="52" height="38" rx="10" ${W}/><rect x="38" y="26" width="18" height="9" rx="3" ${W}/>`,
+    `<circle cx="50" cy="52" r="11" fill="none" stroke="#fff" stroke-width="5"/><circle cx="66" cy="41" r="2.6" ${W}/>`],
+  templates: [`<rect x="27" y="27" width="21" height="27" rx="6" ${W}/><rect x="52" y="46" width="21" height="27" rx="6" ${W}/>`,
+    `<rect x="52" y="27" width="21" height="15" rx="5" ${W}/><rect x="27" y="58" width="21" height="15" rx="5" ${W}/>`],
+  projects: [`<path d="M25 36a6 6 0 0 1 6-6h12l5 5h21a6 6 0 0 1 6 6v25a6 6 0 0 1-6 6H31a6 6 0 0 1-6-6z" ${W}/>`,
+    `<path d="M25 45h50" ${S(4)}/>`],
+  settings: [`<path d="M50 24l6 5 8-1 3 7 7 4-1 8 5 6-5 6 1 8-7 4-3 7-8-1-6 5-6-5-8 1-3-7-7-4 1-8-5-6 5-6-1-8 7-4 3-7 8 1z" ${W}/>`,
+    `<circle cx="50" cy="53" r="9" fill="none" stroke="#fff" stroke-width="5"/>`],
+  help: [`<circle cx="50" cy="50" r="25" ${W}/>`,
+    `<path d="M42 44a8 8 0 1 1 12 7c-3 2-4 3-4 6" ${S(5)}/><circle cx="50" cy="65" r="3" ${W}/>`],
 };
 
+/** Kept for compatibility — there is one icon set. */
+export function setIconLook() {}
+
+let seq = 0;
 /** SVG markup for an app icon (100×100 viewBox). */
 export function appIconSVG(id, { size = 64 } = {}) {
   const a = APPS[id] || APPS.home;
-  const gid = 'g' + id.replace(/\W/g, '') + Math.random().toString(36).slice(2, 7);
-  const glyph = GLYPHS[id] || GLYPHS.home;
-  return `<svg xmlns="${NS}" viewBox="0 0 100 100" width="${size}" height="${size}" aria-hidden="true">
-<defs><linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${a.bg[0]}"/><stop offset="1" stop-color="${a.bg[1]}"/></linearGradient>
-<linearGradient id="${gid}h" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".35"/><stop offset=".45" stop-color="#fff" stop-opacity="0"/></linearGradient></defs>
-<rect x="5" y="5" width="90" height="90" rx="21" fill="url(#${gid})"/>
-<rect x="5" y="5" width="90" height="90" rx="21" fill="url(#${gid}h)"/>
-<rect x="5.5" y="5.5" width="89" height="89" rx="20.5" fill="none" stroke="#000" stroke-opacity=".18"/>
-${glyph}
+  const u = 'ic' + (++seq).toString(36) + Math.random().toString(36).slice(2, 5);
+  const [back, front] = GLYPH[id] || GLYPH.home;
+  const dark = id === 'camera';
+  return `<svg xmlns="${NS}" viewBox="0 0 100 100" width="${size}" height="${size}" aria-hidden="true" class="eyad-icon">
+<defs>
+<linearGradient id="${u}b" x1=".15" y1="0" x2=".85" y2="1"><stop offset="0" stop-color="${a.c[0]}"/><stop offset="1" stop-color="${a.c[1]}"/></linearGradient>
+<radialGradient id="${u}g" cx=".5" cy="0" r=".75"><stop offset="0" stop-color="#fff" stop-opacity="${dark ? '.34' : '.55'}"/><stop offset=".6" stop-color="#fff" stop-opacity="0"/></radialGradient>
+<radialGradient id="${u}s" cx=".5" cy="1" r=".7"><stop offset="0" stop-color="#000" stop-opacity=".22"/><stop offset="1" stop-color="#000" stop-opacity="0"/></radialGradient>
+<filter id="${u}d" x="-20%" y="-20%" width="140%" height="150%"><feDropShadow dx="0" dy="2.2" stdDeviation="2" flood-color="#000" flood-opacity="${dark ? '.5' : '.28'}"/></filter>
+</defs>
+<circle cx="50" cy="50" r="47" fill="url(#${u}b)"/>
+<circle cx="50" cy="50" r="47" fill="url(#${u}s)"/>
+<circle cx="50" cy="50" r="47" fill="url(#${u}g)"/>
+<g class="eyad-icon-back" opacity=".38">${back}</g>
+<g class="eyad-icon-front" filter="url(#${u}d)">${front}</g>
+<circle cx="50" cy="50" r="46.3" fill="none" stroke="#fff" stroke-opacity=".45" stroke-width="1.4"/>
+<path d="M18 30a38 38 0 0 1 64 0" fill="none" stroke="#fff" stroke-opacity=".35" stroke-width="1.2" stroke-linecap="round"/>
 </svg>`;
 }
 

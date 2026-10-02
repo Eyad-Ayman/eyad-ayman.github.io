@@ -15,7 +15,7 @@
 
 .vid-main {
   display: grid; min-height: 0; gap: 1px; background: var(--st-line);
-  grid-template-columns: minmax(230px, 300px) minmax(0, 1fr) minmax(250px, 310px);
+  grid-template-columns: var(--vid-lw, minmax(230px, 300px)) minmax(0, 1fr) var(--vid-rw, minmax(250px, 310px));
   grid-template-rows: minmax(0, 1fr) 6px var(--vid-tl);
   grid-template-areas: "left center right" "rz rz rz" "tl tl tl";
 }
@@ -332,3 +332,23 @@
   .vp-prop.is-anim { grid-template-columns: 22px 64px 1fr 50px auto; }
 }
 .vp-prop > select.studio-input { grid-column: 2 / -1; min-width: 0; }
+
+.vid-left, .vid-right { position: relative; }
+.vid-edge { position: absolute; top: 0; bottom: 0; width: 6px; z-index: 6; cursor: col-resize; touch-action: none; }
+.vid-left > .vid-edge { right: -3px; } .vid-right > .vid-edge { left: -3px; }
+.studio-app[data-panels="left"] .vid-left > .vid-edge { right: auto; left: -3px; } .studio-app[data-panels="left"] .vid-right > .vid-edge { left: auto; right: -3px; }
+.vid-edge:hover, .vid-edge.is-drag { background: var(--st-accent); opacity: .6; }
+
+/* ---- Effects panel: quick access, ready looks, one-click transitions */
+.vp-fx-quick { margin: 2px 0 8px; gap: 6px; }
+.vp-fx-quick .studio-btn, .vp-fx-bin .vp-presets .studio-btn { border-radius: 999px; background: var(--sp-chip, var(--st-panel-2)); gap: 6px; }
+.vp-fx-quick .studio-btn:hover, .vp-fx-bin .vp-presets .studio-btn:hover { background: var(--sp-chip-h, var(--st-hover)); }
+.vp-fx-bin .vp-presets { margin: 4px 0 6px; }
+.vp-fx-bin .vp-presets .studio-btn.is-primary { background: var(--sp-solid, var(--st-text)); color: var(--sp-on-solid, var(--st-bg)); }
+.vp-look-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(124px, 1fr)); gap: 6px; margin: 4px 0 6px; }
+.vp-fx-item.vp-look { height: 36px; border-radius: 12px; background: var(--sp-chip, var(--st-panel-2)); border: 1px solid var(--st-line); }
+.vp-fx-item.vp-look:hover { background: var(--sp-chip-h, var(--st-hover)); }
+.vp-fx-item.is-active { background: var(--st-hover, var(--st-panel-2)); box-shadow: inset 0 0 0 1px var(--st-line); }
+.vp-fx-item > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vp-trans-all > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 220px; }
+.vt-clip.is-gen-adjust { background-image: repeating-linear-gradient(135deg, transparent 0 7px, rgba(255, 255, 255, .09) 7px 14px); }

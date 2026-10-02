@@ -23,7 +23,7 @@ const chips = h('div', { class: 'hub-chips', role: 'tablist' }, FILTERS.map(([k,
 
 page('projects',
   h('section', { class: 'hub-pagehead' },
-    h('div', {}, h('h1', { class: 'studio-page-title' }, 'PROJ', h('em', { text: 'ECTS' })), h('p', { class: 'studio-page-lede', text: 'Everything saved in this browser, as native .eyad projects. Download a project to back it up or move it to another device.' })),
+    h('div', {}, h('h1', { class: 'studio-page-title' }, 'Projects'), h('p', { class: 'studio-page-lede', text: 'Everything saved in this browser, as native .eyad projects. Download a project to back it up or move it to another device.' })),
     h('div', { class: 'hub-actions' },
       h('a', { class: 'studio-btn is-primary', href: ROUTES.image + '?new=1' }, icon('image', 16), 'New image'),
       h('a', { class: 'studio-btn', href: ROUTES.video + '?new=1' }, icon('video', 16), 'New video'),

@@ -1,3 +1,5 @@
+import { EXTRA_FONTS } from '../templates/fonts.js';
+import { extendFontList, onFontsChanged } from '../core/fonts.js';
 // EYAD IMAGE — document model.
 // Layers are stored bottom → top (index 0 is the bottom layer), like PSD.
 import { uid } from '../core/dom.js';
@@ -39,6 +41,9 @@ export const FONTS = [
   ['Verdana, sans-serif', 'Verdana'],
   ['system-ui, sans-serif', 'System UI'],
 ];
+for (const f of EXTRA_FONTS) if (!FONTS.some(([v]) => v === f[0])) FONTS.splice(3, 0, f);
+extendFontList(FONTS);
+onFontsChanged(() => extendFontList(FONTS));
 
 export const MAX_SIDE = 12000;
 export const MAX_AREA = 80e6;
@@ -276,7 +281,7 @@ export function layoutText(n) {
 const NODE_KEYS = ['id', 'type', 'name', 'visible', 'opacity', 'blend', 'locked', 'x', 'y', 'sx', 'sy', 'rot', 'clip', 'maskEnabled',
   'text', 'font', 'size', 'weight', 'italic', 'color', 'align', 'lineHeight', 'tracking',
   'shape', 'w', 'h', 'fill', 'fillOn', 'stroke', 'strokeOn', 'strokeWidth', 'radius', 'points', 'closed', 'subpaths', 'fillRule',
-  'expanded', 'psd', 'artboard'];
+  'expanded', 'psd', 'artboard', 'fx', 'fillOpacity', 'lockPixels', 'lockPosition'];
 
 export function canvasToBlob(c, type = 'image/png', q) {
   return new Promise((resolve, reject) => c.toBlob((b) => (b ? resolve(b) : reject(new Error('Could not encode image (the canvas may be too large for this device).'))), type, q));
@@ -342,6 +347,8 @@ export async function deserializeDoc(json, getAsset) {
     n.blend = oneOf(o.blend, [...BLEND_IDS, 'pass-through'], type === 'group' ? 'pass-through' : 'normal');
     n.x = num(o.x); n.y = num(o.y); n.sx = num(o.sx, 1, -100, 100) || 1; n.sy = num(o.sy, 1, -100, 100) || 1; n.rot = num(o.rot, 0, -3600, 3600);
     n.maskEnabled = bool(o.maskEnabled, true);
+    n.fillOpacity = num(o.fillOpacity, 1, 0, 1); n.lockPixels = bool(o.lockPixels, false); n.lockPosition = bool(o.lockPosition, false);
+    if (o.fx && typeof o.fx === 'object') n.fx = sanitizeFx(o.fx);
     if (o.psd && typeof o.psd === 'object') n.psd = JSON.parse(JSON.stringify(o.psd));
     if (type === 'raster') {
       const blob = o.asset ? await getAsset(str(o.asset, '', 200), 'image/png') : null;
@@ -396,3 +403,32 @@ export function estimateBytes(doc) {
   walk(doc.layers, (n) => { if (n.canvas) b += n.canvas.width * n.canvas.height * 4; if (n.mask) b += n.mask.canvas.width * n.mask.canvas.height * 4; });
   return b;
 }
+
+// ---------------------------------------------------------------- layer styles
+export const FX_DEFAULTS = {
+  dropShadow: { on: false, color: '#000000', opacity: 0.55, angle: 120, distance: 12, size: 18 },
+  innerShadow: { on: false, color: '#000000', opacity: 0.5, angle: 120, distance: 6, size: 10 },
+  outerGlow: { on: false, color: '#ffd166', opacity: 0.8, size: 24 },
+  stroke: { on: false, color: '#ffffff', size: 6, position: 'outside', opacity: 1 },
+  colorOverlay: { on: false, color: '#ff3b6b', opacity: 1, blend: 'normal' },
+  gradientOverlay: { on: false, from: '#7b61ff', to: '#ff6a88', angle: 90, opacity: 1 },
+};
+export function sanitizeFx(o) {
+  const out = {};
+  const hex = (v, d) => (typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v) ? v : d);
+  const nn = (v, d, a, b) => (Number.isFinite(+v) ? Math.max(a, Math.min(b, +v)) : d);
+  for (const [k, def] of Object.entries(FX_DEFAULTS)) {
+    const src = o && typeof o[k] === 'object' ? o[k] : {};
+    const e = {};
+    for (const [key, dv] of Object.entries(def)) {
+      if (typeof dv === 'boolean') e[key] = !!src[key];
+      else if (typeof dv === 'number') e[key] = nn(src[key], dv, key === 'angle' ? -360 : 0, key === 'opacity' ? 1 : 2000);
+      else if (key === 'position') e[key] = ['outside', 'inside', 'center'].includes(src[key]) ? src[key] : dv;
+      else if (key === 'blend') e[key] = typeof src[key] === 'string' ? src[key].slice(0, 20) : dv;
+      else e[key] = hex(src[key], dv);
+    }
+    out[k] = e;
+  }
+  return out;
+}
+export const hasFx = (n) => !!(n.fx && Object.values(n.fx).some((e) => e && e.on)) || (n.fillOpacity != null && n.fillOpacity < 1);

@@ -1,6 +1,6 @@
 {
-  "name": "EYAD Experience",
-  "short_name": "EYAD",
+  "name": "EYAD Studio",
+  "short_name": "EYAD Studio",
   "description": "Eyad Ayman's creative suite \u2014 photo editing (PSD), vector design (SVG, PDF, .ai), video editing, 3D scenes, a film camera and templates. Runs on your device and works offline.",
   "id": "./",
   "start_url": "./",
@@ -11,8 +11,8 @@
     "standalone"
   ],
   "orientation": "any",
-  "background_color": "#0b0b0c",
-  "theme_color": "#0b0b0c",
+  "background_color": "#16171b",
+  "theme_color": "#16171b",
   "categories": [
     "photo",
     "graphics",
@@ -85,7 +85,7 @@
       ]
     },
     {
-      "name": "EYAD CAMERA",
+      "name": "EYAD KAMERA",
       "url": "./camera/",
       "icons": [
         {

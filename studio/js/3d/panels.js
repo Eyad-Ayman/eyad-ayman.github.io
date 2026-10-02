@@ -5,11 +5,12 @@ import * as THREE from '../../vendor/three/three.module.js';
 import { h, clear, clamp } from '../core/dom.js';
 import { openSheet, contextMenu } from '../core/ui.js';
 import { icon } from './icons.js';
-import { PRIMITIVES, LIGHTS, materialsOf, iconFor, kindLabel, isLight } from './objects.js';
+import { PRIMITIVES, LIGHTS, materialsOf, iconFor, kindLabel, isLight, isCam, isEmpty, camOf, focalToFov, fovToFocal, SENSOR_FITS, modsOf, canModify, editorChildren } from './objects.js';
 import { EASES } from './anim.js';
 
 const R2D = 180 / Math.PI, D2R = Math.PI / 180;
-const TITLES = { outliner: 'Scene objects', object: 'Object', material: 'Material', light: 'Light', scene: 'Environment', camera: 'Camera', anim: 'Animation' };
+const TITLES = { outliner: 'Outliner', object: 'Object', mods: 'Modifiers', material: 'Material', light: 'Light', camdata: 'Camera', scene: 'World', camera: 'View', anim: 'Animation' };
+const TABS = [['object', 'move', 'Object'], ['mods', 'sliders', 'Modifiers'], ['material', 'palette', 'Material'], ['light', 'bulb', 'Light'], ['camdata', 'camera', 'Camera'], ['scene', 'globe', 'World'], ['camera', 'persp', 'View'], ['anim', 'key', 'Animation']];
 
 function section(title, key, body, { actions = [] } = {}) {
   const btn = h('button', { class: 'img-panel-toggle', type: 'button', 'aria-expanded': 'true' }, icon('chevronDown', 14), h('span', { text: title }));
@@ -79,26 +80,34 @@ function seg(value, items, onChange) {
 const hex = (c) => '#' + c.getHexString();
 
 export class Panels {
-  constructor(app, host) { this.app = app; this.host = host; this.matIndex = 0; }
+  constructor(app, host) {
+    this.app = app; this.host = host; this.matIndex = 0;
+    // the first click of a double-click re-renders the list, so rename is handled on the stable host
+    host.addEventListener('dblclick', (e) => {
+      const r = e.target.closest?.('.t3-out-row');
+      if (!r || e.target.closest('button, input')) return;
+      const o = app.findById(r.dataset.id), name = r.querySelector('.t3-out-name');
+      if (o && name) this.renameInline(o, name);
+    });
+  }
 
   focus(key) {
     if (this.app.mobile.matches) { this.sheet(key); return; }
+    if (key !== 'outliner') { this.tab = key; this.refresh(); }
     const el = this.host.querySelector(`[data-panel="${key}"]`);
     if (el) { el.classList.remove('is-collapsed'); el.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); el.classList.add('is-flash'); setTimeout(() => el.classList.remove('is-flash'), 700); }
   }
   sheet(key) {
     if (key === 'material' && isLight(this.app.selected)) key = 'light';
+    if (key === 'material' && isCam(this.app.selected)) key = 'camdata';
     this.sheetKey = key;
     this.activeSheet = openSheet({ title: TITLES[key] || key, content: h('div', { class: 't3-sheet' }, this.make(key)), onClose: () => { this.sheetKey = null; } });
   }
-  keys() {
+  /** Property tabs that apply to the current selection. */
+  tabs() {
     const s = this.app.selected;
-    const k = ['outliner'];
-    if (s) k.push('object');
-    if (s && !isLight(s) && materialsOf(s).length) k.push('material');
-    if (isLight(s)) k.push('light');
-    k.push('scene', 'camera', 'anim');
-    return k;
+    const ok = { object: !!s, mods: canModify(s), material: !!s && !isLight(s) && !isCam(s) && materialsOf(s).length > 0, light: isLight(s), camdata: isCam(s), scene: true, camera: true, anim: true };
+    return TABS.filter((t) => ok[t[0]]);
   }
   refresh() {
     if (this.app.mobile.matches) {
@@ -114,15 +123,20 @@ export class Panels {
     }
     if (this.host.contains(document.activeElement) && document.activeElement.matches('input[type="number"], input[type="text"]')) { this.pending = true; return; }
     const scroll = this.host.scrollTop;
+    const outScroll = this.host.querySelector('.t3-outliner')?.scrollTop || 0;
     const collapsed = new Set(Array.from(this.host.querySelectorAll('.img-panel.is-collapsed')).map((e) => e.dataset.panel));
-    if (!this.everBuilt) { collapsed.add('camera'); collapsed.add('anim'); this.everBuilt = true; }
     clear(this.host);
-    for (const k of this.keys()) {
-      const el = this.make(k);
-      if (collapsed.has(k)) el.classList.add('is-collapsed');
-      this.host.appendChild(el);
-    }
+    const tabs = this.tabs();
+    // follow the selection: a new kind of object opens its most useful tab
+    const s = this.app.selected, selKey = s ? s.userData.eyadId : '';
+    if (selKey !== this.lastSel) { const was = this.lastSel; this.lastSel = selKey; if (s && (!was || !this.tab || ['object', 'mods', 'light', 'camdata'].includes(this.tab) || !tabs.some((t) => t[0] === this.tab))) this.tab = isCam(s) ? 'camdata' : isLight(s) ? 'light' : 'object'; }
+    if (!tabs.some((t) => t[0] === this.tab)) this.tab = tabs[0][0];
+    const out = this.make('outliner');
+    if (collapsed.has('outliner')) out.classList.add('is-collapsed');
+    const strip = h('div', { class: 't3-tabs', role: 'tablist', 'aria-label': 'Properties' }, tabs.map(([k, ic, label]) => h('button', { class: 't3-tab' + (k === this.tab ? ' is-on' : ''), type: 'button', role: 'tab', 'aria-selected': String(k === this.tab), 'aria-label': label, title: label, dataset: { tab: k }, onclick: () => { this.tab = k; this.refresh(); } }, icon(ic, 16))));
+    this.host.append(out, strip, this.make(this.tab));
     this.host.scrollTop = scroll;
+    const ol = this.host.querySelector('.t3-outliner'); if (ol) ol.scrollTop = outScroll;
   }
   /** Fast path while dragging the gizmo / playing: only the transform numbers change. */
   syncTransform() {
@@ -149,31 +163,46 @@ export class Panels {
     return b;
   }
 
-  // ------------------------------------------------------------ outliner
+  // ------------------------------------------------------------ outliner (tree)
   p_outliner() {
-    const app = this.app;
-    const list = h('div', { class: 't3-outliner', role: 'listbox', 'aria-label': 'Scene objects' });
-    const all = app.allObjects();
-    if (!all.length) list.appendChild(h('div', { class: 'img-panel-empty', text: 'Nothing here yet — add a shape or import a model.' }));
-    for (const o of all) {
-      const on = app.selected === o;
-      const eye = h('button', { class: 'img-layer-eye', type: 'button', 'aria-pressed': String(o.visible), 'aria-label': o.visible ? 'Hide' : 'Show', title: o.visible ? 'Hide' : 'Show', onclick: (e) => { e.stopPropagation(); app.setVisible(o, !o.visible); } }, icon(o.visible ? 'eye' : 'eyeOff', 15));
+    const app = this.app, v = app.viewport;
+    const list = h('div', { class: 't3-outliner', role: 'tree', 'aria-label': 'Scene objects' });
+    const flat = [];
+    const activeId = app.settings.activeCamera;
+    const addRow = (o, depth) => {
+      flat.push(o);
+      const on = app.selected === o, locked = !!o.userData.eyadLocked;
+      const eye = h('button', { class: 'img-layer-eye', type: 'button', 'aria-pressed': String(o.visible), 'aria-label': o.visible ? 'Hide' : 'Show', title: o.visible ? 'Hide (H)' : 'Show', onclick: (e) => { e.stopPropagation(); app.setVisible(o, !o.visible); } }, icon(o.visible ? 'eye' : 'eyeOff', 15));
+      const sel = h('button', { class: 'studio-icon-btn is-small t3-out-sel' + (locked ? ' is-off' : ''), type: 'button', 'aria-pressed': String(!locked), 'aria-label': locked ? 'Make selectable in the view' : 'Make unselectable in the view', title: locked ? 'Not selectable in the view — click to allow' : 'Selectable in the view — click to protect', onclick: (e) => { e.stopPropagation(); app.setLocked(o, !locked); } }, icon(locked ? 'lock' : 'cursor', 13));
       const name = h('span', { class: 't3-out-name', text: o.name || kindLabel(o) });
-      const r = h('div', { class: 't3-out-row' + (on ? ' is-on' : '') + (o.visible ? '' : ' is-hidden'), role: 'option', 'aria-selected': String(on), tabindex: '0', dataset: { id: o.userData.eyadId } },
-        eye, h('span', { class: 't3-out-icon' }, icon(iconFor(o), 15)), name,
+      const r = h('div', { class: 't3-out-row' + (on ? ' is-on' : '') + (o.visible ? '' : ' is-hidden'), role: 'treeitem', 'aria-selected': String(on), 'aria-level': String(depth + 1), tabindex: '0', draggable: 'true', dataset: { id: o.userData.eyadId } },
+        eye, h('span', { class: 't3-out-indent', style: { width: depth * 14 + 'px' } }), h('span', { class: 't3-out-icon' }, icon(iconFor(o), 15)), name,
+        isCam(o) && o.userData.eyadId === activeId ? h('span', { class: 't3-out-badge is-cam', title: 'Active camera (used for renders)' }, icon('render', 12)) : null,
         app.anim.tracks[o.userData.eyadId]?.length ? h('span', { class: 't3-out-badge', title: 'Has keyframes' }, icon('key', 11)) : null,
+        sel,
         h('button', { class: 'studio-icon-btn is-small t3-out-more', type: 'button', 'aria-label': 'More actions', onclick: (e) => { e.stopPropagation(); const rr = e.currentTarget.getBoundingClientRect(); contextMenu(rr.left, rr.bottom, app.objectMenuItems(o)); } }, icon('dots', 14)));
-      r.addEventListener('click', () => app.select(o));
-      r.addEventListener('dblclick', () => this.renameInline(o, name));
+      r.addEventListener('click', () => { if (app.onViewportPick(o) === true) return; if (app.selected !== o) app.select(o); });
       r.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' || e.key === 'F2') { e.preventDefault(); this.renameInline(o, name); }
-        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); const i = all.indexOf(o) + (e.key === 'ArrowDown' ? 1 : -1); if (all[i]) { app.select(all[i]); requestAnimationFrame(() => this.host.querySelector(`[data-id="${all[i].userData.eyadId}"]`)?.focus()); } }
+        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); e.stopPropagation(); const t = flat[flat.indexOf(o) + (e.key === 'ArrowDown' ? 1 : -1)]; if (t) { app.select(t); requestAnimationFrame(() => this.host.querySelector(`[data-id="${t.userData.eyadId}"]`)?.focus()); } }
       });
       r.addEventListener('contextmenu', (e) => { e.preventDefault(); app.select(o); contextMenu(e.clientX, e.clientY, app.objectMenuItems(o)); });
+      // drag a row onto another to parent it; onto the empty area to clear the parent
+      r.addEventListener('dragstart', (e) => { this.dragObj = o; e.dataTransfer.effectAllowed = 'move'; try { e.dataTransfer.setData('text/plain', o.name); } catch (err) { /* ignore */ } r.classList.add('is-drag'); });
+      r.addEventListener('dragend', () => { this.dragObj = null; r.classList.remove('is-drag'); list.querySelectorAll('.is-drop').forEach((x) => x.classList.remove('is-drop')); });
+      r.addEventListener('dragover', (e) => { const d = this.dragObj; if (!d || d === o || app.canParent(d, o)) return; e.preventDefault(); e.stopPropagation(); e.dataTransfer.dropEffect = 'move'; r.classList.add('is-drop'); });
+      r.addEventListener('dragleave', () => r.classList.remove('is-drop'));
+      r.addEventListener('drop', (e) => { const d = this.dragObj; this.dragObj = null; if (!d) return; e.preventDefault(); e.stopPropagation(); app.setParent(d, o); });
       list.appendChild(r);
-    }
+      for (const c of editorChildren(o)) addRow(c, depth + 1);
+    };
+    for (const g of [v.content, v.cams, v.lights]) for (const o of editorChildren(g)) addRow(o, 0);
+    if (!flat.length) list.appendChild(h('div', { class: 'img-panel-empty', text: 'Nothing here yet — add a shape or import a model.' }));
+    list.addEventListener('dragover', (e) => { const d = this.dragObj; if (d && app.hasEditorParent(d)) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; } });
+    list.addEventListener('drop', (e) => { const d = this.dragObj; this.dragObj = null; if (d && app.hasEditorParent(d)) { e.preventDefault(); app.clearParent(d); } });
+    const nl = flat.filter(isLight).length, nc = flat.filter(isCam).length, no = flat.length - nl - nc;
     const foot = h('div', { class: 't3-out-foot' },
-      h('span', { class: 'studio-dim studio-small', text: `${app.viewport.content.children.length} object${app.viewport.content.children.length === 1 ? '' : 's'} · ${app.viewport.lights.children.length} light${app.viewport.lights.children.length === 1 ? '' : 's'}` }),
+      h('span', { class: 'studio-dim studio-small', text: `${no} object${no === 1 ? '' : 's'} · ${nl} light${nl === 1 ? '' : 's'}${nc ? ` · ${nc} camera${nc === 1 ? '' : 's'}` : ''}` }),
       h('span', { class: 'studio-spacer' }),
       this.iconBtn('duplicate', 'Duplicate', () => app.duplicateSelected(), !app.selected),
       this.iconBtn('trash', 'Delete', () => app.deleteSelected(), !app.selected));
@@ -185,7 +214,7 @@ export class Panels {
     nameEl.replaceWith(input);
     input.focus(); input.select();
     let done = false;
-    const finish = (ok) => { if (done) return; done = true; if (ok && input.value.trim() && input.value.trim() !== o.name) this.app.rename(o, input.value.trim()); else this.refresh(); };
+    const finish = (ok) => { if (done) return; done = true; const v = input.value.trim(); if (input.isConnected) input.replaceWith(nameEl); if (ok && v && v !== o.name) this.app.rename(o, v); else this.refresh(); };
     input.addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Enter') finish(true); if (e.key === 'Escape') finish(false); });
     input.addEventListener('blur', () => finish(true));
     input.addEventListener('click', (e) => e.stopPropagation());
@@ -206,12 +235,17 @@ export class Panels {
     const xyz = (k, vals, step, digits) => h('div', { class: 't3-xyz' }, ['X', 'Y', 'Z'].map((ax, i) => { const f = numField(ax, vals[i], tcb(k, i), { step, digits, cls: 'is-' + ax.toLowerCase(), title: { p: 'Position ', r: 'Rotation ', s: 'Scale ' }[k] + ax }); f.dataset.k = k + ':' + i; return f; }));
     const els = [
       h('div', { class: 't3-name-row' }, h('span', { class: 't3-kind' }, icon(iconFor(o), 15), h('span', { text: kindLabel(o) })), nameIn),
-      h('div', { class: 't3-sub', text: 'Position' }), xyz('p', o.position.toArray(), 0.05, 3),
+      h('div', { class: 't3-sub' }, h('span', { text: 'Location' }), h('em', { class: 't3-unit', text: 'm' })), xyz('p', o.position.toArray(), 0.05, 3),
     ];
     const showRot = !(o.isLight && (o.isPointLight || o.isAmbientLight || o.isHemisphereLight));
-    if (showRot) els.push(h('div', { class: 't3-sub', text: 'Rotation °' }), xyz('r', o.rotation.toArray().slice(0, 3).map((x) => x * R2D), 1, 1));
-    if (!o.isLight) {
-      els.push(h('div', { class: 't3-sub' }, h('span', { text: 'Scale' }), check('Uniform', app.uniformScale, (v) => { app.uniformScale = v; })), xyz('s', o.scale.toArray(), 0.05, 3));
+    if (showRot) els.push(h('div', { class: 't3-sub' }, h('span', { text: 'Rotation' }), h('em', { class: 't3-unit', text: 'degrees' })), xyz('r', o.rotation.toArray().slice(0, 3).map((x) => x * R2D), 1, 1));
+    if (app.hasEditorParent(o)) els.push(row('Parent', h('span', { class: 't3-parent', text: o.parent.name }), h('button', { class: 'studio-btn is-small is-ghost', type: 'button', text: 'Clear', title: 'Clear parent (Alt+P)', onclick: () => app.clearParent(o) })));
+    if (isCam(o) || isEmpty(o)) {
+      els.push(h('div', { class: 't3-actions' },
+        h('button', { class: 'studio-btn is-small', type: 'button', onclick: () => app.resetTransform(o) }, icon('undo', 14), h('span', { text: 'Reset' })),
+        h('button', { class: 'studio-btn is-small', type: 'button', onclick: () => app.startPick('parent') }, icon('link', 14), h('span', { text: 'Set parent…' }))));
+    } else if (!o.isLight) {
+      els.push(h('div', { class: 't3-sub' }, h('span', { text: 'Scale' }), h('em', { class: 't3-unit', text: '×' }), h('span', { class: 'studio-spacer' }), check('Uniform', app.uniformScale, (v) => { app.uniformScale = v; })), xyz('s', o.scale.toArray(), 0.05, 3));
       const meshes = []; o.traverse((n) => { if (n.isMesh) meshes.push(n); });
       const cast = meshes.some((m) => m.castShadow), recv = meshes.some((m) => m.receiveShadow);
       els.push(h('div', { class: 't3-checks' },
@@ -220,12 +254,67 @@ export class Panels {
       els.push(h('div', { class: 't3-actions' },
         h('button', { class: 'studio-btn is-small', type: 'button', onclick: () => app.dropToGround(o) }, icon('chevronDown', 14), h('span', { text: 'Drop to ground' })),
         h('button', { class: 'studio-btn is-small', type: 'button', onclick: () => app.resetTransform(o) }, icon('undo', 14), h('span', { text: 'Reset' })),
-        h('button', { class: 'studio-btn is-small', type: 'button', onclick: () => app.viewport.frame(o) }, icon('frame', 14), h('span', { text: 'Frame' }))));
+        h('button', { class: 'studio-btn is-small', type: 'button', onclick: () => app.viewport.frame(o) }, icon('frame', 14), h('span', { text: 'Frame' })),
+        h('button', { class: 'studio-btn is-small', type: 'button', onclick: () => app.startPick('parent') }, icon('link', 14), h('span', { text: 'Set parent…' }))));
+      if (app.mobile.matches && canModify(o)) els.push(h('div', { class: 't3-sub', text: 'Modifiers' }), this.p_mods());
       const clips = app.clips.filter((c) => c.root === o);
       if (clips.length) els.push(h('div', { class: 't3-sub', text: 'Animation clips (glTF)' }), h('div', { class: 't3-checks is-col' }, clips.map((c) => check(`${c.clip.name || 'Clip'} · ${c.clip.duration.toFixed(2)} s`, c.enabled, (v) => app.setClipEnabled(c, v)))));
     } else {
       els.push(h('div', { class: 't3-actions' }, h('button', { class: 'studio-btn is-small', type: 'button', onclick: () => app.aimLightAtSelection(o) }, icon('frame', 14), h('span', { text: 'Aim at scene centre' }))));
     }
+    return h('div', { class: 't3-stack' }, els);
+  }
+
+  // ------------------------------------------------------------ modifiers (shapes are rebuilt from their primitive)
+  p_mods() {
+    const app = this.app, o = app.selected;
+    if (!canModify(o)) return h('div', { class: 'img-panel-empty', text: 'Modifiers work on the built-in shapes.' });
+    const m = modsOf(o);
+    const mats = materialsOf(o);
+    const flat = mats.some((x) => x.flatShading);
+    const num = (label, key, val) => numField(label, val, { input: (v) => app.setMods(o, { array: { [key]: v } }, 'a' + key) }, { step: 0.05, min: -100, max: 100, digits: 2, cls: 'is-' + label.toLowerCase(), title: 'Array offset ' + label });
+    return h('div', { class: 't3-stack' },
+      h('div', { class: 't3-sub', text: 'Resolution' }),
+      row('Detail', range(m.detail, 0.25, 3, 0.25, (v) => app.setMods(o, { detail: v }, 'detail'), (v) => '×' + v.toFixed(2))),
+      h('div', { class: 't3-checks' }, check('Smooth shading', !flat, (v) => { for (const x of mats) app.setMaterialProp(x, v ? 'Shade smooth' : 'Shade flat', 'flatShading', !v); })),
+      h('div', { class: 't3-sub', text: 'Array' }),
+      row('Count', range(m.array.count, 1, 32, 1, (v) => app.setMods(o, { array: { count: v } }, 'count'), (v) => String(Math.round(v)))),
+      h('div', { class: 't3-sub' }, h('span', { text: 'Offset' }), h('em', { class: 't3-unit', text: '× size' })),
+      h('div', { class: 't3-xyz' }, num('X', 'x', m.array.x), num('Y', 'y', m.array.y), num('Z', 'z', m.array.z)),
+      h('p', { class: 'studio-dim studio-small', text: 'Modifiers stay editable: the shape is rebuilt from its primitive each time, and saved with the project.' }));
+  }
+
+  // ------------------------------------------------------------ camera object
+  p_camdata() {
+    const app = this.app, o = app.selected, v = app.viewport;
+    if (!isCam(o)) return h('div');
+    const c = camOf(o), r = app.settings.render;
+    const active = app.settings.activeCamera === o.userData.eyadId;
+    const set = (label, key, value, co) => app.setCamProp(o, label, key, value, co);
+    const nf = (label, key, val, opt) => numField(opt.unit, val, { input: (x) => set(label, key, x, key), end: () => this.refresh() }, { step: opt.step, min: opt.min, max: opt.max, digits: opt.digits ?? 2, title: label });
+    const els = [
+      h('div', { class: 't3-bgseg' }, seg(c.type, [['persp', 'Perspective', 'persp'], ['ortho', 'Orthographic', 'ortho']], (t) => set('Camera type', 'type', t))),
+    ];
+    if (c.type === 'persp') {
+      els.push(row('Focal length', nf('Focal length', 'focal', c.focal, { unit: 'mm', step: 1, min: 1, max: 5000, digits: 1 })));
+      els.push(row('Field of view', range(focalToFov(c.focal, c.sensor), 2, 170, 0.5, (f) => set('Field of view', 'focal', Math.round(fovToFocal(f, c.sensor) * 100) / 100, 'focal'), (f) => f.toFixed(0) + '°')));
+    } else els.push(row('Ortho scale', nf('Orthographic scale', 'orthoScale', c.orthoScale, { unit: 'm', step: 0.1, min: 0.001, max: 1e6 })));
+    els.push(
+      row('Sensor fit', select(c.fit, SENSOR_FITS, (x) => set('Sensor fit', 'fit', x))),
+      c.type === 'persp' ? row('Sensor size', nf('Sensor size', 'sensor', c.sensor, { unit: 'mm', step: 1, min: 1, max: 200, digits: 1 })) : null,
+      row('Clip start', nf('Clip start', 'near', c.near, { unit: 'm', step: 0.01, min: 0.001, max: 1e5, digits: 3 })),
+      row('Clip end', nf('Clip end', 'far', c.far, { unit: 'm', step: 1, min: 0.01, max: 1e7, digits: 1 })),
+      h('div', { class: 't3-sub', text: 'Frame (render size)' }),
+      h('div', { class: 't3-xyz is-2' },
+        numField('W', r.w, { input: (x) => app.changeSettings('Render width', () => { app.settings.render.w = Math.round(clamp(x, 16, 4096)); }, 'rw') }, { step: 10, min: 16, max: 4096, digits: 0, title: 'Render width in pixels' }),
+        numField('H', r.h, { input: (x) => app.changeSettings('Render height', () => { app.settings.render.h = Math.round(clamp(x, 16, 4096)); }, 'rh') }, { step: 10, min: 16, max: 4096, digits: 0, title: 'Render height in pixels' })),
+      h('div', { class: 't3-checks' },
+        check('Active camera (renders use it)', active, (on) => { if (on) app.setActiveCamera(o); else app.changeSettings('Active camera', () => { app.settings.activeCamera = null; }); }),
+        check('Lock camera to view', !!app.settings.lockCamera, (on) => app.setCameraLock(on))),
+      h('div', { class: 't3-actions' },
+        h('button', { class: 'studio-btn is-small' + (v.viewCam === o ? ' is-primary' : ''), type: 'button', title: 'Look through this camera (0)', onclick: () => { if (v.viewCam === o) v.exitCameraView(); else { app.setActiveCamera(o); v.enterCameraView(o); } app.onCamViewChanged(); } }, icon('camera', 14), h('span', { text: v.viewCam === o ? 'Leave camera view' : 'Look through' })),
+        h('button', { class: 'studio-btn is-small', type: 'button', title: 'Move this camera to the current view (Ctrl+Alt+0)', disabled: !!v.viewCam, onclick: () => app.cameraToView() }, icon('frame', 14), h('span', { text: 'Camera to view' })),
+        h('button', { class: 'studio-btn is-small', type: 'button', title: 'Insert a keyframe for this camera (I)', onclick: () => app.keySelected() }, icon('keyPlus', 14), h('span', { text: 'Key' }))));
     return h('div', { class: 't3-stack' }, els);
   }
 
@@ -248,6 +337,10 @@ export class Panels {
       els.push(row('Emission', colorInput(hex(m.emissive), (v) => set('Emission colour', 'emissive', v, 'me')), h('span', { class: 't3-grow' }, range(m.emissiveIntensity ?? 1, 0, 20, 0.05, (v) => set('Emission strength', 'emissiveIntensity', v, 'mei'), (v) => v.toFixed(1)))));
     }
     els.push(row('Opacity', range(m.opacity, 0, 1, 0.01, (v) => set('Opacity', 'opacity', v, 'mo'))));
+    if (m.isMeshPhysicalMaterial) {
+      els.push(row('Transmission', range(m.transmission, 0, 1, 0.01, (v) => set('Transmission', 'transmission', v, 'mt'))));
+      if (m.transmission > 0) els.push(row('IOR', range(m.ior, 1, 2.333, 0.01, (v) => set('Index of refraction', 'ior', v, 'mi'))), row('Thickness', range(m.thickness, 0, 5, 0.01, (v) => set('Thickness', 'thickness', v, 'mth'))));
+    } else if (m.isMeshStandardMaterial) els.push(row('Transmission', h('button', { class: 'studio-btn is-small', type: 'button', text: 'Enable glass', title: 'Turn this into a physical material that can transmit light', onclick: () => app.enableGlass(m) })));
     els.push(h('div', { class: 't3-checks' },
       check('Wireframe', m.wireframe, (v) => set('Wireframe', 'wireframe', v)),
       check('Double-sided', m.side === THREE.DoubleSide, (v) => set('Double-sided', 'side', v ? THREE.DoubleSide : THREE.FrontSide)),
@@ -286,6 +379,11 @@ export class Panels {
       els.push(row('Cone', range(l.angle * R2D, 1, 89, 0.5, (v) => set('Cone angle', 'angle', v * D2R, 'la'), (v) => v.toFixed(0) + '°')));
       els.push(row('Softness', range(l.penumbra, 0, 1, 0.01, (v) => set('Penumbra', 'penumbra', v, 'lp'))));
     }
+    if (l.isRectAreaLight) {
+      els.push(row('Width', range(l.width, 0.05, 20, 0.05, (v) => set('Light width', 'width', v, 'lw'), (v) => v.toFixed(2) + ' m')));
+      els.push(row('Height', range(l.height, 0.05, 20, 0.05, (v) => set('Light height', 'height', v, 'lh'), (v) => v.toFixed(2) + ' m')));
+      els.push(h('p', { class: 'studio-dim studio-small', text: 'A soft rectangular panel shining along its arrow. Area lights do not cast shadows.' }));
+    }
     if (l.isPointLight || l.isSpotLight) els.push(row('Range', range(l.distance, 0, 100, 0.5, (v) => set('Range', 'distance', v, 'ld'), (v) => (v === 0 ? '∞' : v.toFixed(1)))));
     if (l.shadow) {
       els.push(h('div', { class: 't3-checks' }, check('Casts shadows', l.castShadow, (v) => set('Light shadows', 'castShadow', v))));
@@ -311,6 +409,11 @@ export class Panels {
     if (env.background === 'solid') els.push(row('Colour', colorInput(env.color, (v) => set('Background', () => { env.color = v; }, 'bc'))));
     if (env.background === 'environment') els.push(row('Blur', range(env.blur, 0, 1, 0.01, (v) => set('Background blur', () => { env.blur = v; }, 'bl'))));
     if (env.background === 'transparent') els.push(h('p', { class: 'studio-dim studio-small', text: 'Transparent in PNG renders when "Transparent background" is on; video renders use black.' }));
+    const fog = s.fog;
+    els.push(
+      h('div', { class: 't3-sub' }, h('span', { text: 'Fog' }), check('On', fog.on, (v) => set('Fog', () => { fog.on = v; }))),
+      fog.on ? row('Colour', colorInput(fog.color, (v) => set('Fog colour', () => { fog.color = v; }, 'fc'))) : null,
+      fog.on ? row('Density', range(fog.density, 0, 0.5, 0.002, (v) => set('Fog density', () => { fog.density = v; }, 'fd'), (v) => v.toFixed(3))) : null);
     els.push(
       h('div', { class: 't3-sub', text: 'Camera response' }),
       row('Tone mapping', select(env.toneMapping, [['aces', 'Filmic (ACES)'], ['agx', 'AgX'], ['neutral', 'Neutral'], ['none', 'None (linear)']], (v) => set('Tone mapping', () => { env.toneMapping = v; }))),
@@ -321,7 +424,9 @@ export class Panels {
       g.mode === 'solid' ? row('Floor colour', colorInput(g.color, (v) => set('Floor colour', () => { g.color = v; }, 'gc'))) : null,
       h('div', { class: 't3-checks' },
         check('Shadows', s.shadows, (v) => set('Shadows', () => { s.shadows = v; })),
-        check('Grid (editor only)', g.grid, (v) => set('Grid', () => { g.grid = v; }))),
+        check('Grid', g.grid, (v) => set('Grid', () => { g.grid = v; })),
+        check('World axes', s.overlays.axes, (v) => set('Axes', () => { s.overlays.axes = v; })),
+        check('Helpers', s.overlays.helpers, (v) => set('Helpers', () => { s.overlays.helpers = v; }))),
     );
     return h('div', { class: 't3-stack' }, els);
   }
@@ -329,6 +434,12 @@ export class Panels {
   // ------------------------------------------------------------ camera
   p_camera() {
     const app = this.app, v = app.viewport;
+    if (v.viewCam) {
+      return h('div', { class: 't3-stack' },
+        h('p', { class: 'studio-dim studio-small', text: `Looking through “${v.viewCam.name}”. Its lens is in the Camera tab; orbit to leave the camera, or lock it to the view to move it.` }),
+        h('div', { class: 't3-checks' }, check('Lock camera to view', !!app.settings.lockCamera, (on) => app.setCameraLock(on))),
+        h('div', { class: 't3-actions' }, h('button', { class: 'studio-btn is-small', type: 'button', onclick: () => app.toggleCameraView() }, icon('persp', 14), h('span', { text: 'Leave camera view' }))));
+    }
     const persp = !v.camera.isOrthographicCamera;
     const fovToMm = (f) => v.persp.getFilmHeight() / 2 / Math.tan(f * D2R / 2);
     const els = [
@@ -341,6 +452,10 @@ export class Panels {
     }
     els.push(h('div', { class: 't3-sub', text: 'Views' }), h('div', { class: 't3-views' },
       [['front', 'Front'], ['right', 'Right'], ['top', 'Top'], ['back', 'Back'], ['left', 'Left'], ['bottom', 'Bottom']].map(([k, l]) => h('button', { class: 'studio-btn is-small', type: 'button', text: l, onclick: () => v.setView(k) }))));
+    els.push(h('div', { class: 't3-sub', text: 'Scene camera' }), h('div', { class: 't3-actions' },
+      h('button', { class: 'studio-btn is-small', type: 'button', title: 'Look through the active camera (0)', onclick: () => app.toggleCameraView() }, icon('camera', 14), h('span', { text: 'Camera view' })),
+      h('button', { class: 'studio-btn is-small', type: 'button', title: 'Move the active camera here (Ctrl+Alt+0)', onclick: () => app.cameraToView() }, icon('frame', 14), h('span', { text: 'Camera to view' })),
+      h('button', { class: 'studio-btn is-small', type: 'button', onclick: () => app.addCamera() }, icon('plus', 14), h('span', { text: 'New camera' }))));
     els.push(h('div', { class: 't3-sub' }, h('span', { text: 'Bookmarks' }), h('button', { class: 'studio-btn is-small', type: 'button', onclick: () => app.addBookmark() }, icon('plus', 13), h('span', { text: 'Save view' }))));
     if (!app.bookmarks.length) els.push(h('p', { class: 'studio-dim studio-small', text: 'Save camera positions to come back to them, or to key camera moves.' }));
     for (const b of app.bookmarks) {
@@ -362,8 +477,9 @@ export class Panels {
         check('Auto-key', app.autoKey, (v) => app.setAutoKey(v))),
       h('div', { class: 't3-sub', text: 'Quick moves' }),
       h('div', { class: 't3-actions' },
-        h('button', { class: 'studio-btn is-small', type: 'button', disabled: !o, onclick: () => app.turntable('object') }, icon('turntable', 14), h('span', { text: 'Spin selection' })),
-        h('button', { class: 'studio-btn is-small', type: 'button', onclick: () => app.turntable('camera') }, icon('orbit', 14), h('span', { text: 'Orbit camera' }))),
+        h('button', { class: 'studio-btn is-small', type: 'button', disabled: !o, onclick: () => app.keySelected() }, icon('keyPlus', 14), h('span', { text: 'Insert keyframe' })),
+        h('button', { class: 'studio-btn is-small', type: 'button', disabled: !o || isCam(o) || isLight(o), onclick: () => app.turntable('object') }, icon('turntable', 14), h('span', { text: 'Turntable' })),
+        h('button', { class: 'studio-btn is-small', type: 'button', onclick: () => app.turntable('camera') }, icon('orbit', 14), h('span', { text: 'Camera orbit' }))),
     ];
     const keyList = (title, keys, onEase, onDel, onGo) => {
       els.push(h('div', { class: 't3-sub', text: title }));
@@ -378,7 +494,7 @@ export class Panels {
       const keys = a.tracks[id] || [];
       keyList(`Keys · ${o.name}`, keys, (i, v) => app.animChange('Key easing', () => { a.tracks[id][i].ease = v; }), (i) => app.animChange('Delete key', () => { a.tracks[id].splice(i, 1); if (!a.tracks[id].length) delete a.tracks[id]; }), (k) => app.setTime(k.t));
     }
-    keyList('Camera keys', a.camera, (i, v) => app.animChange('Key easing', () => { a.camera[i].ease = v; }), (i) => app.animChange('Delete camera key', () => { a.camera.splice(i, 1); }), (k) => app.setTime(k.t));
+    if (!app.activeCamera() || a.camera.length) keyList('View camera keys', a.camera, (i, v) => app.animChange('Key easing', () => { a.camera[i].ease = v; }), (i) => app.animChange('Delete camera key', () => { a.camera.splice(i, 1); }), (k) => app.setTime(k.t));
     els.push(h('div', { class: 't3-actions' },
       h('button', { class: 'studio-btn is-small is-ghost', type: 'button', disabled: !o || !a.tracks[o?.userData.eyadId], onclick: () => app.clearKeys('object') }, h('span', { text: 'Clear object keys' })),
       h('button', { class: 'studio-btn is-small is-ghost', type: 'button', disabled: !a.camera.length, onclick: () => app.clearKeys('camera') }, h('span', { text: 'Clear camera keys' }))));

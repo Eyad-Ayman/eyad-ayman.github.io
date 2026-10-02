@@ -6,7 +6,7 @@
  * cached shell offline; static files = cache first, refreshed in the background.
  */
 "use strict";
-var VERSION = "de18a702cf";
+var VERSION = "637928371c";
 var CACHE = "eyad-studio-" + VERSION;
 var SHELL = [
 "./3d/",
@@ -19,6 +19,7 @@ var SHELL = [
 "./css/generate.css",
 "./css/hub.css",
 "./css/image.css",
+"./css/spatial.css",
 "./css/studio.css",
 "./css/templates.css",
 "./css/vector.css",
@@ -73,6 +74,8 @@ var SHELL = [
 "./image/index.html",
 "./img/grain-dark.png",
 "./img/grain-light.png",
+"./img/wall-dark.webp",
+"./img/wall-light.webp",
 "./",
 "./index.html",
 "./js/3d/anim.js",
@@ -81,12 +84,17 @@ var SHELL = [
 "./js/3d/icons.js",
 "./js/3d/io.js",
 "./js/3d/main.js",
+"./js/3d/modal.js",
+"./js/3d/navgizmo.js",
 "./js/3d/objects.js",
 "./js/3d/panels.js",
 "./js/3d/timeline.js",
 "./js/3d/viewport.js",
 "./js/3d/webm.js",
+"./js/camera/fx.js",
 "./js/camera/main.js",
+"./js/camera/pro.js",
+"./js/camera/wiggle.js",
 "./js/core/ai.js",
 "./js/core/appicons.js",
 "./js/core/db.js",
@@ -97,6 +105,7 @@ var SHELL = [
 "./js/core/files.js",
 "./js/core/film-looks.js",
 "./js/core/film.js",
+"./js/core/fonts.js",
 "./js/core/genai.js",
 "./js/core/glutil.js",
 "./js/core/history.js",
@@ -120,15 +129,20 @@ var SHELL = [
 "./js/image/io.js",
 "./js/image/main.js",
 "./js/image/menus.js",
+"./js/image/multi.js",
 "./js/image/ops.js",
 "./js/image/panels.js",
 "./js/image/pro.js",
 "./js/image/psd.js",
 "./js/image/render.js",
 "./js/image/selection.js",
+"./js/image/selmodify.js",
+"./js/image/styles.js",
 "./js/image/tools.js",
 "./js/image/tools2.js",
+"./js/image/tools3.js",
 "./js/image/view.js",
+"./js/image/workspace.js",
 "./js/pages/common.js",
 "./js/pages/help.js",
 "./js/pages/home.js",
@@ -172,6 +186,9 @@ var SHELL = [
 "./js/workers/peaks.worker.js",
 "./js/workers/psd.worker.js",
 "./manifest.webmanifest",
+"./models/blaze_face_short_range.tflite",
+"./models/deeplab_v3.tflite",
+"./models/migan_pipeline_v2.onnx.parts.json",
 "./models/selfie_segmenter.tflite",
 "./projects/",
 "./projects/index.html",
@@ -252,11 +269,24 @@ self.addEventListener("fetch", function (event) {
     }));
     return;
   }
-  event.respondWith(caches.match(req).then(function (hit) {
-    var net = fetch(req).then(function (res) {
+  // Code & styles: network first (a new deploy is picked up at once, so a page
+  // never mixes old scripts with new styles); the cache is only the offline copy.
+  // Heavy, versioned assets (vendor runtimes, models, fonts, images): cache first.
+  var heavy = /\/(vendor|models|fonts|img|icons)\//.test(url.pathname) || /\.(wasm|tflite|onnx|part\d|task|woff2?|png|jpe?g|webp|glb)$/i.test(url.pathname);
+  if (!heavy) {
+    event.respondWith(fetch(req, { cache: "no-cache" }).then(function (res) {
       if (res && res.ok && res.type === "basic") { var copy = res.clone(); caches.open(CACHE).then(function (c) { c.put(req, copy); }); }
       return res;
-    }).catch(function () { return hit; });
-    return hit || net;
+    }).catch(function () {
+      return caches.match(req).then(function (hit) { return hit || caches.match(req, { ignoreSearch: true }); });
+    }));
+    return;
+  }
+  event.respondWith(caches.match(req).then(function (hit) {
+    if (hit) return hit;
+    return fetch(req).then(function (res) {
+      if (res && res.ok && res.type === "basic") { var copy = res.clone(); caches.open(CACHE).then(function (c) { c.put(req, copy); }); }
+      return res;
+    });
   }));
 });

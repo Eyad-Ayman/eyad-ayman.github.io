@@ -1,7 +1,7 @@
 /* EYAD 3D — reuses the EYAD IMAGE workspace layout (.img-*) and adds the
    WebGL viewport, HUD, timeline and 3D panels. Scoped to .t3-app. */
 
-.t3-app .img-main { grid-template-columns: 46px minmax(0, 1fr) 304px; }
+.t3-app .img-main { grid-template-columns: 52px minmax(0, 1fr) 304px; }
 .t3-app .img-center { position: relative; }
 
 /* ---------- viewport */
@@ -24,10 +24,38 @@
 .t3-empty-card p { margin: 0 auto 12px; max-width: 420px; font-size: 12.5px; }
 .t3-empty-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
 
-/* ---------- options bar */
+/* camera view: frame of the render aspect with everything outside dimmed */
+.t3-pass { position: absolute; z-index: 1; pointer-events: none; border: 1px solid rgba(255, 255, 255, .7); box-shadow: 0 0 0 9999px rgba(0, 0, 0, .5); border-radius: 2px; }
+.t3-pass[hidden] { display: none; }
+.t3-pass-label { position: absolute; left: 0; top: -22px; font: 500 11px var(--st-ui); color: #f1f1ef; text-shadow: 0 1px 2px rgba(0, 0, 0, .8); white-space: nowrap; }
+.t3-hud-btn.is-icon { width: 30px; padding: 0; justify-content: center; }
+.t3-hud-btn.is-on, :root .studio-app .t3-hud-btn.is-on { background: var(--sp-solid, var(--st-accent)); color: var(--sp-on-solid, #fff); }
+.t3-nav { position: absolute; right: 12px; top: 10px; z-index: 3; border-radius: 50%; cursor: grab; touch-action: none; }
+.t3-nav:active { cursor: grabbing; }
+/* modal transform readout */
+.t3-modal { position: absolute; left: 50%; top: 12px; transform: translateX(-50%); z-index: 4; display: flex; align-items: center; gap: 10px; padding: 6px 8px 6px 16px; border-radius: 999px; background: var(--sp-glass-strong, var(--st-panel)); -webkit-backdrop-filter: var(--sp-bf, blur(10px)); backdrop-filter: var(--sp-bf, blur(10px)); box-shadow: var(--sp-ring, 0 0 0 1px var(--st-line)), var(--st-shadow); color: var(--st-text); max-width: calc(100% - 240px); }
+.t3-modal[hidden] { display: none; }
+.t3-modal-text { font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.t3-app.is-modal .t3-canvas { cursor: crosshair; }
+.t3-app.is-picking .t3-canvas { cursor: copy; }
+.img-status-hint.is-op { color: var(--st-text); }
+/* first-run hotkeys */
+.t3-hint { position: absolute; left: 12px; top: 52px; z-index: 3; width: 340px; max-width: calc(100% - 24px); padding: 12px 14px; border-radius: 22px; background: var(--sp-glass-strong, var(--st-panel)); -webkit-backdrop-filter: var(--sp-bf, blur(10px)); backdrop-filter: var(--sp-bf, blur(10px)); box-shadow: var(--sp-ring, 0 0 0 1px var(--st-line)), var(--st-shadow); color: var(--st-text); font-size: 12px; }
+.t3-hint-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; font-size: 13px; }
+.t3-hint-rows { display: flex; flex-direction: column; gap: 5px; }
+.t3-hint-row { display: grid; grid-template-columns: 124px minmax(0, 1fr); gap: 8px; align-items: baseline; color: var(--st-dim); }
+.t3-hint-row .studio-kbd { justify-self: start; white-space: nowrap; color: var(--st-text); }
+.t3-hint-foot { display: flex; justify-content: flex-end; gap: 6px; margin-top: 10px; }
+
+/* ---------- options bar (viewport header) */
+.t3-hmenus { display: flex; align-items: center; gap: 2px; }
+.t3-hmenu { gap: 4px; padding: 0 8px; }
+.t3-pair { display: flex; align-items: center; gap: 0; }
+.t3-options .t3-shade { width: 30px; padding: 0; justify-content: center; }
 .t3-options .img-seg .studio-btn { height: 24px; padding: 0 8px; gap: 5px; }
 .t3-options .studio-btn.is-on { background: var(--st-accent-soft); color: var(--st-accent-hi); border-color: transparent; }
 .t3-options .img-opt-items { gap: 8px; }
+.t3-options .studio-btn.is-small { flex: none; }
 
 /* ---------- timeline */
 .t3-timeline { flex: none; display: flex; align-items: center; gap: 10px; min-height: 58px; padding: 6px 10px; background: var(--st-panel); border-top: 1px solid var(--st-line); }
@@ -44,7 +72,7 @@
 .t3-tl-row.is-obj { top: 15px; }
 .t3-tl-row.is-cam { top: 30px; }
 .t3-tl-row::before { content: attr(data-label); position: absolute; left: 6px; top: 1px; font-size: 9.5px; color: var(--st-faint); pointer-events: none; white-space: nowrap; max-width: 40%; overflow: hidden; text-overflow: ellipsis; }
-.t3-tl-row.is-cam::before { content: 'Camera'; }
+
 .t3-dia { position: absolute; top: 2px; width: 11px; height: 11px; margin-left: -5.5px; padding: 0; border: 1px solid rgba(0, 0, 0, .45); background: #f2b134; transform: rotate(45deg); border-radius: 2px; cursor: ew-resize; z-index: 2; touch-action: none; }
 .t3-tl-row.is-cam .t3-dia { background: #5aa2ff; }
 .t3-dia.is-now { box-shadow: 0 0 0 2px var(--st-text); }
@@ -111,7 +139,25 @@
 .t3-tex-meta { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .t3-tex-meta > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
+/* property tabs */
+.t3-tabs { display: flex; gap: 4px; padding: 5px; margin: 0 0 8px; border-radius: 999px; background: var(--sp-chip, var(--st-bg)); overflow-x: auto; scrollbar-width: none; }
+.t3-tab { flex: 1; min-width: 30px; height: 30px; display: grid; place-items: center; border: 0; border-radius: 999px; background: transparent; color: var(--st-dim); cursor: pointer; }
+.t3-tab:hover { background: var(--sp-chip-h, var(--st-hover)); color: var(--st-text); }
+.t3-tab.is-on { background: var(--sp-solid, var(--st-accent)); color: var(--sp-on-solid, #fff); }
+.t3-unit { font-style: normal; text-transform: none; letter-spacing: 0; font-weight: 400; color: var(--st-faint); margin-left: 6px; margin-right: auto; font-size: 11px; }
+.t3-sub > span:first-child + .t3-unit { margin-right: auto; }
+.t3-xyz.is-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.t3-parent { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--st-text); }
+
 /* outliner */
+.t3-out-indent { flex: none; }
+.t3-out-sel { opacity: 0; width: 22px; height: 22px; }
+.t3-out-sel.is-off { opacity: 1; color: var(--st-accent-hi); }
+.t3-out-row:hover .t3-out-sel, .t3-out-row.is-on .t3-out-sel, .t3-out-row:focus-within .t3-out-sel { opacity: 1; }
+.t3-out-badge.is-cam { color: var(--st-text); }
+.t3-out-row.is-drag { opacity: .5; }
+.t3-out-row.is-drop { box-shadow: inset 0 0 0 2px var(--st-accent); }
+.t3-sheet .t3-out-sel { opacity: 1; width: 34px; height: 34px; }
 .img-panel.is-outliner { flex: none; }
 .img-panel.is-outliner .img-panel-body { padding: 0; gap: 0; }
 .t3-outliner { max-height: 260px; min-height: 60px; overflow-y: auto; padding: 2px 0; }
@@ -152,6 +198,7 @@
 .t3-sc-row.is-wide { flex-direction: column; align-items: flex-start; gap: 3px; }
 
 /* ---------- desktop tweaks */
+@media (max-width: 1500px) { .t3-hide-m { display: none; } }
 @media (max-width: 1180px) { .t3-app .img-main { grid-template-columns: 44px minmax(0, 1fr) 270px; } }
 @media (max-width: 960px) and (min-width: 761px), (orientation: landscape) and (max-height: 540px) and (min-width: 541px) {
   .t3-app .img-main { grid-template-columns: 40px minmax(0, 1fr) 236px; }
@@ -173,6 +220,8 @@
   .t3-tl-tools .studio-btn.is-small { height: 32px; padding: 0 9px; }
   .t3-dia { width: 13px; height: 13px; margin-left: -6.5px; top: 1px; }
   .t3-hud { left: 8px; top: 8px; }
+  .t3-nav { right: 6px; top: 6px; }
+  .t3-modal { top: 46px; max-width: calc(100% - 16px); }
   .t3-empty { bottom: 10px; }
   .t3-empty-card { padding: 12px 14px; }
   .studio-app .t3-empty-title { font-size: 24px; }

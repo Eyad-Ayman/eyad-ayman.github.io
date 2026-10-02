@@ -54,6 +54,7 @@ export class LayersPanel {
     this.controls = h('div', { class: 'img-layers-controls' }, this.blend, this.opacity.el, this.lockBtn, this.clipBtn);
     this.list = h('div', { class: 'img-layers-list', role: 'tree', 'aria-label': 'Layers' });
     this.footer = h('div', { class: 'img-layers-footer' },
+      this.fbtn('fx', 'Layer style (fx)', () => import('./styles.js').then((m) => m.layerStyleDialog(app))),
       this.fbtn('plus', 'New layer', () => ops.newLayer(app)),
       this.fbtn('folder', 'New group', () => ops.newGroup(app)),
       this.fbtn('mask', 'Add layer mask', () => (app.active?.mask ? ops.deleteMask(app) : ops.addMask(app, app.doc?.selection ? 'selection' : 'reveal'))),
@@ -143,6 +144,7 @@ export class LayersPanel {
       n.psd && n.psd.kind === 'smart' ? h('span', { class: 'studio-badge is-muted', text: 'SO', title: 'Smart object (rendered pixels)' }) : null,
       n.psd && n.psd.kind === 'adjustment' ? h('span', { class: 'studio-badge is-warn', text: 'ADJ', title: 'Adjustment layer — not applied' }) : null,
       n.psd && n.psd.effects ? h('span', { class: 'studio-badge is-warn', text: 'fx', title: 'Layer styles not rendered: ' + n.psd.effects.join(', ') }) : null,
+      n.fx && Object.values(n.fx).some((e) => e && e.on) ? h('button', { class: 'img-layer-fx', type: 'button', title: 'Layer style — double-click to edit', text: 'fx', onclick: (e) => { e.stopPropagation(); app.setActive(n.id); import('./styles.js').then((m) => m.layerStyleDialog(app, n)); } }) : null,
       n.locked ? h('span', { class: 'img-layer-badge', title: 'Locked' }, icon('lock', 12)) : null);
     const row = h('div', {
       class: 'img-layer' + (active ? ' is-active' : '') + (selected && !active ? ' is-selected' : '') + (n.visible ? '' : ' is-hidden') + (n.clip ? ' is-clipped' : ''),
@@ -150,6 +152,7 @@ export class LayersPanel {
       style: { paddingLeft: 4 + depth * 14 + 'px' },
     }, eye, chevron, thumb, maskThumb, name, badges, h('span', { class: 'img-layer-grip', 'aria-hidden': 'true' }, icon('menu', 13)));
     row.addEventListener('click', (e) => app.setActive(n.id, { additive: e.ctrlKey || e.metaKey, range: e.shiftKey }));
+    row.addEventListener('dblclick', (e) => { if (e.target === name || n.type === 'group') return; app.setActive(n.id); import('./styles.js').then((m) => m.layerStyleDialog(app, n)); });
     name.addEventListener('dblclick', (e) => { e.stopPropagation(); this.startRename(n, name); });
     row.addEventListener('contextmenu', (e) => { e.preventDefault(); if (!app.selectedIds.has(n.id)) app.setActive(n.id); this.menu(n, e.clientX, e.clientY); });
     row.addEventListener('keydown', (e) => {

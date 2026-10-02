@@ -1,6 +1,6 @@
 // EYAD VIDEO — playback & compositing engine (browser media APIs + Web Audio + WebGL).
 // Per clip and frame: keyframed transform/opacity/crop/blur, GPU colour
-// effects, transitions, generated titles/shapes, AI background removal and
+// effects, transitions, generated titles/shapes, adjustment layers, AI auto mask and
 // per-clip audio effects (EQ, compressor, pan) — identical in preview and export.
 import { clipEnd, clipDur, srcTime, seqDuration, mediaById, trackById, dbToGain } from './model.js';
 import { effectState, canvasFilterSupported, CROSS } from './effects.js';
@@ -33,6 +33,7 @@ export class Engine {
     this.needsRender = true;
     this.work = document.createElement('canvas');
     this.ai = { seg: null, loading: false, failed: false };
+    this.pvScale = 1; // preview working-resolution factor for effects (see render)
     this.loopTick = this.loopTick.bind(this);
     this.raf = requestAnimationFrame(this.loopTick);
     document.addEventListener('visibilitychange', () => { if (document.hidden && this.playing && !this.exporting) this.pause(); });
@@ -326,24 +327,47 @@ export class Engine {
     }
     this._waitSince = 0;
     this.needsRender = false;
+    // adaptive preview: while playing, heavy effect stacks drop their working resolution instead of
+    // dropping frames; a paused frame (and every exported frame) is always rendered at full quality
+    const t0 = performance.now();
     this.drawFrame(ctx, cv.width, cv.height, this.time);
+    if (!target) {
+      const ms = performance.now() - t0;
+      if (this.playing) { if (ms > 45 && this.pvScale > 0.3) this.pvScale = Math.max(0.3, this.pvScale * 0.8); else if (ms < 18 && this.pvScale < 1) this.pvScale = Math.min(1, this.pvScale * 1.1); }
+      else if (this.pvScale !== 1) { this.pvScale = 1; this.needsRender = true; }
+    }
     if (!target && this.exporting && this.exporting.canvas) this.drawFrame(this.exporting.canvas.getContext('2d'), this.exporting.canvas.width, this.exporting.canvas.height, this.time, true);
     if (!target && this.app.onFrame) this.app.onFrame();
   }
 
   // ------------------------------------------------------------ transitions
   transitionFx(c, t, tail) {
-    // returns { alpha, dx, dy, scale, blur, clip: fn(ctx,W,H)|null, overlay: {color, a}|null }
-    const fx = { alpha: 1, dx: 0, dy: 0, scale: 1, blur: 0, clip: null, overlay: null };
+    // returns { alpha, dx, dy, scale, blur, rot, sx:{s,ax}, clip: fn(ctx,W,H)|null, clipRule, mask: fn(ctx,W,H)|null,
+    //           smear:{n,dx,dy,ds,dr}, gl:{uniform overrides}, overlay:{color|kind,a} }
+    const fx = { alpha: 1, dx: 0, dy: 0, scale: 1, blur: 0, rot: 0, sx: null, clip: null, clipRule: 'nonzero', mask: null, smear: null, gl: null, overlay: null };
     const W = this.seq.width, H = this.seq.height;
+    const whip = (p) => (p < 0.5 ? 16 * p ** 5 : 1 - Math.pow(-2 * p + 2, 5) / 2); // very fast in the middle
+    const bump = (p) => Math.sin(Math.PI * p);
+    const step = (p, n, salt) => { const x = Math.sin((Math.floor(p * n) + salt) * 12.9898) * 43758.5453; return x - Math.floor(x); };
     if (tail) {
       // outgoing clip under a cross transition
-      const p = clamp01(tail.p), ty = tail.of.transIn.type;
-      if (ty === 'pushLeft') fx.dx = -W * p; else if (ty === 'pushRight') fx.dx = W * p;
-      else if (ty === 'slideUp') fx.dy = 0;
-      else if (ty === 'zoomIn') { fx.scale = 1 + p * 0.3; fx.alpha = 1 - p; }
-      else if (ty === 'blurT') { fx.blur = p * 30; }
-      else if (ty === 'filmDissolve') fx.alpha = 1 - Math.pow(p, 0.6) * 0; // incoming does the work
+      const p = clamp01(tail.p), e = p * p * (3 - 2 * p), ty = tail.of.transIn.type;
+      switch (ty) {
+        case 'pushLeft': fx.dx = -W * e; break;
+        case 'pushRight': fx.dx = W * e; break;
+        case 'pushUp': fx.dy = -H * e; break;
+        case 'pushDown': fx.dy = H * e; break;
+        case 'zoomIn': fx.scale = 1 + p * 0.3; fx.alpha = 1 - p; break;
+        case 'blurT': fx.blur = p * 30; break;
+        case 'whipLeft': fx.dx = -W * whip(p); fx.smear = { n: 14, dx: W * 0.38 * bump(p), dy: 0, ds: 0, dr: 0 }; break;
+        case 'whipRight': fx.dx = W * whip(p); fx.smear = { n: 14, dx: W * 0.38 * bump(p), dy: 0, ds: 0, dr: 0 }; break;
+        case 'spin': fx.rot = whip(p) * Math.PI * 0.75; fx.scale = 1 + 0.6 * bump(p); fx.alpha = 1 - p; fx.smear = { n: 6, dx: 0, dy: 0, ds: 0, dr: 0.5 * bump(p) }; break;
+        case 'zoomBlur': fx.scale = 1 + e * 0.9; fx.alpha = 1 - e; fx.smear = { n: 7, dx: 0, dy: 0, ds: 0.35 * bump(p), dr: 0 }; break;
+        case 'glitchCut': fx.gl = { glitch: Math.min(1, p * 1.4), split: 0.02 * p }; break;
+        case 'pixelT': fx.gl = { pix: 0.004 + e * 0.09 }; break;
+        case 'squeeze': fx.sx = { s: 1 - e, ax: 0 }; break;
+        default: break; // the incoming clip does the work
+      }
       return fx;
     }
     const lt = t - c.start, D = clipDur(c);
@@ -358,13 +382,44 @@ export class Engine {
         case 'wipeLeft': fx.clip = (g, w, hh) => g.rect(w * (1 - e), 0, w * e, hh); break;
         case 'wipeRight': fx.clip = (g, w, hh) => g.rect(0, 0, w * e, hh); break;
         case 'wipeUp': fx.clip = (g, w, hh) => g.rect(0, hh * (1 - e), w, hh * e); break;
+        case 'wipeDown': fx.clip = (g, w, hh) => g.rect(0, 0, w, hh * e); break;
         case 'pushLeft': fx.dx = W * (1 - e); break;
         case 'pushRight': fx.dx = -W * (1 - e); break;
+        case 'pushUp': fx.dy = H * (1 - e); break;
+        case 'pushDown': fx.dy = -H * (1 - e); break;
         case 'slideUp': fx.dy = H * (1 - e); break;
+        case 'slideDown': fx.dy = -H * (1 - e); break;
+        case 'slideLeft': fx.dx = W * (1 - e); break;
+        case 'slideRight': fx.dx = -W * (1 - e); break;
         case 'zoomIn': fx.scale *= 0.7 + 0.3 * e; fx.alpha *= p; break;
         case 'zoomOut': fx.scale *= 1.4 - 0.4 * e; fx.alpha *= p; break;
         case 'blurT': fx.blur = (1 - e) * 30; fx.alpha *= Math.min(1, p * 2); break;
         case 'irisRound': fx.clip = (g, w, hh) => { g.arc(w / 2, hh / 2, Math.hypot(w, hh) / 2 * e, 0, Math.PI * 2); }; break;
+        // ---- ready-to-use extras
+        case 'flash': fx.overlay = { color: '#fff', a: Math.pow(1 - p, 1.5) }; break;
+        case 'leakBurn': fx.alpha *= e; fx.overlay = { kind: 'leak', a: bump(p), p }; break;
+        case 'lumaFade': fx.gl = { lumaIn: p }; break;
+        case 'softWipeRight': case 'softWipeLeft': case 'softWipeDown': {
+          const ty = ti.type;
+          fx.mask = (g, w, hh) => {
+            const L = ty === 'softWipeDown' ? hh : w, soft = L * 0.3, x1 = e * (L + soft), x0 = x1 - soft;
+            const gr = ty === 'softWipeDown' ? g.createLinearGradient(0, x0, 0, x1) : ty === 'softWipeRight' ? g.createLinearGradient(x0, 0, x1, 0) : g.createLinearGradient(w - x0, 0, w - x1, 0);
+            gr.addColorStop(0, '#000'); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gr; g.fillRect(0, 0, w, hh);
+          };
+          break;
+        }
+        case 'circleOpen': fx.mask = (g, w, hh) => {
+          const R = Math.hypot(w, hh) / 2 * 1.3 * e + 1, gr = g.createRadialGradient(w / 2, hh / 2, R * 0.7, w / 2, hh / 2, R);
+          gr.addColorStop(0, '#000'); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gr; g.fillRect(0, 0, w, hh);
+        }; break;
+        case 'circleClose': fx.clipRule = 'evenodd'; fx.clip = (g, w, hh) => { g.rect(0, 0, w, hh); g.arc(w / 2, hh / 2, Math.hypot(w, hh) / 2 * (1 - e), 0, Math.PI * 2); }; break;
+        case 'squeeze': fx.sx = { s: e, ax: 1 }; break;
+        case 'whipLeft': fx.dx = W * (1 - whip(p)); fx.smear = { n: 14, dx: W * 0.38 * bump(p), dy: 0, ds: 0, dr: 0 }; break;
+        case 'whipRight': fx.dx = -W * (1 - whip(p)); fx.smear = { n: 14, dx: W * 0.38 * bump(p), dy: 0, ds: 0, dr: 0 }; break;
+        case 'spin': fx.rot = -(1 - whip(p)) * Math.PI * 0.75; fx.scale *= 1 + 0.6 * bump(p); fx.alpha *= Math.min(1, p * 1.6); fx.smear = { n: 6, dx: 0, dy: 0, ds: 0, dr: 0.5 * bump(p) }; break;
+        case 'zoomBlur': fx.scale *= 1.7 - 0.7 * e; fx.alpha *= e; fx.smear = { n: 7, dx: 0, dy: 0, ds: 0.35 * bump(p), dr: 0 }; break;
+        case 'glitchCut': fx.alpha *= step(p, 9, 3) < p * 1.3 ? 1 : 0; fx.gl = { glitch: Math.min(1, (1 - p) * 1.4), split: 0.02 * (1 - p) }; break;
+        case 'pixelT': fx.alpha *= clamp01((p - 0.35) / 0.3); fx.gl = { pix: 0.004 + (1 - e) * 0.09 }; break;
         default: break;
       }
     }
@@ -372,22 +427,33 @@ export class Engine {
       const p = clamp01((D - lt) / to.dur), e = p * p * (3 - 2 * p);
       switch (to.type) {
         case 'dipBlack': fx.overlay = { color: '#000', a: 1 - p }; break;
-        case 'dipWhite': fx.overlay = { color: '#fff', a: 1 - p }; break;
+        case 'dipWhite': case 'flash': fx.overlay = { color: '#fff', a: 1 - p }; break;
         case 'zoomOut': fx.scale *= 1 + (1 - e) * 0.4; fx.alpha *= p; break;
         case 'zoomIn': fx.scale *= 0.7 + 0.3 * e; fx.alpha *= p; break;
         case 'blurT': fx.blur = Math.max(fx.blur, (1 - e) * 30); fx.alpha *= Math.min(1, p * 2); break;
         case 'wipeLeft': fx.clip = (g, w, hh) => g.rect(0, 0, w * e, hh); break;
         case 'wipeRight': fx.clip = (g, w, hh) => g.rect(w * (1 - e), 0, w * e, hh); break;
-        case 'pushLeft': fx.dx = -W * (1 - e); break;
-        case 'pushRight': fx.dx = W * (1 - e); break;
+        case 'pushLeft': case 'slideLeft': case 'whipLeft': fx.dx = -W * (1 - e); break;
+        case 'pushRight': case 'slideRight': case 'whipRight': fx.dx = W * (1 - e); break;
+        case 'pushUp': case 'slideUp': fx.dy = -H * (1 - e); break;
+        case 'pushDown': case 'slideDown': fx.dy = H * (1 - e); break;
+        case 'glitchCut': fx.gl = { glitch: Math.min(1, (1 - p) * 1.4), split: 0.02 * (1 - p) }; fx.alpha *= Math.min(1, p * 3); break;
+        case 'pixelT': fx.gl = { pix: 0.004 + (1 - e) * 0.09 }; fx.alpha *= Math.min(1, p * 3); break;
+        case 'lumaFade': fx.gl = { lumaIn: p }; break;
+        case 'spin': fx.rot = (1 - e) * Math.PI * 0.75; fx.scale *= e; fx.alpha *= p; break;
         default: fx.alpha *= p; break; // dissolve & others fade out to what's below
       }
     }
     return fx;
   }
 
-  // ------------------------------------------------------------ AI cut-out (people)
-  aiCut(src, sw, sh, params) {
+  // ------------------------------------------------------------ AI auto mask (people)
+  /**
+   * Auto mask: segment people in the frame and return a canvas (sw×sh) for the chosen mode —
+   * 0 remove background · 1 blur background · 2 background colour · 3 B&W background ·
+   * 4 keep background only · 5 outline / sticker stroke. Null while the model is loading.
+   */
+  aiCut(src, sw, sh, params, key) {
     const a = this.ai;
     if (!a.seg && !a.loading && !a.failed) {
       a.loading = true;
@@ -395,6 +461,9 @@ export class Engine {
         .catch((e) => { a.failed = true; a.loading = false; a.error = e.message; this.app.onAIError && this.app.onAIError(e); });
     }
     if (!a.seg) return null;
+    // preview + export canvas draw the same frame back to back: segment it once
+    if (key && key === this._aiKey && this._aiOut && this._aiOut.width === sw) return this._aiOut;
+    const cv = (name) => { const c = this[name] || (this[name] = document.createElement('canvas')); if (c.width !== sw || c.height !== sh) { c.width = sw; c.height = sh; } return c; };
     const S = 256, k = Math.min(1, S / Math.max(sw, sh));
     const w = Math.max(16, Math.round(sw * k)), hh = Math.max(16, Math.round(sh * k));
     const small = this._aiSmall || (this._aiSmall = document.createElement('canvas'));
@@ -411,19 +480,77 @@ export class Engine {
       const th = params.threshold / 100, soft = Math.max(0.02, params.feather / 250);
       for (let i = 0; i < f.length; i++) im.data[i * 4 + 3] = clamp01((f[i] - th) / soft + 0.5) * 255;
       g.putImageData(im, 0, 0);
-      const out = this._aiOut || (this._aiOut = document.createElement('canvas'));
-      if (out.width !== sw || out.height !== sh) { out.width = sw; out.height = sh; }
-      const og = out.getContext('2d');
-      og.globalCompositeOperation = 'source-over'; og.clearRect(0, 0, sw, sh);
-      og.drawImage(src, 0, 0, sw, sh);
-      og.globalCompositeOperation = 'destination-in';
-      og.imageSmoothingEnabled = true; og.drawImage(mc, 0, 0, sw, sh);
-      og.globalCompositeOperation = 'source-over';
-      return out;
+      const mode = Math.round(params.mode || 0);
+      // the person, cut out
+      const person = cv('_aiPerson'), pg = person.getContext('2d');
+      pg.globalCompositeOperation = 'source-over'; pg.clearRect(0, 0, sw, sh);
+      pg.drawImage(src, 0, 0, sw, sh);
+      pg.globalCompositeOperation = 'destination-in'; pg.imageSmoothingEnabled = true; pg.drawImage(mc, 0, 0, sw, sh);
+      pg.globalCompositeOperation = 'source-over';
+      this._aiKey = key;
+      if (mode === 0) return (this._aiOut = person);
+      const out = cv('_aiComp'), og = out.getContext('2d');
+      og.globalCompositeOperation = 'source-over'; og.filter = 'none'; og.clearRect(0, 0, sw, sh);
+      const big = Math.max(sw, sh), col = `hsl(${Math.round(params.hue ?? 140)}, 85%, ${Math.round(params.light ?? 50)}%)`;
+      if (mode === 1) {
+        const px = Math.max(1, (params.amount ?? 40) / 100 * 0.05 * big);
+        if (this.filterOK) { og.filter = `blur(${px.toFixed(1)}px)`; og.drawImage(src, -px, -px, sw + px * 2, sh + px * 2); og.filter = 'none'; }
+        else { // no canvas filters (iOS): blur by shrinking and stretching back
+          const d = Math.max(4, Math.round(big / (px * 2))), tw = Math.max(2, Math.round(sw / big * d)), tH = Math.max(2, Math.round(sh / big * d));
+          const tiny = this._aiTiny || (this._aiTiny = document.createElement('canvas')); tiny.width = tw; tiny.height = tH;
+          tiny.getContext('2d').drawImage(src, 0, 0, tw, tH); og.imageSmoothingEnabled = true; og.imageSmoothingQuality = 'high'; og.drawImage(tiny, 0, 0, tw, tH, 0, 0, sw, sh);
+        }
+        og.drawImage(person, 0, 0);
+      } else if (mode === 2) { og.fillStyle = col; og.fillRect(0, 0, sw, sh); og.drawImage(person, 0, 0); }
+      else if (mode === 3) {
+        og.drawImage(src, 0, 0, sw, sh);
+        og.globalCompositeOperation = 'saturation';
+        if (og.globalCompositeOperation === 'saturation') { og.fillStyle = '#808080'; og.fillRect(0, 0, sw, sh); og.globalCompositeOperation = 'destination-in'; og.drawImage(src, 0, 0, sw, sh); og.globalCompositeOperation = 'source-over'; } // (destination-in keeps a transparent source transparent)
+        else if (this.filterOK) { og.globalCompositeOperation = 'source-over'; og.filter = 'grayscale(1)'; og.drawImage(src, 0, 0, sw, sh); og.filter = 'none'; }
+        og.drawImage(person, 0, 0);
+      } else if (mode === 4) {
+        og.drawImage(src, 0, 0, sw, sh);
+        og.globalCompositeOperation = 'destination-out'; og.drawImage(mc, 0, 0, sw, sh); og.globalCompositeOperation = 'source-over';
+      } else {
+        // sticker: a solid silhouette stamped around a circle makes the stroke, the person goes on top
+        const sil = cv('_aiSil'), sg = sil.getContext('2d');
+        sg.globalCompositeOperation = 'source-over'; sg.clearRect(0, 0, sw, sh); sg.drawImage(mc, 0, 0, sw, sh);
+        sg.globalCompositeOperation = 'source-in'; sg.fillStyle = col; sg.fillRect(0, 0, sw, sh); sg.globalCompositeOperation = 'source-over';
+        const rad = Math.max(1, (params.amount ?? 40) / 100 * 0.03 * big);
+        for (let i = 0; i < 16; i++) { const an = i / 16 * Math.PI * 2; og.drawImage(sil, Math.cos(an) * rad, Math.sin(an) * rad); }
+        og.drawImage(sil, 0, 0); og.drawImage(person, 0, 0);
+      }
+      return (this._aiOut = out);
     } finally { res.close && res.close(); }
   }
 
   // ------------------------------------------------------------ compositing
+  /** Scratch frame-sized layer (soft-edge transition masks, effects on titles). */
+  layer(W, H) {
+    const cv = this._layer || (this._layer = document.createElement('canvas'));
+    if (cv.width !== W || cv.height !== H) { cv.width = W; cv.height = H; }
+    const g = cv.getContext('2d');
+    g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = 1; g.globalCompositeOperation = 'source-over'; g.filter = 'none';
+    g.clearRect(0, 0, W, H);
+    return { cv, g };
+  }
+  /** Run a whole frame-sized canvas through the GPU effects and/or a film look; returns a canvas to draw at once, or null. */
+  frameFx(src, W, H, es, t, lim = 1) {
+    let img = null;
+    if (es.needsGL) { const g = glProcess(src, 0, 0, W, H, W * lim, H * lim, es.u, t); if (g) img = g; }
+    if (es.film) { const f = this.filmPass(img || src, 0, 0, (img || src).width, (img || src).height, W * lim, H * lim, es.film, t); if (f) img = f; }
+    return img;
+  }
+  /** Film Look: the shared Film Lab engine, one live renderer per effect instance. */
+  filmPass(img, ix, iy, iw, ih, outW, outH, film, t) {
+    const look = lookByCode(film.code); if (!look) return null;
+    this.filmR = this.filmR || new Map();
+    let fr = this.filmR.get(film.key);
+    if (!fr) { const cv = document.createElement('canvas'); fr = { cv, r: createLiveRenderer(cv) }; this.filmR.set(film.key, fr); }
+    try { const out = fr.r.render(img, look.id, { strength: film.strength }, t, { crop: { x: ix, y: iy, w: iw, h: ih }, width: Math.max(2, outW), height: Math.max(2, outH) }); return out ? fr.cv : null; }
+    catch (e) { return null; /* keep the ungraded frame */ }
+  }
+
   drawFrame(ctx, W, H, t, forExport = false) {
     const s = this.seq;
     const k = W / s.width;
@@ -433,89 +560,134 @@ export class Engine {
     ctx.fillStyle = s.background || '#000';
     ctx.fillRect(0, 0, W, H);
     const quality = forExport ? 'quality' : perfLevel();
+    this._lim = forExport ? 1 : (quality === 'performance' ? 0.6 : 1) * this.pvScale;
     for (const { c, tail } of this.activeClips(t, 'video')) {
       const r = resolve(c, t);
       const tx = this.transitionFx(c, t, tail);
       const alpha = clamp01(r.opacity / 100 * this.fadeAt(c, t) * tx.alpha);
-      if (alpha <= 0.001) continue;
+      if (alpha <= 0.001) { if (tx.overlay) this.overlay(ctx, W, H, tx.overlay); continue; }
       const es = effectState(c, r.fx, k);
-      const blurPx = (r.blur || 0) * k + tx.blur * k;
-      const filt = [es.filter !== 'none' ? es.filter : '', blurPx > 0.1 ? `blur(${blurPx.toFixed(2)}px)` : ''].filter(Boolean).join(' ') || 'none';
-      ctx.save();
-      if (tx.clip) { ctx.beginPath(); tx.clip(ctx, W, H); ctx.clip(); }
-      ctx.translate(W / 2 + (r.x + tx.dx) * k, H / 2 + (r.y + tx.dy) * k);
-      if (r.rotation) ctx.rotate(r.rotation * Math.PI / 180);
-      ctx.globalAlpha = alpha;
-      if (this.filterOK) ctx.filter = filt;
-      ctx.imageSmoothingQuality = quality === 'performance' ? 'low' : 'high';
-      if (c.gen) {
-        const sc = r.scale / 100 * tx.scale;
-        ctx.scale(sc, sc);
-        ctx.translate(-(r.ax || 0) * k, -(r.ay || 0) * k);
-        drawGen(ctx, c, r, k, W, H);
-        ctx.restore();
-        if (tx.overlay) this.overlay(ctx, W, H, tx.overlay);
-        continue;
+      if (tx.gl) { Object.assign(es.u, tx.gl); es.needsGL = true; }
+      if (c.gen && c.gen.type === 'adjust') { this.drawAdjust(ctx, W, H, t, alpha, es, r, k); continue; }
+      // motion-blurred transitions (whip pan, spin, zoom blur) average several offset copies
+      const sm = tx.smear, n = sm ? (quality === 'performance' ? 4 : sm.n) : 1;
+      for (let i = 0; i < n; i++) {
+        const f = n > 1 ? i / (n - 1) - 0.5 : 0;
+        const txi = n > 1 ? { ...tx, dx: tx.dx + f * sm.dx, dy: tx.dy + f * sm.dy, scale: tx.scale * (1 + f * sm.ds), rot: tx.rot + f * sm.dr } : tx;
+        this.paintClip(ctx, W, H, k, t, c, r, txi, alpha / (i + 1), es, quality);
       }
-      const m = mediaById(this.project, c.mediaId);
-      if (!m || m.offline || !this.app.media.online(m.id)) { ctx.restore(); this.drawOffline(ctx, W, H, c, m); continue; }
-      let src = null, sw = 0, sh = 0;
-      if (m.kind === 'video') {
-        const rr = this.els.get(c.id + ':video');
-        if (!rr || rr.el.readyState < 2 || !rr.el.videoWidth) { ctx.restore(); continue; }
-        if (m.relinkedDuration && srcTime(c, t) > m.relinkedDuration + 0.05) { ctx.restore(); continue; }
-        src = rr.el; sw = rr.el.videoWidth; sh = rr.el.videoHeight;
-      } else if (m.kind === 'image') {
-        src = this.app.media.bitmapFor(m.id);
-        if (!src) { ctx.restore(); continue; }
-        sw = src.width; sh = src.height;
-      } else { ctx.restore(); continue; }
-      const fit = Math.min(s.width / sw, s.height / sh) * k;
-      const sc = fit * r.scale / 100 * tx.scale;
-      const cl = { l: r.cropL, t: r.cropT, r: r.cropR, b: r.cropB };
-      const sx0 = sw * cl.l / 100, sy0 = sh * cl.t / 100;
-      const cw = sw * (1 - (cl.l + cl.r) / 100), ch = sh * (1 - (cl.t + cl.b) / 100);
-      if (cw <= 0 || ch <= 0) { ctx.restore(); continue; }
-      const dx = (-sw / 2 + sx0 - (r.ax || 0) / fit * k) * sc, dy = (-sh / 2 + sy0 - (r.ay || 0) / fit * k) * sc;
-      let img = src, ix = sx0, iy = sy0, iw = cw, ih = ch;
-      if (es.ai) {
-        const cut = this.aiCut(src, sw, sh, es.ai);
-        if (cut) { img = cut; }
-      }
-      if (es.needsGL) {
-        const lim = quality === 'performance' ? 0.6 : 1;
-        const outW = Math.max(1, cw * sc * lim), outH = Math.max(1, ch * sc * lim);
-        const g = glProcess(img, ix, iy, iw, ih, outW, outH, es.u, t);
-        if (g) { img = g; ix = 0; iy = 0; iw = g.width; ih = g.height; }
-      }
-      if (es.film) {
-        // Film Look: the shared Film Lab engine, one live renderer per effect instance
-        const look = lookByCode(es.film.code);
-        if (look) {
-          this.filmR = this.filmR || new Map();
-          let fr = this.filmR.get(es.film.key);
-          if (!fr) { const cv = document.createElement('canvas'); fr = { cv, r: createLiveRenderer(cv) }; this.filmR.set(es.film.key, fr); }
-          const lim = quality === 'performance' ? 0.6 : 1;
-          try {
-            const out = fr.r.render(img, look.id, { strength: es.film.strength }, t, { crop: { x: ix, y: iy, w: iw, h: ih }, width: Math.max(2, cw * sc * lim), height: Math.max(2, ch * sc * lim) });
-            if (out) { img = fr.cv; ix = 0; iy = 0; iw = fr.cv.width; ih = fr.cv.height; }
-          } catch (e) { /* keep the ungraded frame */ }
-        }
-      }
-      try { ctx.drawImage(img, ix, iy, iw, ih, dx, dy, cw * sc, ch * sc); } catch (e) { /* frame not ready */ }
-      if (es.glow && this.filterOK) {
-        ctx.globalCompositeOperation = 'lighter';
-        ctx.globalAlpha = alpha * es.glow.amount;
-        ctx.filter = `blur(${es.glow.radius.toFixed(1)}px) brightness(1.3)`;
-        try { ctx.drawImage(img, ix, iy, iw, ih, dx, dy, cw * sc, ch * sc); } catch (e) { /* ignore */ }
-      }
-      ctx.restore();
       if (tx.overlay) this.overlay(ctx, W, H, tx.overlay);
     }
     ctx.restore();
   }
+
+  /** One clip onto the frame — directly, or through the scratch layer when it needs a soft mask or frame-space effects. */
+  paintClip(ctx, W, H, k, t, c, r, tx, alpha, es, quality) {
+    const genFx = !!c.gen && (es.needsGL || !!es.film);
+    if (!tx.mask && !genFx) { this.drawClip(ctx, W, H, k, t, c, r, tx, alpha, es, quality); return; }
+    const L = this.layer(W, H);
+    this.drawClip(L.g, W, H, k, t, c, r, tx, alpha, es, quality);
+    if (genFx) { // titles & shapes: effects run on the rendered layer
+      const fxd = this.frameFx(L.cv, W, H, es, t, this._lim);
+      if (fxd) { L.g.setTransform(1, 0, 0, 1, 0, 0); L.g.globalAlpha = 1; L.g.filter = 'none'; L.g.globalCompositeOperation = 'copy'; L.g.drawImage(fxd, 0, 0, W, H); L.g.globalCompositeOperation = 'source-over'; }
+    }
+    if (tx.mask) { L.g.setTransform(1, 0, 0, 1, 0, 0); L.g.globalAlpha = 1; L.g.filter = 'none'; L.g.globalCompositeOperation = 'destination-in'; tx.mask(L.g, W, H); L.g.globalCompositeOperation = 'source-over'; }
+    ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1; ctx.filter = 'none'; ctx.drawImage(L.cv, 0, 0); ctx.restore();
+  }
+
+  /** Adjustment layer: its effects grade everything already composited below it. */
+  drawAdjust(ctx, W, H, t, alpha, es, r, k) {
+    const blurPx = (r.blur || 0) * k;
+    const filt = [es.filter !== 'none' ? es.filter : '', blurPx > 0.1 ? `blur(${blurPx.toFixed(2)}px)` : ''].filter(Boolean).join(' ');
+    if (!es.needsGL && !es.film && !filt && !es.glow) return;
+    let img = this.frameFx(ctx.canvas, W, H, es, t, this._lim);
+    if (!img) { // blur / glow only: work from a copy of the frame
+      const L = this.layer(W, H); L.g.drawImage(ctx.canvas, 0, 0); img = L.cv;
+    }
+    ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = alpha;
+    if (filt && this.filterOK) ctx.filter = filt;
+    try { ctx.drawImage(img, 0, 0, W, H); } catch (e) { /* not ready */ }
+    if (es.glow && this.filterOK) { ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = alpha * es.glow.amount; ctx.filter = `blur(${es.glow.radius.toFixed(1)}px) brightness(1.3)`; try { ctx.drawImage(img, 0, 0, W, H); } catch (e) { /* ignore */ } }
+    ctx.restore();
+  }
+
+  drawClip(ctx, W, H, k, t, c, r, tx, alpha, es, quality) {
+    const s = this.seq;
+    const blurPx = (r.blur || 0) * k + tx.blur * k;
+    const filt = [es.filter !== 'none' ? es.filter : '', blurPx > 0.1 ? `blur(${blurPx.toFixed(2)}px)` : ''].filter(Boolean).join(' ') || 'none';
+    ctx.save();
+    if (tx.clip) { ctx.beginPath(); tx.clip(ctx, W, H); ctx.clip(tx.clipRule || 'nonzero'); }
+    if (tx.sx) { ctx.translate(tx.sx.ax * W, 0); ctx.scale(Math.max(0.0001, tx.sx.s), 1); ctx.translate(-tx.sx.ax * W, 0); }
+    if (tx.rot) { ctx.translate(W / 2, H / 2); ctx.rotate(tx.rot); ctx.translate(-W / 2, -H / 2); }
+    ctx.translate(W / 2 + (r.x + tx.dx) * k, H / 2 + (r.y + tx.dy) * k);
+    if (r.rotation) ctx.rotate(r.rotation * Math.PI / 180);
+    ctx.globalAlpha = alpha;
+    if (this.filterOK) ctx.filter = filt;
+    ctx.imageSmoothingQuality = quality === 'performance' ? 'low' : 'high';
+    if (c.gen) {
+      const sc = r.scale / 100 * tx.scale;
+      ctx.scale(sc, sc);
+      ctx.translate(-(r.ax || 0) * k, -(r.ay || 0) * k);
+      drawGen(ctx, c, r, k, W, H, t - c.start, clipDur(c));
+      if (es.glow && this.filterOK && c.gen.type !== 'color') { ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = alpha * es.glow.amount; ctx.filter = `blur(${es.glow.radius.toFixed(1)}px) brightness(1.3)`; drawGen(ctx, c, r, k, W, H, t - c.start, clipDur(c)); }
+      ctx.restore();
+      return;
+    }
+    const m = mediaById(this.project, c.mediaId);
+    if (!m || m.offline || !this.app.media.online(m.id)) { ctx.restore(); this.drawOffline(ctx, W, H, c, m); return; }
+    let src = null, sw = 0, sh = 0, stamp = 0;
+    if (m.kind === 'video') {
+      const rr = this.els.get(c.id + ':video');
+      if (!rr || rr.el.readyState < 2 || !rr.el.videoWidth) { ctx.restore(); return; }
+      if (m.relinkedDuration && srcTime(c, t) > m.relinkedDuration + 0.05) { ctx.restore(); return; }
+      src = rr.el; sw = rr.el.videoWidth; sh = rr.el.videoHeight; stamp = rr.el.currentTime;
+    } else if (m.kind === 'image') {
+      src = this.app.media.bitmapFor(m.id);
+      if (!src) { ctx.restore(); return; }
+      sw = src.width; sh = src.height;
+    } else { ctx.restore(); return; }
+    const fit = Math.min(s.width / sw, s.height / sh) * k;
+    const sc = fit * r.scale / 100 * tx.scale;
+    const cl = { l: r.cropL, t: r.cropT, r: r.cropR, b: r.cropB };
+    const sx0 = sw * cl.l / 100, sy0 = sh * cl.t / 100;
+    const cw = sw * (1 - (cl.l + cl.r) / 100), ch = sh * (1 - (cl.t + cl.b) / 100);
+    if (cw <= 0 || ch <= 0) { ctx.restore(); return; }
+    const dx = (-sw / 2 + sx0 - (r.ax || 0) / fit * k) * sc, dy = (-sh / 2 + sy0 - (r.ay || 0) / fit * k) * sc;
+    let img = src, ix = sx0, iy = sy0, iw = cw, ih = ch;
+    if (es.ai) {
+      const cut = this.aiCut(src, sw, sh, es.ai, c.id + '|' + stamp + '|' + JSON.stringify(es.ai));
+      if (cut) { img = cut; }
+    }
+    const lim = this._lim;
+    if (es.needsGL) {
+      const outW = Math.max(1, cw * sc * lim), outH = Math.max(1, ch * sc * lim);
+      const g = glProcess(img, ix, iy, iw, ih, outW, outH, es.u, t);
+      if (g) { img = g; ix = 0; iy = 0; iw = g.width; ih = g.height; }
+    }
+    if (es.film) {
+      const f = this.filmPass(img, ix, iy, iw, ih, cw * sc * lim, ch * sc * lim, es.film, t);
+      if (f) { img = f; ix = 0; iy = 0; iw = f.width; ih = f.height; }
+    }
+    try { ctx.drawImage(img, ix, iy, iw, ih, dx, dy, cw * sc, ch * sc); } catch (e) { /* frame not ready */ }
+    if (es.glow && this.filterOK) {
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = alpha * es.glow.amount;
+      ctx.filter = `blur(${es.glow.radius.toFixed(1)}px) brightness(1.3)`;
+      try { ctx.drawImage(img, ix, iy, iw, ih, dx, dy, cw * sc, ch * sc); } catch (e) { /* ignore */ }
+    }
+    ctx.restore();
+  }
   overlay(ctx, W, H, o) {
-    ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = clamp01(o.a); ctx.fillStyle = o.color; ctx.fillRect(0, 0, W, H); ctx.restore();
+    ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = clamp01(o.a); ctx.filter = 'none';
+    if (o.kind === 'leak') {
+      // light-leak burn: warm blobs sweeping across the cut, screened over the picture
+      ctx.globalCompositeOperation = 'screen';
+      const blob = (cx, cy, rad, c0) => { const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, rad); g.addColorStop(0, c0); g.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H); };
+      blob(W * (-0.2 + 1.4 * o.p), H * 0.35, W * 0.75, 'rgba(255,150,40,1)');
+      blob(W * (1.1 - 1.2 * o.p), H * 0.7, W * 0.6, 'rgba(255,60,60,.9)');
+      blob(W * (0.2 + 0.6 * o.p), H * 0.5, W * 0.45, 'rgba(255,240,180,.9)');
+    } else { ctx.fillStyle = o.color; ctx.fillRect(0, 0, W, H); }
+    ctx.restore();
   }
 
   drawOffline(ctx, W, H, c, m) {

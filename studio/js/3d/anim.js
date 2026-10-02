@@ -34,7 +34,10 @@ function upsert(keys, key, tol) {
 // -------------------------------------------------------------- objects
 
 export function objectKey(obj, t, ease = 'ease') {
-  return { t, p: obj.position.toArray(), q: obj.quaternion.toArray(), s: obj.scale.toArray(), ease };
+  const k = { t, p: obj.position.toArray(), q: obj.quaternion.toArray(), s: obj.scale.toArray(), ease };
+  // camera objects also key their lens
+  if (obj.userData && obj.userData.eyadKind === 'camera' && obj.userData.cam) { k.f = Number(obj.userData.cam.focal) || 50; k.os = Number(obj.userData.cam.orthoScale) || 6; }
+  return k;
 }
 export function setObjectKey(anim, obj, t, tol, easeKind) {
   const id = obj.userData.eyadId;
@@ -57,6 +60,7 @@ export function sampleObject(keys, t, obj) {
   obj.scale.set(a.s[0] + (b.s[0] - a.s[0]) * u, a.s[1] + (b.s[1] - a.s[1]) * u, a.s[2] + (b.s[2] - a.s[2]) * u);
   _qa.fromArray(a.q); _qb.fromArray(b.q);
   obj.quaternion.slerpQuaternions(_qa, _qb, u);
+  if (a.f != null && b.f != null && obj.userData && obj.userData.cam) { obj.userData.cam.focal = a.f + (b.f - a.f) * u; if (a.os != null && b.os != null) obj.userData.cam.orthoScale = a.os + (b.os - a.os) * u; }
   return true;
 }
 
@@ -126,9 +130,11 @@ export function validateAnim(a) {
   if (a.tracks && typeof a.tracks === 'object') {
     for (const [id, keys] of Object.entries(a.tracks).slice(0, 5000)) {
       if (!/^[a-z0-9]{1,40}$/i.test(id) || !Array.isArray(keys)) continue;
-      out.tracks[id] = keys.slice(0, 10000).map((k) => ({
-        t: num(k?.t, 0, 0, 600), p: arr(k?.p, 3, [0, 0, 0]), q: arr(k?.q, 4, [0, 0, 0, 1]), s: arr(k?.s, 3, [1, 1, 1]), ease: oneOf(k?.ease, EASE_IDS, 'ease'),
-      })).sort((x, y) => x.t - y.t);
+      out.tracks[id] = keys.slice(0, 10000).map((k) => {
+        const o = { t: num(k?.t, 0, 0, 600), p: arr(k?.p, 3, [0, 0, 0]), q: arr(k?.q, 4, [0, 0, 0, 1]), s: arr(k?.s, 3, [1, 1, 1]), ease: oneOf(k?.ease, EASE_IDS, 'ease') };
+        if (k?.f != null) { o.f = num(k.f, 50, 1, 5000); o.os = num(k.os, 6, 0.001, 1e6); }
+        return o;
+      }).sort((x, y) => x.t - y.t);
     }
   }
   if (Array.isArray(a.camera)) {
@@ -138,4 +144,28 @@ export function validateAnim(a) {
     })).sort((x, y) => x.t - y.t);
   }
   return out;
+}
+
+/** Keys that carry an object once around a pivot on a horizontal circle, always looking at the pivot. */
+export function orbitKeys(obj, pivot, t0, t1, turns = 1, steps = 36) {
+  const parent = obj.parent;
+  parent.updateWorldMatrix(true, false);
+  const inv = new THREE.Matrix4().copy(parent.matrixWorld).invert();
+  const wp = obj.getWorldPosition(new THREE.Vector3());
+  const off = wp.clone().sub(pivot);
+  const r = Math.max(0.01, Math.hypot(off.x, off.z)), a0 = Math.atan2(off.x, off.z);
+  const m = new THREE.Matrix4(), q = new THREE.Quaternion(), p = new THREE.Vector3(), sc = new THREE.Vector3(), up = new THREE.Vector3(0, 1, 0);
+  const keys = [];
+  for (let i = 0; i <= steps; i++) {
+    const a = a0 + (i / steps) * Math.PI * 2 * turns;
+    p.set(pivot.x + Math.sin(a) * r, wp.y, pivot.z + Math.cos(a) * r);
+    m.lookAt(p, pivot, up); q.setFromRotationMatrix(m);
+    m.compose(p, q, new THREE.Vector3(1, 1, 1)).premultiply(inv);
+    const lp = new THREE.Vector3(), lq = new THREE.Quaternion();
+    m.decompose(lp, lq, sc);
+    const k = { t: t0 + (t1 - t0) * (i / steps), p: lp.toArray(), q: lq.toArray(), s: obj.scale.toArray(), ease: 'linear' };
+    if (obj.userData && obj.userData.cam) { k.f = Number(obj.userData.cam.focal) || 50; k.os = Number(obj.userData.cam.orthoScale) || 6; }
+    keys.push(k);
+  }
+  return keys;
 }

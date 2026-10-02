@@ -165,7 +165,7 @@ export class Timeline {
         c.linkId ? h('span', { class: 'vt-clip-link', title: 'Linked clip' }, icon('link', 10)) : null,
         c.effects && c.effects.some((e) => e.enabled) ? h('span', { class: 'vt-clip-fx', text: 'fx' }) : null,
         c.keys ? h('span', { class: 'vt-clip-fx is-key', text: '◆' }) : null,
-        c.gen ? h('span', { class: 'vt-clip-fx', text: c.gen.type === 'color' ? 'matte' : c.gen.type === 'shape' ? 'shape' : 'T' }) : null,
+        c.gen ? h('span', { class: 'vt-clip-fx', text: c.gen.type === 'color' ? 'matte' : c.gen.type === 'shape' ? 'shape' : c.gen.type === 'adjust' ? 'adjust' : 'T' }) : null,
         c.speed !== 1 ? h('span', { class: 'vt-clip-fx', text: Math.round(c.speed * 100) + '%' }) : null,
         h('span', { class: 'vt-clip-name', text: offline ? `${c.name} — OFFLINE` : c.name })),
       h('div', { class: 'vt-edge is-l', dataset: { edge: 'l' } }), h('div', { class: 'vt-edge is-r', dataset: { edge: 'r' } }));
@@ -500,7 +500,7 @@ export class Timeline {
       { label: 'Remove transitions', action: () => ops.removeTransitions(app), enabled: !!(c.transIn || c.transOut) },
       { label: 'Animation presets…', action: () => app.showEffects && app.showEffects('presets'), enabled: tr.kind === 'video' },
       { label: 'Remove all keyframes', action: () => ops.clearKeys(app), enabled: !!c.keys },
-      c.gen && c.gen.type !== 'color' && c.gen.type !== 'shape' ? { label: 'Edit text…', action: () => ops.editGenText(app, c) } : null,
+      c.gen && (c.gen.type === 'text' || c.gen.type === 'caption') ? { label: 'Edit text…', action: () => ops.editGenText(app, c) } : null,
       { label: 'Rename…', action: async () => { const n = await promptDialog('Rename clip', 'Name', c.name); if (n) ops.updateClips(app, [c.id], { name: n.slice(0, 300) }, 'Rename Clip'); } },
       { separator: true },
       { label: 'Reveal in Media', action: () => app.revealMedia(c.mediaId), enabled: !!m },

@@ -8,7 +8,7 @@ import {
 } from './kit.js';
 
 export const CATEGORIES = [
-  ['social', 'Social posts'], ['story', 'Stories & vertical'], ['thumb', 'Video thumbnails'], ['slides', 'Slides'],
+  ['trend', 'Trending now'], ['social', 'Social posts'], ['story', 'Stories & vertical'], ['thumb', 'Video thumbnails'], ['slides', 'Slides'],
   ['poster', 'Posters'], ['flyer', 'Flyers'], ['card', 'Business cards'], ['invite', 'Invitations'], ['menu', 'Menus'],
   ['quote', 'Quote cards'], ['banner', 'Banners'], ['resume', 'Resume / CV'], ['logo', 'Logo starters'], ['brand', 'Brand kit'],
   ['arabic', 'Arabic & bilingual'],
@@ -18,9 +18,113 @@ export const CATEGORIES = [
 const SQ = [1080, 1080], PORT = [1080, 1350], STORY = [1080, 1920], THUMB = [1280, 720], HD = [1920, 1080],
   A4 = [1240, 1754], A3 = [1754, 2480], A5 = [874, 1240], CARD = [1050, 600], INV = [750, 1050], LOGOSZ = [1000, 1000];
 
+/** Rotated rectangle helper: build(pts) where pts(x, y, w, h) returns the rotated corners of a rect inside the box. */
+const ROT = (x, y, w, h, deg, build) => {
+  const a = deg * Math.PI / 180, cx = x + w / 2, cy = y + h / 2, c = Math.cos(a), s = Math.sin(a);
+  const rp = (px, py) => { const dx = px - cx, dy = py - cy; return [cx + dx * c - dy * s, cy + dx * s + dy * c]; };
+  return build((ix, iy, iw, ih) => [rp(x + ix, y + iy), rp(x + ix + iw, y + iy), rp(x + ix + iw, y + iy + ih), rp(x + ix, y + iy + ih)]);
+};
 const t = (id, name, cat, size, tags, build) => ({ id, name, cat: Array.isArray(cat) ? cat : [cat], w: size[0], h: size[1], tags, build: () => build(name, size[0], size[1]) });
 
 export const TEMPLATES = [
+  // ================================================================ TRENDING NOW (2026 formats)
+  t('y2k-chrome', 'Y2K chrome drop', ['trend', 'social'], SQ, ['trend', 'y2k', 'chrome', 'drop', 'streetwear', 'merch', 'dark'], (n, w, h) => doc(n, w, h, '#07070a', [
+    G('Glow', E(540, 560, 520, 380, { fill: rad([[0, '#7b61ff', 0.55], [1, '#7b61ff', 0]]) }), E(860, 180, 300, 300, { fill: rad([[0, '#b6ff3b', 0.35], [1, '#b6ff3b', 0]]) })),
+    G('Sparkles', STAR(170, 190, 70, 4, 0.18, { fill: '#ffffff' }), STAR(930, 860, 54, 4, 0.18, { fill: '#b6ff3b' }), STAR(880, 250, 26, 4, 0.2, { fill: '#ffffff' }), STAR(140, 880, 30, 4, 0.2, { fill: '#ffffff' })),
+    T('DROP', 540, 520, { a: 'center', f: AB, s: 250, tr: -20, fill: lin([[0, '#ffffff'], [0.45, '#8b8fa3'], [0.55, '#f4f6ff'], [1, '#5a5e70']]), name: 'Headline' }),
+    T('02', 540, 760, { a: 'center', f: AB, s: 230, fill: lin([[0, '#b6ff3b'], [1, '#3bffd1']]), name: 'Number' }),
+    G('Pill', R(330, 850, 420, 74, { r: 37, fill: null, stroke: '#ffffff', sw: 3 }), T('FRI · 8PM · ONLINE', 540, 899, { a: 'center', f: SG, w: 700, s: 28, tr: 80, c: '#ffffff', name: 'Date' })),
+    T('yourbrand.store', 540, 1010, { a: 'center', f: MONO, s: 22, c: '#8b8fa3', name: 'Website' }),
+  ])),
+
+  t('photo-dump', 'Photo dump cover', ['trend', 'social'], PORT, ['trend', 'photo dump', 'carousel', 'polaroid', 'collage', 'monthly'], (n, w, h) => doc(n, w, h, '#efe9df', [
+    G('Photos', [[-6, 90, 150], [4, 560, 120], [-3, 110, 560], [7, 580, 600], [-8, 330, 380]].map(([a, x, y], i) => ROT(x, y, 400, 460, a, (pts) => G('Polaroid ' + (i + 1),
+      POLY(pts(0, 0, 400, 460), { fill: '#ffffff', stroke: '#d9d2c4', sw: 2 }), POLY(pts(22, 22, 356, 340), { fill: ['#c9c1b2', '#b9c4c8', '#d4c0b0', '#c2c9b5', '#cbbfcf'][i], name: 'Photo area' }))))),
+    G('Tape', ROT(470, 110, 150, 44, 12, (pts) => POLY(pts(0, 0, 150, 44), { fill: '#f7e08a', op: 0.8 }))),
+    T('september\nphoto dump', 70, 1160, { f: CV, s: 110, ld: 0.9, c: '#1d1d1b', name: 'Headline' }),
+    T('swipe  →', 1010, 1270, { a: 'right', f: MONO, s: 24, c: '#6d665a', name: 'Swipe hint' }),
+  ])),
+
+  t('pov-story', 'POV caption story', ['trend', 'story'], STORY, ['trend', 'pov', 'tiktok', 'reel', 'caption', 'story', 'text'], (n, w, h) => doc(n, w, h, '#1b1b1d', [
+    PH(0, 0, w, h, { c: '#3a3a3e', ic: '#55555b', name: 'Photo / video frame' }),
+    R(0, 0, w, h, { fill: lin([[0, '#000000', 0], [0.55, '#000000', 0.1], [1, '#000000', 0.6]]), name: 'Shade' }),
+    G('Caption', R(110, 760, 330, 100, { r: 16, fill: '#ffffff' }), T('POV:', 140, 834, { f: INTER, w: 800, s: 64, c: '#111111' }),
+      R(110, 872, 860, 100, { r: 16, fill: '#ffffff' }), T('you finally started', 140, 946, { f: INTER, w: 800, s: 60, c: '#111111' }),
+      R(110, 984, 700, 100, { r: 16, fill: '#ffffff' }), T('the thing you said', 140, 1058, { f: INTER, w: 800, s: 60, c: '#111111' }),
+      R(110, 1096, 460, 100, { r: 16, fill: '#ffffff' }), T('you’d start', 140, 1170, { f: INTER, w: 800, s: 60, c: '#111111', name: 'Caption text' })),
+    T('@yourname', 110, 1760, { f: INTER, w: 600, s: 34, c: '#ffffff', name: 'Handle' }),
+  ])),
+
+  t('lime-lowercase', 'Lime lowercase', ['trend', 'social'], SQ, ['trend', 'lime', 'green', 'lowercase', 'minimal', 'album', 'announcement'], (n, w, h) => doc(n, w, h, '#8ace00', [
+    T('new era', 540, 585, { a: 'center', f: 'Arial', w: 400, s: 150, tr: -30, c: '#000000', name: 'Headline' }),
+    T('out friday', 540, 1010, { a: 'center', f: 'Arial', s: 30, c: '#000000', op: 0.7, name: 'Subhead' }),
+  ])),
+
+  t('notes-quote', 'Notes-app quote', ['trend', 'story', 'quote'], STORY, ['trend', 'notes', 'quote', 'screenshot', 'story', 'text', 'thoughts'], (n, w, h) => doc(n, w, h, '#f2f2f7', [
+    G('Top bar', T('‹ Folders', 60, 150, { f: INTER, w: 500, s: 40, c: '#d9a400' }), E(990, 136, 26, 26, { fill: null, stroke: '#d9a400', sw: 4 })),
+    G('Note', R(40, 220, 1000, 1480, { r: 40, fill: '#ffffff' }),
+      T('30 September 2026 at 21:14', 540, 300, { a: 'center', f: INTER, s: 28, c: '#8e8e93', name: 'Date' }),
+      T('things i’m learning', 100, 420, { f: INTER, w: 800, s: 64, c: '#111111', name: 'Title' }),
+      T('— slow progress is still progress\n— rest is part of the work\n— nobody is thinking about you\n   as much as you think\n— start before you’re ready\n— protect your peace', 100, 540, { f: INTER, s: 46, ld: 1.55, c: '#1c1c1e', name: 'Note text' })),
+    T('@yourname', 540, 1810, { a: 'center', f: INTER, w: 600, s: 30, c: '#8e8e93', name: 'Handle' }),
+  ])),
+
+  t('this-or-that', 'This or that poll', ['trend', 'story'], STORY, ['trend', 'poll', 'this or that', 'story', 'interactive', 'vote'], (n, w, h) => doc(n, w, h, '#101012', [
+    PH(0, 0, w, 960, { c: '#2f2f35', ic: '#4a4a52', name: 'Option A photo' }), PH(0, 960, w, 960, { c: '#3a3a42', ic: '#55555e', name: 'Option B photo' }),
+    G('Badge', R(290, 895, 500, 130, { r: 65, fill: '#ffffff' }), T('this  or  that?', 540, 982, { a: 'center', f: INTER, w: 800, s: 54, c: '#111111', name: 'Question' })),
+    G('Label A', R(60, 80, 300, 84, { r: 42, fill: '#000000', op: 0.55 }), T('A · city', 210, 136, { a: 'center', f: INTER, w: 700, s: 36, c: '#ffffff', name: 'Option A' })),
+    G('Label B', R(720, 1760, 300, 84, { r: 42, fill: '#000000', op: 0.55 }), T('B · beach', 870, 1816, { a: 'center', f: INTER, w: 700, s: 36, c: '#ffffff', name: 'Option B' })),
+  ])),
+
+  t('bento-recap', 'Bento year recap', ['trend', 'social'], SQ, ['trend', 'bento', 'recap', 'stats', 'grid', 'year in review'], (n, w, h) => doc(n, w, h, '#0e0e10', [
+    G('Tiles', R(50, 50, 600, 420, { r: 44, fill: lin([[0, '#6d5dfc'], [1, '#c86dd7']]) }), R(670, 50, 360, 420, { r: 44, fill: '#1c1c20' }),
+      R(50, 490, 360, 540, { r: 44, fill: '#b6ff3b' }), R(430, 490, 600, 260, { r: 44, fill: '#1c1c20' }), R(430, 770, 600, 260, { r: 44, fill: '#ff6a3d' })),
+    T('my 2026\nrecap', 100, 210, { f: SG, w: 700, s: 92, ld: 0.95, c: '#ffffff', name: 'Headline' }),
+    T('128', 850, 290, { a: 'center', f: SG, w: 700, s: 120, c: '#ffffff', name: 'Stat 1' }), T('projects shipped', 850, 360, { a: 'center', f: INTER, s: 28, c: '#9a9aa3' }),
+    T('12', 230, 800, { a: 'center', f: SG, w: 700, s: 190, c: '#0e0e10', name: 'Stat 2' }), T('countries', 230, 880, { a: 'center', f: INTER, w: 600, s: 32, c: '#0e0e10' }),
+    PH(460, 520, 200, 200, { circle: true, c: '#2c2c32', ic: '#46464e' }), T('best moment:\nthe summer trip', 700, 600, { f: INTER, w: 600, s: 34, ld: 1.3, c: '#ffffff', name: 'Highlight' }),
+    T('see you in 2027  →', 730, 915, { a: 'center', f: SG, w: 700, s: 44, c: '#ffffff', name: 'Call to action' }),
+  ])),
+
+  t('grwm-thumb', 'GRWM thumbnail', ['trend', 'thumb'], THUMB, ['trend', 'grwm', 'get ready with me', 'youtube', 'thumbnail', 'vlog'], (n, w, h) => doc(n, w, h, '#ffd6e7', [
+    PH(620, 0, 660, 720, { c: '#f3b9cf', ic: '#e08fb0', name: 'Face photo' }),
+    T('GET\nREADY\nWITH ME', 60, 230, { f: AB, s: 132, ld: 0.9, c: '#ff2f7e', stroke: '#ffffff', sw: 6, name: 'Headline' }),
+    G('Sticker', E(470, 600, 90, 90, { fill: '#111111' }), T('for\nmy first\nshow', 470, 575, { a: 'center', f: CV, s: 34, ld: 0.95, c: '#ffffff', name: 'Sticker text' })),
+    STAR(560, 110, 40, 4, 0.2, { fill: '#ffffff' }),
+  ])),
+
+  t('carousel-tips', 'Carousel: 5 tips', ['trend', 'social', 'slides'], PORT, ['trend', 'carousel', 'tips', 'educational', 'linkedin', 'instagram', 'swipe'], (n, w, h) => doc(n, w, h, '#f7f5f0', [
+    T('01 / 06', 70, 110, { f: MONO, s: 26, c: '#8a857a', name: 'Page' }), LOGO(820, 118, { c: '#111111', text: 'YOU', s: 24, mark: 'circle' }),
+    T('5 things\nI wish I knew\nbefore starting\nas a designer', 70, 420, { f: DMS, s: 104, ld: 1.0, c: '#111111', name: 'Headline' }),
+    T('Save this for later.', 70, 960, { f: INTER, s: 34, c: '#5a564e', name: 'Subhead' }),
+    G('Swipe', R(760, 1150, 250, 90, { r: 45, fill: '#111111' }), T('swipe  →', 885, 1207, { a: 'center', f: INTER, w: 700, s: 32, c: '#ffffff', name: 'Swipe label' })),
+  ])),
+
+  t('glass-announce', 'Spatial glass announcement', ['trend', 'story'], STORY, ['trend', 'glass', 'glassmorphism', 'spatial', 'announcement', 'launch', 'gradient'], (n, w, h) => doc(n, w, h, '#1a1a22', [
+    G('Blobs', E(260, 520, 420, 420, { fill: rad([[0, '#ff7ab6', 0.9], [1, '#ff7ab6', 0]]) }), E(860, 900, 480, 480, { fill: rad([[0, '#6d8bff', 0.9], [1, '#6d8bff', 0]]) }), E(400, 1420, 420, 420, { fill: rad([[0, '#ffc86b', 0.7], [1, '#ffc86b', 0]]) })),
+    G('Glass card', R(90, 560, 900, 800, { r: 80, fill: lin([[0, '#ffffff', 0.26], [1, '#ffffff', 0.08]]), stroke: '#ffffff', sw: 3, op: 1 }),
+      T('coming soon', 160, 690, { f: INTER, w: 500, s: 38, c: '#ffffff', op: 0.75, name: 'Kicker' }),
+      T('Something\nnew is\nloading.', 160, 860, { f: INTER, w: 700, s: 118, ld: 1.0, tr: -30, c: '#ffffff', name: 'Headline' }),
+      G('Button', R(160, 1180, 360, 100, { r: 50, fill: '#ffffff' }), T('Notify me', 340, 1245, { a: 'center', f: INTER, w: 700, s: 38, c: '#111111', name: 'Button label' }))),
+    T('@yourbrand', 540, 1780, { a: 'center', f: INTER, w: 500, s: 32, c: '#ffffff', op: 0.8, name: 'Handle' }),
+  ])),
+
+  t('scrapbook', 'Scrapbook moodboard', ['trend', 'social', 'poster'], PORT, ['trend', 'scrapbook', 'moodboard', 'collage', 'paper', 'handwritten'], (n, w, h) => doc(n, w, h, '#e9e1d2', [
+    G('Paper', ROT(80, 120, 520, 620, -4, (pts) => POLY(pts(0, 0, 520, 620), { fill: '#fbf7ee' })), ROT(520, 360, 480, 560, 5, (pts) => POLY(pts(0, 0, 480, 560), { fill: '#f3d9c8' }))),
+    G('Photos', ROT(120, 160, 440, 460, -4, (pts) => POLY(pts(0, 0, 440, 460), { fill: '#c7bba6', name: 'Photo area' })), ROT(560, 400, 400, 420, 5, (pts) => POLY(pts(0, 0, 400, 420), { fill: '#b7bfb4', name: 'Photo area' }))),
+    G('Tape', ROT(240, 110, 200, 56, -12, (pts) => POLY(pts(0, 0, 200, 56), { fill: '#ffffff', op: 0.6 })), ROT(700, 350, 180, 52, 18, (pts) => POLY(pts(0, 0, 180, 52), { fill: '#ffffff', op: 0.6 }))),
+    T('mood:\nslow mornings', 90, 1080, { f: CV, s: 96, ld: 0.95, c: '#2b2620', name: 'Headline' }),
+    T('coffee · film · linen · sun', 90, 1250, { f: MONO, s: 26, c: '#6d6356', name: 'Tags' }),
+    STAR(950, 1150, 50, 5, 0.45, { fill: '#e4572e' }),
+  ])),
+
+  t('arabic-soon', 'قريباً — Arabic launch', ['trend', 'story', 'arabic'], STORY, ['trend', 'arabic', 'عربي', 'launch', 'coming soon', 'قريبا', 'story'], (n, w, h) => doc(n, w, h, '#0b0b0f', [
+    E(540, 820, 620, 620, { fill: rad([[0, '#ff5a36', 0.55], [1, '#ff5a36', 0]]), name: 'Glow' }),
+    T('قريباً', 540, 900, { a: 'center', f: CA, w: 900, s: 260, fill: lin([[0, '#ffffff'], [1, '#ffb199']]), name: 'Headline' }),
+    T('حاجة جديدة جاية… خليك متابع', 540, 1080, { a: 'center', f: CA, w: 600, s: 52, c: '#d6d6dc', name: 'Subhead' }),
+    G('Pill', R(340, 1500, 400, 96, { r: 48, fill: null, stroke: '#ffffff', sw: 3 }), T('@yourbrand', 540, 1562, { a: 'center', f: INTER, w: 600, s: 36, c: '#ffffff', name: 'Handle' })),
+  ])),
+
   // ================================================================ SOCIAL — square & portrait
   t('launch-day', 'Launch day', 'social', SQ, ['tech', 'startup', 'product', 'gradient', 'dark'], (n, w, h) => doc(n, w, h, '#0b1020', [
     G('Background', E(840, 240, 560, 560, { fill: rad([[0, '#6d5dfc', 0.85], [1, '#6d5dfc', 0]]), name: 'Glow violet' }), E(160, 940, 480, 480, { fill: rad([[0, '#00d1b2', 0.6], [1, '#00d1b2', 0]]), name: 'Glow teal' }),

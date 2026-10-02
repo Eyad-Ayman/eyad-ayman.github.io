@@ -109,23 +109,44 @@ async function openInImage(doc) {
   } catch (e) { busy = false; toast('Could not render the template', { type: 'error', detail: e.message || String(e) }); }
 }
 
+const QUICK = ['Headline', 'Subhead', 'Kicker', 'Caption text', 'Question', 'Option A', 'Option B', 'Date', 'Price', 'Handle', 'Website', 'Call to action', 'Button label', 'Brand name', 'Number', 'Highlight', 'Tags'];
+
 async function preview(tpl) {
   const doc = tpl.build();
   const img = h('img', { alt: tpl.name + ' — preview', src: thumbs.get(tpl.id) || '' });
   const stage = h('div', { class: 'tpl-preview-stage', style: { aspectRatio: `${tpl.w} / ${tpl.h}` } }, img);
   stage.style.setProperty('--r', String(tpl.w / tpl.h));
-  let big = null;
-  svgOf(doc).then((svg) => { big = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' })); img.src = big; }).catch(() => {});
+  let big = null, timer = 0;
+  const redraw = () => svgOf(doc).then((svg) => { const old = big; big = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' })); img.src = big; if (old) setTimeout(() => URL.revokeObjectURL(old), 500); }).catch(() => {});
+  redraw();
+  // Quick edit: the main words of the design, changed right here before opening.
+  const texts = [];
+  walk(doc.items, (n) => { if (n.type === 'text' && QUICK.includes(n.name) && texts.length < 6) texts.push(n); });
+  const quick = texts.length ? h('div', { class: 'tpl-quick' }, h('span', { class: 'studio-label', text: 'Quick edit' }),
+    texts.map((n) => {
+      const clean = n.text.replace(/\u200f/g, '');
+      const multi = clean.includes('\n');
+      const inp = h(multi ? 'textarea' : 'input', { class: 'studio-input', rows: multi ? Math.min(4, clean.split('\n').length) : null, value: clean, 'aria-label': n.name, maxLength: 300 });
+      if (multi) inp.value = clean;
+      inp.addEventListener('input', () => {
+        const v = inp.value.slice(0, 300);
+        n.text = /[\u0600-\u06ff]/.test(v) ? v.split('\n').map((l) => (/[\u0600-\u06ff]/.test(l) ? '\u200f' + l + '\u200f' : l)).join('\n') : v;
+        clearTimeout(timer); timer = setTimeout(redraw, 180);
+      });
+      return h('label', { class: 'studio-field' }, h('span', { class: 'studio-field-label', text: n.name }), inp);
+    })) : null;
   const body = h('div', { class: 'tpl-preview' },
     h('div', { class: 'tpl-preview-art' }, stage),
     h('div', { class: 'tpl-preview-info' },
       h('span', { class: 'studio-badge is-muted', text: tpl.cat.map((c) => CAT_LABEL[c]).join(' · ') }),
       h('span', { class: 'studio-dim studio-small', text: `${tpl.w} × ${tpl.h} px` }),
+      quick,
       h('p', { class: 'studio-dim studio-small tpl-preview-note', text: 'Opens as an editable vector document: every shape and text box is a named layer. Replace the grey photo frames by placing your own images.' })));
-  const v = await dialog({ title: tpl.name, body, width: 880, className: 'tpl-dialog', buttons: [
+  const v = await dialog({ title: tpl.name, body, width: 940, className: 'tpl-dialog', buttons: [
     { label: 'Open in EYAD IMAGE', value: 'image' },
     { label: 'Use template', value: 'vector', primary: true },
   ] });
+  clearTimeout(timer);
   if (big) setTimeout(() => URL.revokeObjectURL(big), 1000);
   if (v === 'vector') openInVector(doc);
   else if (v === 'image') openInImage(doc);
@@ -138,7 +159,8 @@ function card(tpl) {
   const ratio = tpl.w / tpl.h;
   const thumb = h('button', { class: 'tpl-thumb is-loading', type: 'button', dataset: { tpl: tpl.id }, 'aria-label': `Preview ${tpl.name}`, onclick: () => preview(tpl) },
     h('span', { class: 'tpl-art', style: ratio >= 1 ? { width: '86%', aspectRatio: `${tpl.w} / ${tpl.h}` } : { height: '86%', aspectRatio: `${tpl.w} / ${tpl.h}` } }, img),
-    h('span', { class: 'tpl-hover', 'aria-hidden': 'true' }, icon('eye', 15), 'Preview'));
+    h('span', { class: 'tpl-hover', 'aria-hidden': 'true' }, icon('eye', 15), 'Preview'),
+    tpl.cat.includes('trend') ? h('span', { class: 'tpl-trend-badge', text: 'Trending' }) : null);
   io.observe(thumb);
   return h('div', { class: 'tpl-card', role: 'listitem' },
     thumb,
@@ -161,6 +183,9 @@ const grid = h('div', { class: 'tpl-grid', role: 'list', 'aria-label': 'Template
 const blanks = h('section', { class: 'studio-section tpl-blanks', 'aria-label': 'Blank sizes' },
   h('div', { class: 'studio-section-head' }, h('h2', { class: 'studio-section-title', text: 'Start blank' }), h('span', { class: 'studio-dim studio-small', text: 'Empty vector document at a ready-made size' })),
   BLANKS.map(([group, list]) => h('div', { class: 'tpl-blank-group' }, h('h3', { class: 'tpl-blank-head', text: group }), h('div', { class: 'tpl-blank-row' }, list.map(([n, w, hh]) => blankTile(n, w, hh))))));
+const trendRow = h('section', { class: 'tpl-trending', 'aria-label': 'Trending now' },
+  h('div', { class: 'studio-section-head' }, h('h2', { class: 'studio-section-title', text: 'Trending now' }), h('span', { class: 'studio-dim studio-small', text: 'The formats everyone is posting this season — tap one, change the words, done.' })),
+  h('div', { class: 'tpl-trend-strip', role: 'list' }, TEMPLATES.filter((x) => x.cat.includes('trend')).map(card)));
 const countEl = h('span', { class: 'studio-dim studio-small tpl-count' });
 const search = h('input', { class: 'studio-input hub-search tpl-search', type: 'search', placeholder: 'Search templates — e.g. wedding, sale, arabic', 'aria-label': 'Search templates', value: query });
 search.addEventListener('input', () => { query = search.value.trim().toLowerCase(); render(); });
@@ -170,14 +195,15 @@ const chips = h('div', { class: 'hub-chips tpl-chips', role: 'tablist', 'aria-la
 page('templates',
   h('section', { class: 'hub-pagehead tpl-head' },
     h('div', {},
-      h('p', { class: 'studio-label', text: 'EYAD STUDIO · Start from a design' }),
-      h('h1', { class: 'studio-page-title' }, 'TEMP', h('em', { text: 'LATES' })),
+      h('p', { class: 'studio-label', text: 'Start from a design · trends updated for 2026' }),
+      h('h1', { class: 'studio-page-title' }, 'Templates'),
       h('p', { class: 'studio-page-lede', text: `${TEMPLATES.length} original layouts — posts, stories, thumbnails, slides, posters, cards, menus, CVs and Arabic designs. Every one opens as a fully editable vector document; swap the words, colours and photos and make it yours.` })),
     h('div', { class: 'hub-actions' },
       h('a', { class: 'studio-btn', href: ROUTES.vector + '?new=1' }, icon('vector', 16), 'New blank vector'),
       h('a', { class: 'studio-btn is-ghost', href: ROUTES.home }, icon('back', 16), 'Studio home'))),
   h('div', { class: 'tpl-toolbar' }, search, countEl),
   chips,
+  trendRow,
   grid,
   blanks);
 
@@ -191,6 +217,7 @@ function render() {
   chips.querySelectorAll('.hub-chip').forEach((c) => c.setAttribute('aria-selected', String(c.dataset.f === filter)));
   const list = filter === 'blank' ? [] : TEMPLATES.filter(matches);
   grid.hidden = filter === 'blank';
+  trendRow.hidden = filter !== 'all' || !!query;
   countEl.textContent = filter === 'blank' ? '' : `${list.length} template${list.length === 1 ? '' : 's'}`;
   if (filter !== 'blank' && !list.length) grid.replaceChildren(h('div', { class: 'studio-empty' }, icon('search', 28), h('h3', { text: 'Nothing matches' }), h('p', { text: 'Try another word or category — or start from a blank size below.' })));
   else grid.replaceChildren(...list.map(card));

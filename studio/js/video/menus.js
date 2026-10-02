@@ -4,8 +4,8 @@ import { toggleTheme, resolvedTheme } from '../core/settings.js';
 import * as ops from './ops.js';
 import * as io from './io.js';
 import { ROUTES, goPortfolio } from '../core/shell.js';
-import { EFFECTS, TRANSITIONS } from './effects.js';
-import { GEN_TEMPLATES } from './gen.js';
+import { EFFECTS, TRANSITIONS, LOOK_PRESETS, MASK_MODES } from './effects.js';
+import { GEN_TEMPLATES, TEXT_STYLES } from './gen.js';
 import { PRESETS } from './anim.js';
 import { linkMediaDialog, linkLocalFiles, canLinkLocal } from './link.js';
 import { importCaptions, exportCaptions, detectScenes } from './captions.js';
@@ -58,6 +58,8 @@ export function buildMenus(app) {
       { label: 'Back to Portfolio', action: () => goPortfolio() },
     ] },
     { label: 'Edit', items: [
+      { label: 'Fonts… (add from device / Google Fonts)', action: () => import('../core/fonts.js').then((m) => m.fontManagerDialog()), icon: 'text' },
+      { separator: true },
       { label: () => (app.history.canUndo ? 'Undo ' + app.history.stack[app.history.index].label : 'Undo'), shortcut: 'Mod+Z', action: () => app.undo(), enabled: () => app.history.canUndo, icon: 'undo' },
       { label: () => (app.history.canRedo ? 'Redo ' + app.history.stack[app.history.index + 1].label : 'Redo'), shortcut: 'Mod+Shift+Z', action: () => app.redo(), enabled: () => app.history.canRedo, icon: 'redo' },
       { separator: true },
@@ -77,6 +79,7 @@ export function buildMenus(app) {
       { label: 'Split at Playhead', shortcut: 'S', action: () => ops.splitAtPlayhead(app), enabled: has, icon: 'split' },
       { label: 'Speed / Duration…', shortcut: 'Mod+R', action: () => ops.speedDialog(app), enabled: sel },
       { label: 'Speed Presets', submenu: [0.25, 0.5, 0.75, 1, 1.25, 1.5, 2, 4, 8].map((sp) => ({ label: Math.round(sp * 100) + '%', action: () => ops.setSpeed(app, sp), enabled: sel })) },
+      { label: 'Freeze Frame (2 s)', action: () => ops.freezeFrame(app), enabled: has },
       { label: 'Scene Edit Detection…', action: () => detectScenes(app), enabled: sel, icon: 'scope' },
       { label: 'Nudge Left 1 Frame', shortcut: 'Alt+ArrowLeft', action: () => ops.nudge(app, -1), enabled: sel },
       { label: 'Nudge Right 1 Frame', shortcut: 'Alt+ArrowRight', action: () => ops.nudge(app, 1), enabled: sel },
@@ -97,6 +100,7 @@ export function buildMenus(app) {
     ] },
     { label: 'Sequence', items: [
       { label: 'Sequence Settings…', action: () => ops.sequenceSettings(app), enabled: has },
+      { label: 'Aspect Ratio', submenu: ops.ASPECTS.map(([l, w, hh]) => ({ label: `${l}  (${w} × ${hh})`, checked: () => !!app.seq && app.seq.width === w && app.seq.height === hh, action: () => ops.setAspect(app, w, hh), enabled: has })) },
       { label: 'Switch Sequence', submenu: () => (app.project ? app.project.sequences.map((s) => ({ label: s.name, checked: () => s.id === app.project.activeSeq, action: () => io.switchSequence(app, s.id) })) : []) },
       { label: 'New Sequence', action: () => io.newSequence(app), enabled: has },
       { separator: true },
@@ -111,14 +115,22 @@ export function buildMenus(app) {
       { label: () => (app.timeline.snap ? 'Snapping: On' : 'Snapping: Off'), action: () => app.timeline.snapBtn.click(), icon: 'magnet' },
     ] },
     { label: 'Graphics', items: [
-      ...Object.entries(GEN_TEMPLATES).map(([k, t]) => ({ label: 'New ' + t.label, shortcut: k === 'title' ? 'T' : k === 'lower' ? 'Shift+T' : undefined, action: () => ops.addGenerated(app, k), enabled: has, icon: t.gen.type === 'color' ? 'image' : t.gen.type === 'shape' ? 'rect' : 'title' })),
+      ...Object.entries(GEN_TEMPLATES).map(([k, t]) => ({ label: 'New ' + t.label, shortcut: k === 'title' ? 'T' : k === 'lower' ? 'Shift+T' : undefined, action: () => ops.addGenerated(app, k), enabled: has, icon: t.gen.type === 'color' ? 'image' : t.gen.type === 'shape' ? 'rect' : t.gen.type === 'adjust' ? 'layers' : 'title' })),
       { separator: true },
-      { label: 'Import Captions…', action: () => importCaptions(app), icon: 'captions' },
+      { label: 'Text Styles', submenu: Object.entries(TEXT_STYLES).map(([k, st]) => ({ label: st.label, action: () => ops.applyTextStyle(app, k), enabled: has })) },
+      { separator: true },
+      { label: 'Import Captions (SRT / VTT)…', action: () => importCaptions(app), icon: 'captions' },
+      { label: 'Export Captions (SRT)', action: () => exportCaptions(app, 'srt'), enabled: has },
     ] },
     { label: 'Effects', items: [
       { label: 'Apply Default Transition', shortcut: 'Shift+D', action: () => ops.applyTransition(app, 'dissolve'), enabled: has, icon: 'transition' },
       { label: 'Video Transitions', submenu: Object.entries(TRANSITIONS).map(([k, t]) => ({ label: t.label, action: () => ops.applyTransition(app, k), enabled: has })) },
+      { label: 'Apply Transition to All Cuts', submenu: Object.entries(TRANSITIONS).map(([k, t]) => ({ label: t.label, action: () => ops.applyTransitionAll(app, k), enabled: has })) },
       { label: 'Remove Transitions', action: () => ops.removeTransitions(app), enabled: sel },
+      { separator: true },
+      { label: 'Ready Looks', submenu: [...Object.entries(LOOK_PRESETS).map(([k, l]) => ({ label: l.label, action: () => ops.applyLook(app, k), enabled: sel })), { separator: true }, { label: 'Remove Look', action: () => ops.clearLook(app), enabled: sel }] },
+      { label: 'Film Looks (136)…', action: () => { ops.setFilmLook(app, null); app.showEffects('film'); }, enabled: sel, icon: 'film' },
+      { label: 'Auto Mask (AI people)', icon: 'mask', submenu: MASK_MODES.map((m, i) => ({ label: m, action: () => ops.addAutoMask(app, i), enabled: sel })) },
       { separator: true },
       { label: 'Animation Presets', submenu: Object.entries(PRESETS).map(([k, p]) => ({ label: p.label, action: () => ops.applyPreset(app, k), enabled: sel })) },
       { label: 'Remove All Keyframes', action: () => ops.clearKeys(app), enabled: sel },
@@ -150,6 +162,8 @@ export function buildMenus(app) {
       { label: 'Media', action: () => (app.mobile.matches ? app.sheet('media') : app.leftTabs.show('media')), icon: 'film' },
       { label: 'Effects', action: () => app.showEffects(), icon: 'fx' },
       { label: 'Titles & Graphics', action: () => app.showEffects('gen'), icon: 'title' },
+      { label: 'Text Styles', action: () => app.showEffects('textstyles'), icon: 'text' },
+      { label: 'Ready Looks', action: () => app.showEffects('looks'), icon: 'sparkle' },
       { label: 'Transitions', action: () => app.showEffects('transitions'), icon: 'transition' },
       { label: 'Audio Mixer', action: () => (app.mobile.matches ? app.sheet('audio') : app.leftTabs.show('audio')), icon: 'volume' },
       { label: 'Properties', action: () => app.showProperties(), icon: 'sliders' },

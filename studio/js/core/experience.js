@@ -1,4 +1,4 @@
-// EYAD Experience — the layer that makes the Studio feel like one installed
+// EYAD Studio — the layer that makes the Studio feel like one installed
 // app suite: window controls, the Dock, the guided tour, bug reports, the
 // install guide and the offline pack.
 import { h, clear, formatBytes } from './dom.js';
@@ -9,7 +9,7 @@ import { appIcon, APPS } from './appicons.js';
 
 const ROOT = new URL('../../', import.meta.url);
 const route = (k) => (k === 'home' ? ROOT.href : k === 'portfolio' ? new URL('../', ROOT).href : new URL('./' + k + '/', ROOT).href);
-export const VERSION = '3.0';
+export const VERSION = '4.0';
 const BUG_MAIL = 'eyad.ayman2019@gmail.com';
 
 export const isStandalone = () => matchMedia('(display-mode: standalone), (display-mode: fullscreen), (display-mode: window-controls-overlay), (display-mode: minimal-ui)').matches || navigator.standalone === true;
@@ -25,7 +25,7 @@ export function experienceHelp(appId) {
     { label: 'Report a Bug…', action: () => bugReportDialog(appId), icon: 'bug' },
     { label: 'Install as an App…', action: () => installGuide(), icon: 'install' },
     { label: 'Offline Pack…', action: () => { location.href = route('settings') + '#offline'; }, icon: 'download' },
-    { label: 'EYAD Experience Home', shortcut: 'Mod+Alt+0', action: () => { location.href = route('home'); }, icon: 'dock' },
+    { label: 'EYAD Studio Home', shortcut: 'Mod+Alt+0', action: () => { location.href = route('home'); }, icon: 'dock' },
   ];
 }
 
@@ -35,7 +35,7 @@ export function experienceHelp(appId) {
 export function windowControls() {
   const btn = (cls, label, glyph, fn) => h('button', { class: 'xp-wc ' + cls, type: 'button', 'aria-label': label, title: label, onclick: fn }, h('span', { 'aria-hidden': 'true', text: glyph }));
   return h('div', { class: 'xp-wcs', role: 'group', 'aria-label': 'Window' },
-    btn('is-close', 'Close — back to EYAD Experience', '×', () => { location.href = route('home'); }),
+    btn('is-close', 'Close — back to EYAD Studio', '×', () => { location.href = route('home'); }),
     btn('is-min', 'Minimise to the Dock', '–', () => { location.href = route('home'); }),
     btn('is-zoom', 'Full screen', '+', () => {
       if (document.fullscreenElement) document.exitFullscreen?.();
@@ -76,7 +76,7 @@ export function dock(current = '') {
 
 let deferred = null;
 addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferred = e; });
-addEventListener('appinstalled', () => { deferred = null; toast('EYAD Experience is installed. Open it from your apps — it works offline.', { type: 'ok', timeout: 6000 }); });
+addEventListener('appinstalled', () => { deferred = null; toast('EYAD Studio is installed. Open it from your apps — it works offline.', { type: 'ok', timeout: 6000 }); });
 export const canPromptInstall = () => !!deferred;
 
 export async function installGuide() {
@@ -91,9 +91,9 @@ export async function installGuide() {
   let steps;
   if (IS_IOS) steps = [step(1, 'Open this page in Safari (installing needs Safari on iPhone and iPad).', 'compass'), step(2, 'Tap the Share button at the bottom of the screen (the square with an arrow).', 'upload'), step(3, 'Scroll and tap “Add to Home Screen”, then “Add”.', 'plus'), step(4, 'Open EYAD from your Home Screen — it runs full screen, like an app, and keeps working offline.', 'star')];
   else if (IS_ANDROID) steps = [step(1, 'Open the browser menu (⋮ in Chrome, ≡ in Samsung Internet).'), step(2, 'Tap “Install app” or “Add to Home screen”.', 'install'), step(3, 'Open EYAD from your apps. PSD, images and videos can be shared straight into it.', 'star')];
-  else steps = [step(1, 'In Chrome or Edge, click the install icon at the right end of the address bar — or open the browser menu ▸ “Install EYAD Experience…”.', 'install'), step(2, 'It opens in its own window with no browser bars, gets a Dock/Start-menu icon, and opens PSD / SVG / video files from your computer.', 'star'), step(3, 'Safari on Mac: File ▸ Add to Dock. Firefox can’t install web apps — use Chrome, Edge or Safari.', 'compass')];
-  return dialog({ title: 'Install EYAD Experience', width: 480, body: h('div', { class: 'studio-stack' },
-    h('div', { class: 'xp-install-hero' }, appIcon('home', 64), h('div', {}, h('b', { text: 'EYAD Experience' }), h('span', { class: 'studio-dim studio-small', text: 'Image · Vector · Video · 3D · Camera · Templates' }))),
+  else steps = [step(1, 'In Chrome or Edge, click the install icon at the right end of the address bar — or open the browser menu ▸ “Install EYAD Studio…”.', 'install'), step(2, 'It opens in its own window with no browser bars, gets a Dock/Start-menu icon, and opens PSD / SVG / video files from your computer.', 'star'), step(3, 'Safari on Mac: File ▸ Add to Dock. Firefox can’t install web apps — use Chrome, Edge or Safari.', 'compass')];
+  return dialog({ title: 'Install EYAD Studio', width: 480, body: h('div', { class: 'studio-stack' },
+    h('div', { class: 'xp-install-hero' }, appIcon('home', 64), h('div', {}, h('b', { text: 'EYAD Studio' }), h('span', { class: 'studio-dim studio-small', text: 'Image · Vector · Video · 3D · Camera · Templates' }))),
     h('ol', { class: 'xp-steps' }, steps),
     h('p', { class: 'studio-small studio-faint', text: 'Nothing is installed from a store and no account is needed. After installing, open Settings ▸ Offline pack once to keep every tool available without internet.' })) });
 }
@@ -107,7 +107,7 @@ function diagnostics(appId) {
   const s = getSettings();
   const nav = navigator;
   const lines = [
-    `EYAD Experience ${VERSION} · app: ${appId || 'studio'} · ${new Date().toISOString()}`,
+    `EYAD Studio ${VERSION} · app: ${appId || 'studio'} · ${new Date().toISOString()}`,
     `Page: ${location.pathname}${location.search ? ' (with parameters)' : ''}`,
     `Browser: ${nav.userAgent}`,
     `Platform: ${nav.platform || '?'} · touch points: ${nav.maxTouchPoints || 0} · memory: ${nav.deviceMemory || '?'} GB · cores: ${nav.hardwareConcurrency || '?'}`,
@@ -151,12 +151,11 @@ export async function bugReportDialog(appId) {
 
 const TOURS = {
   home: [
-    { sel: '.xp-menubar', title: 'Welcome to EYAD Experience', text: 'A complete creative suite that runs on your device — in the browser or installed as an app. Nothing you open is uploaded.' },
-    { sel: '.xp-launch', title: 'Your apps', text: 'IMAGE for photos and layered design, VECTOR for logos and illustrations, VIDEO for editing, 3D for scenes and models, CAMERA for film looks, and Templates to start fast.' },
-    { sel: '.xp-quick', title: 'Start something', text: 'Pick a size and start, open a PSD / PDF / .ai / video, or drop files anywhere on this screen.' },
-    { sel: '.xp-recent', title: 'Recent work', text: 'Every project is saved on this device. Pick up exactly where you left off.' },
-    { sel: '.xp-dock', title: 'The Dock', text: 'Jump between apps any time. In an app, the red button (top-left) brings you back here. Shortcut: Ctrl/⌘ + Alt + 1…6.' },
-    { sel: '.xp-menubar-right', title: 'Install & offline', text: 'Install it like a real app (Android, iPhone, Windows, Mac), then download the offline pack in Settings so every tool works without internet.' },
+    { sel: '.xp-menubar', title: 'Welcome to EYAD Studio', text: 'A complete creative suite that runs on your device — in the browser or installed as an app. Nothing you open is uploaded.' },
+    { sel: '.hm-apps', title: 'Your studios', text: 'IMAGE for photos and layered design, VECTOR for logos, VIDEO for editing, 3D for scenes and models, KAMERA for film looks, Y2K video and 3D photos. Keys 1–5 open them.' },
+    { sel: '.hm-continue', title: 'Continue', text: 'Your latest projects, saved on this device. Start new has ready sizes, and / searches everything on this screen.' },
+    { sel: '.xp-dock', title: 'The Dock', text: 'Jump between apps any time. Shortcut: Ctrl/⌘ + Alt + 1…6.' },
+    { sel: '.xp-menubar-right', title: 'Install & offline', text: 'Install it like a real app (Android, iPhone, Windows, Mac) — then every tool and AI model works without internet.' },
   ],
   image: [
     { sel: '.img-menubar', title: 'Menus', text: 'Everything lives here — Adjustments, Raw Develop, Film Lab, 40+ filters, AI and Generate. Ctrl/⌘ + K searches every command.' },

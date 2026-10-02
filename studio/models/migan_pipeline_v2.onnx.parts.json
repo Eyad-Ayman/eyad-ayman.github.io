@@ -1,0 +1,9 @@
+{
+ "file": "migan_pipeline_v2.onnx",
+ "parts": [
+  "migan_pipeline_v2.onnx.part1"
+ ],
+ "bytes": 14149726,
+ "sha256": "00ca8f9eab4eae090e688960a8399f08797faabb2ad6ab8dd29501ce69a67e6c",
+ "note": "weights stored as float16 (computation stays float32) to halve the download"
+}

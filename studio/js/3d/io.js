@@ -11,7 +11,7 @@ import { writeEyad, EYAD_VERSION, num, str, bool, oneOf, color } from '../core/e
 import { readZip } from '../core/zip.js';
 import { saveProject, loadProjectBlob, getProject, touchProject, putRecovery, listRecovery, delRecovery, putHandoff, takeHandoff } from '../core/db.js';
 import { ROUTES } from '../core/shell.js';
-import { prepareImported, createLight, LIGHTS, boundsOf } from './objects.js';
+import { prepareImported, createLight, LIGHTS, boundsOf, editorObjects, isAux, isCam, createCamera, camOf, ensureAreaLights } from './objects.js';
 import { validateAnim } from './anim.js';
 import { defaultSettings } from './viewport.js';
 import { WebMWriter } from './webm.js';
@@ -117,6 +117,8 @@ export async function loadModelFile(file) {
   let tris = 0;
   object.traverse((n) => { if (n.isMesh && n.geometry) { const g = n.geometry; tris += g.index ? g.index.count / 3 : (g.attributes.position?.count || 0) / 3; } });
   if (!tris) throw new Error('No visible geometry was found in this file.');
+  // a model exported from EYAD 3D carries editor tags on its nodes; an import is one new object
+  object.traverse((n) => { if (n.userData) for (const k of Object.keys(n.userData)) if (/^eyad/.test(k) || k === 'cam') delete n.userData[k]; });
   object.name = sanitizeFilename(baseName(file.name), 'Model');
   object.userData = { ...(object.userData || {}), eyadId: uid('o'), eyadKind: 'model', eyadSrc: fmt };
   return { object, animations, format: fmt, triangles: Math.round(tris) };
@@ -216,11 +218,15 @@ async function exporter() { const { GLTFExporter } = await import('../../vendor/
 /** GLB of the editable content (meshes / models; lights are stored in JSON). */
 async function contentGLB(app, { forExport = false } = {}) {
   const content = app.viewport.content;
-  for (const o of content.children) {
+  const all = editorObjects(content);
+  for (const o of all) {
+    if (isAux(o)) continue;
     o.userData.eyadHidden = !o.visible;
     o.userData.eyadName = o.name; // glTF node names get sanitised on load; keep the real one
-    o.traverse((n) => { if (n.isMesh) for (const m of Array.isArray(n.material) ? n.material : [n.material]) if (m) { if (m.wireframe) m.userData.eyadWireframe = true; else delete m.userData.eyadWireframe; } });
+    o.traverse((n) => { if (n.isMesh) for (const m of Array.isArray(n.material) ? n.material : [n.material]) if (m) { if (m.wireframe) m.userData.eyadWireframe = true; else delete m.userData.eyadWireframe; if (m.flatShading) m.userData.eyadFlat = true; else delete m.userData.eyadFlat; } });
   }
+  // lights / cameras parented to content are saved as JSON, so they sit out the glTF export
+  const aux = all.filter(isAux).map((o) => ({ o, parent: o.parent, i: o.parent.children.indexOf(o) }));
   const findable = (clip) => clip.tracks.every((t) => { const nn = THREE.PropertyBinding.parseTrackName(t.name).nodeName; return !nn || THREE.PropertyBinding.findNode(content, nn); });
   const clips = app.clips.filter((c) => c.root.parent === content && (!forExport || c.root.visible)).map((c) => c.clip).filter(findable);
   const exp = await exporter();
@@ -229,25 +235,43 @@ async function contentGLB(app, { forExport = false } = {}) {
   if (forExport) content.name = sanitizeFilename(app.name, 'Scene');
   try {
     if (forExport && !content.children.some((o) => o.visible)) throw new Error('There is nothing visible to export.');
+    if (aux.length) { app.viewport.hold = true; for (const a of aux) a.parent.remove(a.o); }
     const res = await exp.parseAsync(content, { binary: true, onlyVisible: forExport, trs: true, animations: clips, maxTextureSize: 4096 });
     return new Uint8Array(res);
-  } finally { content.name = prevName; }
+  } finally {
+    content.name = prevName;
+    if (aux.length) {
+      for (const a of aux) { a.parent.add(a.o); a.parent.children.splice(a.parent.children.indexOf(a.o), 1); a.parent.children.splice(Math.min(a.i, a.parent.children.length), 0, a.o); }
+      app.viewport.hold = false; app.viewport.invalidate();
+    }
+  }
 }
 
+const parentIdOf = (o) => (o.parent && o.parent.userData && o.parent.userData.eyadId) || null;
 function lightsJSON(app) {
-  return app.viewport.lights.children.map((l) => ({
+  return app.viewport.allLights().map((l) => ({
     id: l.userData.eyadId, name: l.name, type: l.userData.eyadLight, color: '#' + l.color.getHexString(), intensity: l.intensity,
-    pos: l.position.toArray(), quat: l.quaternion.toArray(), visible: l.visible, castShadow: !!l.castShadow,
+    pos: l.position.toArray(), quat: l.quaternion.toArray(), scale: l.scale.toArray(), visible: l.visible, castShadow: !!l.castShadow, locked: !!l.userData.eyadLocked, parent: parentIdOf(l),
     distance: l.distance ?? 0, decay: l.decay ?? 2, angle: l.angle ?? 0, penumbra: l.penumbra ?? 0, groundColor: l.groundColor ? '#' + l.groundColor.getHexString() : null,
+    width: l.width ?? null, height: l.height ?? null,
+  }));
+}
+function camerasJSON(app) {
+  return app.viewport.allObjects().filter(isCam).map((c) => ({
+    id: c.userData.eyadId, name: c.name, pos: c.position.toArray(), quat: c.quaternion.toArray(), scale: c.scale.toArray(), visible: c.visible, locked: !!c.userData.eyadLocked, parent: parentIdOf(c), lens: camOf(c),
   }));
 }
 
 export function documentJSON(app) {
   const v = app.viewport;
+  // while looking through a scene camera the free view is the one saved on the way in
+  const sv = v.viewCam && v.savedView ? v.savedView : null;
+  const cam = sv ? { type: sv.type, fov: sv.fov, pos: sv.pos, target: sv.target, zoom: sv.zoom, orthoHalf: sv.orthoHalf } : { type: v.camera.isOrthographicCamera ? 'ortho' : 'persp', fov: v.persp.fov, pos: v.camera.position.toArray(), target: v.orbit.target.toArray(), zoom: v.camera.zoom, orthoHalf: v.orthoHalf || 3 };
   return {
     format: 'eyad-3d', version: 1, name: app.name,
-    settings: { ...app.settings, camera: { type: v.camera.isOrthographicCamera ? 'ortho' : 'persp', fov: v.persp.fov, pos: v.camera.position.toArray(), target: v.orbit.target.toArray(), zoom: v.camera.zoom, orthoHalf: v.orthoHalf || 3 } },
+    settings: { ...app.settings, camera: cam },
     lights: lightsJSON(app),
+    cameras: camerasJSON(app),
     anim: app.anim,
     bookmarks: app.bookmarks,
     order: v.content.children.map((o) => o.userData.eyadId),
@@ -282,6 +306,9 @@ export async function readEyad3D(blob) {
   return { manifest, doc, glb };
 }
 
+const ID_RE = /^[a-z0-9]{1,40}$/i;
+const vec3 = (v, d, min = -1e6, max = 1e6) => (Array.isArray(v) && v.length >= 3 ? v.slice(0, 3).map((x, i) => num(x, d[i], min, max)) : d.slice());
+function quatFrom(q, v) { if (Array.isArray(v) && v.length >= 4) { q.fromArray(v.slice(0, 4).map((x) => num(x, 0, -1, 1))); if (q.lengthSq() < 1e-6) q.identity(); q.normalize(); } }
 function validateSettings(s) {
   const d = defaultSettings();
   if (!s || typeof s !== 'object') return d;
@@ -293,7 +320,12 @@ function validateSettings(s) {
     shadows: bool(s.shadows, true),
     snap: { on: bool(sn.on, false), move: num(sn.move, 0.25, 0.001, 100), rotate: num(sn.rotate, 15, 0.1, 180), scale: num(sn.scale, 0.1, 0.001, 10) },
     camera: { type: oneOf(c.type, ['persp', 'ortho'], 'persp'), fov: num(c.fov, 40, 1, 170), pos: vec(c.pos, d.camera.pos), target: vec(c.target, d.camera.target), zoom: num(c.zoom, 1, 0.001, 1000), orthoHalf: num(c.orthoHalf, 3, 0.001, 1e6) },
-    render: { w: num(r.w, 1920, 16, 4096), h: num(r.h, 1080, 16, 4096), transparent: bool(r.transparent, false), ss: bool(r.ss, true) },
+    render: { w: num(r.w, 1920, 16, 4096), h: num(r.h, 1080, 16, 4096), transparent: bool(r.transparent, false), ss: bool(r.ss, true), samples: oneOf(Number(r.samples), [1, 4, 8, 16, 32], 1), camera: oneOf(r.camera, ['active', 'view'], 'active') },
+    fog: { on: bool(s.fog?.on, false), color: color(s.fog?.color, d.fog.color), density: num(s.fog?.density, d.fog.density, 0, 2) },
+    shading: oneOf(s.shading, ['wire', 'solid', 'material', 'rendered'], 'rendered'),
+    overlays: { on: bool(s.overlays?.on, true), axes: bool(s.overlays?.axes, true), helpers: bool(s.overlays?.helpers, true) },
+    activeCamera: typeof s.activeCamera === 'string' && ID_RE.test(s.activeCamera) ? s.activeCamera : null,
+    lockCamera: bool(s.lockCamera, false),
     video: { w: num(vv.w, 1280, 16, 3840), h: num(vv.h, 720, 16, 3840), fps: oneOf(Number(vv.fps), [24, 25, 30, 50, 60], 30), motion: oneOf(vv.motion, ['timeline', 'turntable'], 'timeline') },
   };
 }
@@ -313,7 +345,25 @@ function lightsFromJSON(list) {
     if (l.isPointLight || l.isSpotLight) { l.distance = num(j?.distance, 0, 0, 1e6); l.decay = num(j?.decay, 2, 0, 10); }
     if (l.isSpotLight) { l.angle = num(j?.angle, l.angle, 0.01, Math.PI / 2); l.penumbra = num(j?.penumbra, l.penumbra, 0, 1); }
     if (l.isHemisphereLight && j?.groundColor) l.groundColor.set(color(j.groundColor, '#3a2f24'));
+    if (l.isRectAreaLight) { l.width = num(j?.width, 2, 0.01, 1000); l.height = num(j?.height, 2, 0.01, 1000); }
+    if (Array.isArray(j?.scale)) l.scale.fromArray(vec3(j.scale, [1, 1, 1], -1e4, 1e4));
+    if (j?.locked === true) l.userData.eyadLocked = true;
+    if (typeof j?.parent === 'string' && ID_RE.test(j.parent)) l.userData._parent = j.parent;
     return l;
+  });
+}
+function camerasFromJSON(list) {
+  if (!Array.isArray(list)) return [];
+  return list.slice(0, 64).map((j) => {
+    const c = createCamera({ name: str(j?.name, 'Camera', 120), id: ID_RE.test(j?.id) ? j.id : undefined });
+    c.userData.cam = camOf({ userData: { cam: j?.lens } });
+    c.position.fromArray(vec3(j?.pos, [5, 3.5, 6]));
+    c.quaternion.identity(); quatFrom(c.quaternion, j?.quat);
+    c.scale.fromArray(vec3(j?.scale, [1, 1, 1], -1e4, 1e4));
+    c.visible = bool(j?.visible, true);
+    if (j?.locked === true) c.userData.eyadLocked = true;
+    if (typeof j?.parent === 'string' && ID_RE.test(j.parent)) c.userData._parent = j.parent;
+    return c;
   });
 }
 
@@ -328,24 +378,36 @@ async function applyProject(app, { doc, glb }, { projectId = null } = {}) {
     objects = [...contentRoot.children];
     clips = gltf.animations || [];
   }
-  for (const o of objects) {
+  const seen = new Set();
+  const fix = (o, top) => {
     o.visible = !o.userData.eyadHidden;
     if (typeof o.userData.eyadName === 'string') o.name = o.userData.eyadName.slice(0, 120);
-    if (typeof o.userData.eyadId !== 'string' || !/^[a-z0-9]{1,40}$/i.test(o.userData.eyadId)) o.userData.eyadId = uid('o');
-    if (!['primitive', 'model'].includes(o.userData.eyadKind)) o.userData.eyadKind = 'model';
+    if (typeof o.userData.eyadId !== 'string' || !ID_RE.test(o.userData.eyadId) || seen.has(o.userData.eyadId)) o.userData.eyadId = uid('o');
+    seen.add(o.userData.eyadId);
+    if (!['primitive', 'model', 'mesh', 'text', 'empty'].includes(o.userData.eyadKind)) o.userData.eyadKind = 'model';
+    if (o.userData.eyadLocked !== true) delete o.userData.eyadLocked;
+    delete o.userData.cam;
     o.traverse((n) => {
       if (!n.isMesh) return;
       n.castShadow = true; n.receiveShadow = true;
-      for (const m of Array.isArray(n.material) ? n.material : [n.material]) if (m && m.userData?.eyadWireframe) m.wireframe = true;
+      for (const m of Array.isArray(n.material) ? n.material : [n.material]) if (m) { if (m.userData?.eyadWireframe) m.wireframe = true; if (m.userData?.eyadFlat) { m.flatShading = true; m.needsUpdate = true; } }
     });
-  }
+    // objects parented to this one were saved as tagged child nodes
+    for (const c of o.children) if (c.userData && typeof c.userData.eyadId === 'string') fix(c, false);
+    void top;
+  };
+  for (const o of objects) fix(o, true);
   const order = Array.isArray(doc.order) ? doc.order : [];
   objects.sort((a, b) => order.indexOf(a.userData.eyadId) - order.indexOf(b.userData.eyadId));
+  const lights = lightsFromJSON(doc.lights), cameras = camerasFromJSON(doc.cameras);
+  if (lights.some((l) => l.isRectAreaLight)) { try { await ensureAreaLights(); } catch (e) { /* area lights stay dark */ } }
+  const parents = {};
+  for (const o of [...lights, ...cameras]) { if (o.userData._parent) parents[o.userData.eyadId] = o.userData._parent; delete o.userData._parent; }
   app.loadScene({
     name: sanitizeFilename(str(doc.name, 'Untitled scene', 120), 'Untitled scene'),
     settings: validateSettings(doc.settings),
     objects, clips,
-    lights: lightsFromJSON(doc.lights),
+    lights, cameras, parents,
     anim: validateAnim(doc.anim),
     bookmarks: Array.isArray(doc.bookmarks) ? doc.bookmarks.slice(0, 64).map((b) => validateBookmark(b)).filter(Boolean) : [],
     selectedId: typeof doc.selected === 'string' ? doc.selected : null,
@@ -521,35 +583,49 @@ export async function exportGLB(app) {
 
 const IMG_PRESETS = [['view', 'Match viewport'], ['1920x1080', 'Full HD 1920 × 1080'], ['3840x2160', '4K UHD 3840 × 2160'], ['1080x1080', 'Square 1080 × 1080'], ['2048x2048', 'Square 2048 × 2048'], ['1080x1350', 'Portrait 4:5 1080 × 1350'], ['1080x1920', 'Story 9:16 1080 × 1920'], ['custom', 'Custom…']];
 
+function cameraOptions(app) {
+  const act = app.activeCamera();
+  const opts = [];
+  if (act) opts.push({ value: 'active', label: 'Active camera — ' + act.name });
+  for (const c of app.cameras()) if (c !== act) opts.push({ value: c.userData.eyadId, label: c.name });
+  opts.push({ value: 'view', label: app.viewport.viewCam ? 'Viewport (camera view)' : 'Viewport view' });
+  return opts;
+}
+
 export async function renderImageDialog(app, { dest = 'download' } = {}) {
   const r = app.settings.render;
   const max = Math.min(4096, app.viewport.maxOutputSize());
+  const cams = cameraOptions(app);
   const v = await formDialog({ title: 'Render image', ok: 'Render', width: 460, fields: [
+    { key: 'camera', label: 'Camera', type: 'select', value: cams.some((c) => c.value === r.camera) ? r.camera : cams[0].value, options: cams },
     { key: 'preset', label: 'Size', type: 'select', value: 'custom', options: IMG_PRESETS.map(([value, label]) => ({ value, label })) },
     { key: 'w', label: 'Width', type: 'number', value: r.w, min: 16, max, suffix: 'px' },
     { key: 'h', label: 'Height', type: 'number', value: r.h, min: 16, max, suffix: 'px' },
-    { key: 'transparent', label: 'Transparent background', type: 'checkbox', value: r.transparent },
+    { key: 'samples', label: 'Samples', type: 'select', value: String(r.samples || 1), options: [[1, '1 — fast'], [4, '4'], [8, '8 — smooth edges'], [16, '16'], [32, '32 — best']].map(([value, label]) => ({ value: String(value), label })) },
     { key: 'ss', label: 'High quality (2× supersampling)', type: 'checkbox', value: r.ss },
+    { key: 'transparent', label: 'Transparent background', type: 'checkbox', value: r.transparent },
     { key: 'dest', label: 'Then', type: 'select', value: dest, options: [{ value: 'download', label: 'Download PNG' }, { value: 'image', label: 'Send to EYAD IMAGE' }] },
-    { type: 'note', label: `Anti-aliased PNG up to ${max} px, rendered from the current camera. Grid, gizmos and light icons are not included.` },
+    { type: 'note', label: `PNG up to ${max} px. More samples average jittered frames for cleaner edges. Grid, gizmos and helpers are never included.` },
   ] });
   if (!v) return;
   let W = v.w, H = v.h;
   if (v.preset === 'view') { const k = Math.min(max / app.viewport.w, max / app.viewport.h, 2); W = app.viewport.w * k; H = app.viewport.h * k; }
   else if (v.preset !== 'custom') [W, H] = v.preset.split('x').map(Number);
   W = Math.round(Math.max(16, Math.min(max, W || 1920))); H = Math.round(Math.max(16, Math.min(max, H || 1080)));
-  app.settings.render = { w: W, h: H, transparent: !!v.transparent, ss: !!v.ss };
+  const samples = Number(v.samples) || 1;
+  app.settings.render = { w: W, h: H, transparent: !!v.transparent, ss: !!v.ss, samples, camera: v.camera === 'view' ? 'view' : 'active' };
   const prog = progressDialog('Rendering', { cancellable: false }); prog.set(null, `${W} × ${H} px…`);
   try {
     await sleep(40);
-    const blob = await app.viewport.renderPNG(W, H, { transparent: v.transparent, supersample: v.ss });
+    const blob = await app.viewport.renderPNG(W, H, { transparent: v.transparent, supersample: v.ss, samples, camera: v.camera, onSample: async (i, n) => { prog.set(i / n, `Sample ${i} of ${n}`); await sleep(0); } });
+    app.lastRender = { w: W, h: H, bytes: blob.size, samples };
     const fname = sanitizeFilename(app.name) + `-${W}x${H}.png`;
     if (v.dest === 'image') {
       const id = await putHandoff([new File([blob], fname, { type: 'image/png' })]);
       await leaveTo(app, ROUTES.image + '?handoff=' + id);
     } else { downloadBlob(blob, fname); toast(`Rendered ${W} × ${H} PNG (${formatBytes(blob.size)})`, { type: 'ok', timeout: 2200 }); }
   } catch (e) { toast(e.message || 'Render failed', { type: 'error' }); }
-  finally { prog.close(); }
+  finally { prog.close(); app.viewport.invalidate(); }
 }
 
 async function leaveTo(app, url) {
@@ -590,7 +666,8 @@ export async function renderVideoDialog(app, { dest = 'download' } = {}) {
     { key: 'h', label: 'Height (custom)', type: 'number', value: vs.h, min: 16, max: 3840, suffix: 'px' },
     { key: 'fps', label: 'Frame rate', type: 'select', value: String(vs.fps), options: [24, 25, 30, 50, 60].map((f) => ({ value: String(f), label: f + ' fps' })) },
     { key: 'dur', label: 'Duration', type: 'number', value: +app.anim.duration.toFixed(2), min: 0.2, max: 120, step: 0.1, suffix: 's' },
-    { key: 'motion', label: 'Motion', type: 'select', value: hasAnim ? 'timeline' : 'turntable', options: [{ value: 'timeline', label: hasAnim ? 'Timeline animation' : 'Timeline animation (no keys yet)' }, { value: 'turntable', label: 'Camera turntable (one full orbit)' }] },
+    { key: 'camera', label: 'Camera', type: 'select', value: cameraOptions(app)[0].value, options: cameraOptions(app) },
+    { key: 'motion', label: 'Motion', type: 'select', value: hasAnim ? 'timeline' : 'turntable', options: [{ value: 'timeline', label: hasAnim ? 'Timeline animation' : 'Timeline animation (no keys yet)' }, { value: 'turntable', label: 'Viewport turntable (one full orbit, ignores the camera choice)' }] },
     { key: 'enc', label: 'Encoder', type: 'select', value: wc ? 'webcodecs' : 'recorder', options: [wc ? { value: 'webcodecs', label: 'Frame-accurate (WebCodecs, WebM)' } : null, rec ? { value: 'recorder', label: 'Real-time recorder (' + (rec.includes('mp4') ? 'MP4' : 'WebM') + ')' } : null].filter(Boolean) },
     { key: 'dest', label: 'Then', type: 'select', value: dest, options: [{ value: 'download', label: 'Download video' }, { value: 'video', label: 'Send to EYAD VIDEO' }] },
     { type: 'note', label: 'Frame-accurate rendering keeps exact timing even when frames are slow to draw. The real-time recorder captures as it plays, so heavy scenes may stutter.' },
@@ -604,7 +681,7 @@ export async function renderVideoDialog(app, { dest = 'download' } = {}) {
   const dur = Math.max(0.2, Math.min(120, Number(v.dur) || app.anim.duration));
   app.settings.video = { w: W, h: H, fps, motion: v.motion };
   try {
-    const blob = await renderVideo(app, { W, H, fps, dur, motion: v.motion, encoder: v.enc });
+    const blob = await renderVideo(app, { W, H, fps, dur, motion: v.motion, encoder: v.enc, camera: v.camera });
     if (!blob) return;
     const ext = blob.type.includes('mp4') ? 'mp4' : 'webm';
     const fname = sanitizeFilename(app.name) + `-${W}x${H}.${ext}`;
@@ -616,8 +693,9 @@ export async function renderVideoDialog(app, { dest = 'download' } = {}) {
 }
 
 /** Renders the animation to a video Blob. Returns null if cancelled. */
-export async function renderVideo(app, { W, H, fps, dur, motion = 'timeline', encoder = 'webcodecs', onProgress = null }) {
+export async function renderVideo(app, { W, H, fps, dur, motion = 'timeline', encoder = 'webcodecs', camera = 'active', onProgress = null }) {
   const vp = app.viewport;
+  if (motion === 'turntable') { camera = 'view'; if (vp.viewCam) { vp.exitCameraView({ keep: true }); app.onCamViewChanged?.(); } }
   const frames = Math.max(1, Math.round(dur * fps));
   const prog = progressDialog('Rendering video', { cancellable: true });
   let cancelled = false;
@@ -629,7 +707,7 @@ export async function renderVideo(app, { W, H, fps, dur, motion = 'timeline', en
   const evalAt = (t) => { app.evaluate(t, { cameraKeys: tt }); };
   let blob = null;
   const wc = encoder === 'webcodecs' ? await webCodecsConfig(W, H, fps) : null;
-  vp.beginOutput(W, H, { transparent: false, scale: 1 });
+  vp.beginOutput(W, H, { transparent: false, scale: 1, camera });
   try {
     if (wc) {
       const writer = new WebMWriter({ width: W, height: H, codec: wc.id, fps });

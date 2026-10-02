@@ -21,7 +21,7 @@ const CACHE = 'eyad-studio-ai-models-v1';
  */
 export const INPAINT_MODELS = {
   migan: {
-    id: 'migan', label: 'MI-GAN (object removal)', file: 'migan_pipeline_v2.onnx', size: '28 MB', bytes: 28.1e6, license: 'MIT',
+    id: 'migan', label: 'MI-GAN (object removal)', file: 'migan_pipeline_v2.onnx', size: '14 MB', bytes: 14.15e6, license: 'MIT',
     res: 512, input: 'uint8', maskHole: 0,
     urls: [
       'https://huggingface.co/andraniksargsyan/migan/resolve/1538c135034b8cfe7a8472f34d09c8a5a45b17a7/migan_pipeline_v2.onnx',
@@ -59,6 +59,10 @@ export async function modelStatus() {
   if (state.state === 'ready' || state.state === 'loading' || state.state === 'error') return { ...out, ...state };
   const cache = await openCache();
   if (cache && await cache.match(s.urls[0])) return { ...out, state: 'cached', message: 'Downloaded — works offline.' };
+  try {
+    const r = await fetch(new URL('../../models/' + s.file + '.parts.json', import.meta.url), { method: 'HEAD', cache: 'no-cache' });
+    if (r.ok) return { ...out, state: 'cached', message: 'Included with the Studio — works offline.' };
+  } catch (e) { /* not self-hosted */ }
   return { ...out, state: 'remote', message: `Downloads once (${s.size}) from Hugging Face, or from studio/models/ if self-hosted.` };
 }
 

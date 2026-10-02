@@ -10,7 +10,7 @@ const ul = (items) => h('ul', { class: 'studio-list' }, items.map((t) => h('li',
 
 page('help',
   h('section', { class: 'hub-pagehead' }, h('div', {},
-    h('h1', { class: 'studio-page-title' }, 'HE', h('em', { text: 'LP' })),
+    h('h1', { class: 'studio-page-title' }, 'Help'),
     h('p', { class: 'studio-page-lede', text: 'How EYAD STUDIO works, what it supports, and where its limits are.' }))),
   h('div', { class: 'hub-docs' },
     h('nav', { class: 'hub-toc', 'aria-label': 'On this page' },

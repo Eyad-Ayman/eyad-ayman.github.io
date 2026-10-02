@@ -3,9 +3,11 @@ import { h, clear, timecode, formatBytes } from '../core/dom.js';
 import { icon } from '../core/icons.js';
 import { contextMenu, toast, confirmDialog } from '../core/ui.js';
 import { clipDur, clipEnd, trackById, mediaById, audioTracks } from './model.js';
-import { EFFECTS, defaultParams, canvasFilterSupported, TRANSITIONS } from './effects.js';
+import { EFFECTS, defaultParams, canvasFilterSupported, TRANSITIONS, LOOK_PRESETS, MASK_MODES } from './effects.js';
+import { LOOKS } from '../core/film.js';
+import { importCaptions, exportCaptions, CAPTION_STYLES } from './captions.js';
 import { glAvailable } from './gl.js';
-import { GEN_TEMPLATES, TITLE_FONTS } from './gen.js';
+import { GEN_TEMPLATES, TITLE_FONTS, TEXT_STYLES, TEXT_ANIM_IN, TEXT_ANIM_OUT, TEXT_DEF } from './gen.js';
 import { PROPS, PRESETS, EASINGS, valueAt, hasKeys, setKey } from './anim.js';
 import { getSettings } from '../core/settings.js';
 import * as ops from './ops.js';
@@ -195,12 +197,56 @@ export class EffectsPanel {
       if (drag) b.addEventListener('dragstart', (e) => { e.dataTransfer.setData(drag[0], drag[1]); });
       return b;
     };
+    const genIcon = (t) => (t.gen.type === 'color' ? 'image' : t.gen.type === 'shape' ? 'rect' : t.gen.type === 'adjust' ? 'layers' : 'title');
+    const chip = (ic, label, fn, title) => h('button', { class: 'studio-btn is-small', type: 'button', title: title || label, onclick: fn }, icon(ic, 13), label);
+    // Quick access: the things people look for first
+    this.el.appendChild(h('div', { class: 'vp-presets vp-fx-quick' },
+      chip('film', `Film looks (${LOOKS.length})`, () => this.open('film'), 'Film, camera and LUT looks from Film Lab'),
+      chip('sparkle', 'Ready looks', () => this.open('looks'), 'One-click filter combinations'),
+      chip('mask', 'Auto mask', () => this.open('automask'), 'AI people mask: remove, blur or recolour the background'),
+      chip('captions', 'Import SRT / VTT', () => importCaptions(app), 'Import subtitles as caption clips'),
+      chip('text', 'Text styles', () => this.open('textstyles'))));
+    // Ready looks
+    bin('looks', 'Ready looks', [
+      h('p', { class: 'studio-dim studio-small', text: 'Select a clip and click a look. Choosing another look replaces the previous one; tweak or remove its effects in Properties.' }),
+      h('div', { class: 'vp-look-grid' }, Object.entries(LOOK_PRESETS).map(([k, l]) => h('button', { class: 'vp-fx-item vp-look', type: 'button', onclick: () => ops.applyLook(app, k) }, icon('sparkle', 14), h('span', { text: l.label })))),
+      item('close', 'Remove look', () => ops.clearLook(app))], true);
+    // Film looks (the same 136 looks as Film Lab / EYAD KAMERA)
+    const fg = {};
+    for (const l of LOOKS) (fg[l.group || 'Looks'] = fg[l.group || 'Looks'] || []).push(item('film', l.name, () => ops.setFilmLook(app, l.code)));
+    bin('film', `Film looks (${LOOKS.length})`, [
+      h('p', { class: 'studio-dim studio-small', text: 'Film stocks, cameras and LUT grades. Click one to put it on the selected clip — strength is in Properties.' }),
+      Object.entries(fg).map(([g, list]) => [h('div', { class: 'vp-fx-group', text: g }), list])]);
+    // Auto mask
+    bin('automask', 'Auto mask (AI people)', [
+      h('p', { class: 'studio-dim studio-small', text: 'Finds people in the selected video or image clip on this device — nothing is uploaded. Works in preview and export.' }),
+      MASK_MODES.map((m, i) => item('mask', m, () => ops.addAutoMask(app, i)))]);
     // Titles & graphics
-    bin('gen', 'Titles & graphics', Object.entries(GEN_TEMPLATES).map(([k, t]) => item(t.gen.type === 'color' ? 'image' : t.gen.type === 'shape' ? 'rect' : 'title', t.label, () => ops.addGenerated(app, k))), true);
+    const capSel = h('select', { class: 'studio-input vp-cap-style', 'aria-label': 'Style for all captions' }, h('option', { value: '', text: 'Style for all captions…' }), CAPTION_STYLES.map(([k, l]) => h('option', { value: k, text: l })));
+    capSel.addEventListener('change', () => { if (capSel.value) ops.styleAllCaptions(app, capSel.value); capSel.value = ''; });
+    bin('gen', 'Titles & graphics', [
+      Object.entries(GEN_TEMPLATES).map(([k, t]) => item(genIcon(t), t.label, () => ops.addGenerated(app, k))),
+      h('div', { class: 'vp-fx-group', text: 'Captions' }),
+      h('div', { class: 'vp-presets' },
+        chip('captions', 'Import SRT / VTT', () => importCaptions(app)),
+        chip('download', 'Export SRT', () => exportCaptions(app, 'srt')),
+        chip('download', 'Export VTT', () => exportCaptions(app, 'vtt'))),
+      capSel], true);
+    // Text styles
+    bin('textstyles', 'Text styles', [
+      h('p', { class: 'studio-dim studio-small', text: 'Click to restyle the selected title or caption — or to add a new title in that style.' }),
+      Object.entries(TEXT_STYLES).map(([k, st]) => item('text', st.label, () => ops.applyTextStyle(app, k)))]);
     // Video transitions
     const tg = {};
-    for (const [k, t] of Object.entries(TRANSITIONS)) (tg[t.group] = tg[t.group] || []).push(item('transition', t.label, () => ops.applyTransition(app, k), ['application/x-eyad-transition', k]));
-    bin('transitions', 'Video transitions', Object.entries(tg).map(([g, list]) => [h('div', { class: 'vp-fx-group', text: g }), list]), true);
+    const tItems = {};
+    const mark = () => { for (const [k, b] of Object.entries(tItems)) b.classList.toggle('is-active', k === (app.lastTransition || 'dissolve')); allBtn.lastChild.textContent = `Apply “${TRANSITIONS[app.lastTransition || 'dissolve'].label}” to all cuts`; };
+    for (const [k, t] of Object.entries(TRANSITIONS)) (tg[t.group] = tg[t.group] || []).push(tItems[k] = item('transition', t.label, () => { ops.applyTransition(app, k); mark(); }, ['application/x-eyad-transition', k]));
+    const allBtn = h('button', { class: 'studio-btn is-small is-primary vp-trans-all', type: 'button', onclick: () => { ops.applyTransitionAll(app, app.lastTransition || 'dissolve'); mark(); } }, icon('transition', 13), h('span', { text: 'Apply to all cuts' }));
+    bin('transitions', 'Video transitions', [
+      h('p', { class: 'studio-dim studio-small', text: 'Click a transition: it goes on the selected clip, or on the cut nearest the playhead. You can also drag one onto a clip.' }),
+      h('div', { class: 'vp-presets' }, allBtn),
+      Object.entries(tg).map(([g, list]) => [h('div', { class: 'vp-fx-group', text: g }), list])], true);
+    mark();
     // Presets
     const pg = {};
     for (const [k, p] of Object.entries(PRESETS)) (pg[p.group] = pg[p.group] || []).push(item('keyframe', p.label, () => ops.applyPreset(app, k)));
@@ -209,7 +255,7 @@ export class EffectsPanel {
     const groups = {};
     for (const [type, def] of Object.entries(EFFECTS)) (groups[def.group] = groups[def.group] || []).push(item('fx', def.label, () => ops.addEffect(app, type), ['application/x-eyad-effect', type]));
     bin('effects', 'Video effects', [
-      h('p', { class: 'studio-dim studio-small', text: 'Select a clip, then click an effect or drag it onto a clip. Every parameter can be keyframed (stopwatch in Properties).' }),
+      h('p', { class: 'studio-dim studio-small', text: 'Select a clip, then click an effect or drag it onto a clip. Effects also work on titles and on adjustment layers (which grade every track below). Every parameter can be keyframed (stopwatch in Properties).' }),
       !glAvailable() && !canvasFilterSupported() ? h('div', { class: 'vp-note is-warn' }, icon('warn', 14), h('span', { text: 'This browser has neither WebGL nor canvas filters — effects are saved but not previewed.' })) : null,
       Object.entries(groups).map(([g, list]) => [h('div', { class: 'vp-fx-group', text: g }), list])], true);
     bin('builtin', 'Built into every clip', ['Motion (position, scale, rotation, anchor)', 'Opacity & blur', 'Crop', 'Speed & fades', 'Volume, EQ, compressor, pan'].map((x) => h('div', { class: 'vp-fx-item is-static' }, icon('sliders', 14), h('span', { text: x }))));
@@ -273,7 +319,7 @@ export class PropertiesPanel {
     const app = this.app, s = app.seq;
     const ids = s ? [...app.selection] : [];
     const c = ids.length ? s.clips.find((x) => x.id === ids[ids.length - 1]) : null;
-    const key = s ? (c ? c.id + JSON.stringify([c.effects.map((e) => e.id + e.enabled), c.trackId, c.linkId, Object.keys(c.keys || {}), c.gen && c.gen.type, !!(c.gen && c.gen.bg), !!(c.gen && c.gen.color2), c.transIn && c.transIn.type, c.transOut && c.transOut.type, !!(c.audioFx && c.audioFx.comp)]) : 'seq:' + s.id + s.width + s.height + s.fps + s.name) : 'none';
+    const key = s ? (c ? c.id + JSON.stringify([c.effects.map((e) => e.id + e.enabled), c.trackId, c.linkId, Object.keys(c.keys || {}), c.gen && [c.gen.type, !!c.gen.bg, !!c.gen.color2, c.gen.shadow, c.gen.animIn, c.gen.animOut, c.gen.hollow, c.gen.glow > 0], c.transIn && c.transIn.type, c.transOut && c.transOut.type, !!(c.audioFx && c.audioFx.comp)]) : 'seq:' + s.id + s.width + s.height + s.fps + s.name) : 'none';
     if (!force && key === this.key && this.el.contains(document.activeElement)) { this.sync(); return; }
     if (this._busy) return;
     if (this.el.contains(document.activeElement)) {
@@ -416,7 +462,7 @@ export class PropertiesPanel {
         this.anim(c, 'opacity', 'Opacity', { min: 0, max: 100, unit: '%' }),
         this.anim(c, 'blur', 'Blur', { min: 0, max: 100, step: 0.5, unit: 'px' })));
       if (c.gen) this.genProps(c);
-      if (!c.gen || c.gen.type !== 'color') this.el.append(this.section('Crop',
+      if (!c.gen || (c.gen.type !== 'color' && c.gen.type !== 'adjust')) this.el.append(this.section('Crop',
         this.anim(c, 'cropL', 'Left', { min: 0, max: 100, step: 0.5, unit: '%' }), this.anim(c, 'cropT', 'Top', { min: 0, max: 100, step: 0.5, unit: '%' }),
         this.anim(c, 'cropR', 'Right', { min: 0, max: 100, step: 0.5, unit: '%' }), this.anim(c, 'cropB', 'Bottom', { min: 0, max: 100, step: 0.5, unit: '%' })));
       // transitions
@@ -447,7 +493,8 @@ export class PropertiesPanel {
       c.gen ? this.num(c, 'Duration', 'out', { min: 0.1, max: 3600, step: 0.1, unit: 's' }) : null,
       h('div', { class: 'studio-row' },
         h('button', { class: 'studio-btn is-small', type: 'button', text: c.enabled === false ? 'Enable clip' : 'Disable clip', onclick: () => ops.updateClips(app, [c.id], { enabled: c.enabled === false }, 'Toggle Clip') }),
-        h('button', { class: 'studio-btn is-small', type: 'button', text: c.linkId ? 'Unlink A/V' : 'Link', onclick: () => (c.linkId ? ops.unlink(app) : ops.link(app)) }))));
+        h('button', { class: 'studio-btn is-small', type: 'button', text: c.linkId ? 'Unlink A/V' : 'Link', onclick: () => (c.linkId ? ops.unlink(app) : ops.link(app)) }),
+        isV && m && m.kind === 'video' ? h('button', { class: 'studio-btn is-small', type: 'button', text: 'Freeze frame', title: 'Hold the frame under the playhead for 2 s', onclick: () => ops.freezeFrame(app) }) : null)));
   }
 
   fitClip(c, mode) {
@@ -462,28 +509,71 @@ export class PropertiesPanel {
   genProps(c) {
     const app = this.app, g = c.gen;
     const up = (patch) => ops.updateGen(app, c.id, patch);
+    if (g.type === 'adjust') {
+      this.el.append(this.section('Adjustment layer', h('p', { class: 'studio-small studio-dim', text: 'This clip has no picture of its own. Its effects (and ready looks) are applied to everything on the tracks below, for as long as it lasts. Opacity blends the result.' }),
+        h('div', { class: 'vp-presets' }, h('button', { class: 'studio-btn is-small', type: 'button', text: 'Ready looks…', onclick: () => app.showEffects('looks') }), h('button', { class: 'studio-btn is-small', type: 'button', text: 'Film looks…', onclick: () => app.showEffects('film') }))));
+      return;
+    }
     if (g.type === 'text' || g.type === 'caption') {
-      const ta = h('textarea', { class: 'studio-input vp-textarea', rows: 3, maxLength: 5000, 'aria-label': 'Text' });
+      const G = { ...TEXT_DEF, bgLine: g.type === 'caption', ...g };
+      const ta = h('textarea', { class: 'studio-input vp-textarea', rows: 3, maxLength: 5000, dir: 'auto', 'aria-label': 'Text' });
       ta.value = g.text;
       ta.addEventListener('input', () => up({ text: ta.value.slice(0, 5000) }));
-      const weight = this.sel(g.weight, [[300, 'Light'], [400, 'Regular'], [500, 'Medium'], [600, 'Semibold'], [700, 'Bold'], [900, 'Black']], (v) => up({ weight: Number(v) }), 'Weight');
+      const weight = this.sel(g.weight, [[300, 'Light'], [400, 'Regular'], [500, 'Medium'], [600, 'Semibold'], [700, 'Bold'], [800, 'Extra bold'], [900, 'Black']], (v) => up({ weight: Number(v) }), 'Weight');
+      const grp = (t) => h('div', { class: 'vp-fx-group', text: t });
+      const gnum = (label, key, o) => { const c2 = { ...c, gen: G }; return this.genNum(c2, label, key, o); };
+      const styleSel = this.sel('', [['', 'Choose a style…'], ...Object.entries(TEXT_STYLES).map(([k, st]) => [k, st.label])], (v) => { if (v) ops.applyTextStyle(app, v); }, 'Text style');
       this.el.append(this.section(g.type === 'caption' ? 'Caption' : 'Text',
+        row('Style', styleSel),
         ta,
         row('Font', this.sel(g.font, TITLE_FONTS, (v) => up({ font: v }), 'Font')),
         row('Weight', weight),
         this.genNum(c, 'Size', 'size', { min: 4, max: 2000 }),
         row('Align', this.sel(g.align, [['left', 'Left'], ['center', 'Centre'], ['right', 'Right']], (v) => up({ align: v }), 'Align')),
-        row('Colour', this.colorIn(g.color, (v) => up({ color: v }), 'Text colour')),
+        row('Direction', this.sel(G.dir, [['auto', 'Auto (detects Arabic)'], ['ltr', 'Left to right'], ['rtl', 'Right to left (عربي)']], (v) => up({ dir: v }), 'Text direction')),
+        row('All caps', this.check(G.caps, (v) => up({ caps: v }), 'All caps')),
         row('Italic', this.check(g.italic, (v) => up({ italic: v }), 'Italic')),
+        gnum('Wrap width', 'wrap', { min: 0, max: 100 }),
+        h('p', { class: 'studio-small studio-faint', text: 'Wrap width is a % of the frame (0 = no automatic line breaks).' }),
+        grp('Fill'),
+        row('Colour', this.colorIn(g.color, (v) => up({ color: v }), 'Text colour')),
+        row('Gradient', this.check(!!G.color2, (v) => up({ color2: v ? '#7d8cff' : null }), 'Gradient fill')),
+        G.color2 ? row('Colour 2', this.colorIn(G.color2, (v) => up({ color2: v }), 'Second gradient colour')) : null,
+        G.color2 ? gnum('Angle', 'gradAngle', { min: -360, max: 360 }) : null,
+        grp('Stroke'),
+        row('Colour', this.colorIn(g.stroke, (v) => up({ stroke: v }), 'Stroke colour')),
+        this.genNum(c, 'Width', 'strokeW', { min: 0, max: 200 }),
+        row('Outline only', this.check(G.hollow, (v) => up({ hollow: v }), 'Outline only (no fill)')),
+        grp('Shadow'),
         row('Shadow', this.check(g.shadow, (v) => up({ shadow: v }), 'Shadow')),
-        row('Stroke', this.colorIn(g.stroke, (v) => up({ stroke: v }), 'Stroke colour')),
-        this.genNum(c, 'Stroke width', 'strokeW', { min: 0, max: 200 }),
+        g.shadow ? row('Colour', this.colorIn(G.shadowColor, (v) => up({ shadowColor: v }), 'Shadow colour')) : null,
+        g.shadow ? gnum('Opacity', 'shadowOp', { min: 0, max: 100 }) : null,
+        g.shadow ? gnum('Blur', 'shadowBlur', { min: 0, max: 200 }) : null,
+        g.shadow ? gnum('Offset X', 'shadowX', { min: -100, max: 100 }) : null,
+        g.shadow ? gnum('Offset Y', 'shadowY', { min: -100, max: 100 }) : null,
+        grp('Glow (neon)'),
+        gnum('Amount', 'glow', { min: 0, max: 100 }),
+        G.glow > 0 ? row('Colour', this.colorIn(G.glowColor, (v) => up({ glowColor: v }), 'Glow colour')) : null,
+        grp('Background box'),
         row('Background', this.check(!!g.bg, (v) => up({ bg: v ? '#000000' : null }), 'Background box')),
-        g.bg ? row('Box colour', this.colorIn(g.bg, (v) => up({ bg: v }), 'Box colour')) : null,
-        g.bg ? this.genNum(c, 'Box padding', 'bgPad', { min: 0, max: 400 }) : null,
+        g.bg ? row('Colour', this.colorIn(g.bg, (v) => up({ bg: v }), 'Box colour')) : null,
+        g.bg ? gnum('Opacity', 'bgOp', { min: 0, max: 100 }) : null,
+        g.bg ? this.genNum(c, 'Padding', 'bgPad', { min: 0, max: 400 }) : null,
+        g.bg ? gnum('Radius', 'bgRadius', { min: 0, max: 400 }) : null,
+        g.bg ? row('Per line', this.check(G.bgLine, (v) => up({ bgLine: v }), 'One box per line')) : null,
+        grp('Spacing'),
         this.genNum(c, 'Line height', 'lineH', { min: 0.5, max: 4, step: 0.05 }),
-        this.anim(c, 'tracking', 'Tracking', { min: -200, max: 2000 }),
-        this.anim(c, 'reveal', 'Type on', { min: 0, max: 100, unit: '%' })));
+        this.anim(c, 'tracking', 'Letter spacing', { min: -200, max: 2000 }),
+        this.anim(c, 'reveal', 'Type on', { min: 0, max: 100, unit: '%' }),
+        grp('Animation'),
+        row('In', this.sel(G.animIn, TEXT_ANIM_IN, (v) => up({ animIn: v }), 'Animation in')),
+        G.animIn !== 'none' && G.animIn !== 'karaoke' ? gnum('In time (s)', 'animInDur', { min: 0.05, max: 30, step: 0.05 }) : null,
+        G.animIn === 'karaoke' ? row('Highlight', this.colorIn(G.hi, (v) => up({ hi: v }), 'Karaoke highlight colour')) : null,
+        row('Out', this.sel(G.animOut, TEXT_ANIM_OUT, (v) => up({ animOut: v }), 'Animation out')),
+        G.animOut !== 'none' ? gnum('Out time (s)', 'animOutDur', { min: 0.05, max: 30, step: 0.05 }) : null,
+        g.type === 'caption' ? grp('All captions') : null,
+        g.type === 'caption' ? row('Style for all', this.sel('', [['', 'Style for all captions…'], ...CAPTION_STYLES], (v) => { if (v) ops.styleAllCaptions(app, v); }, 'Style for all captions')) : null,
+        g.type === 'caption' ? h('button', { class: 'studio-btn is-small', type: 'button', text: 'Copy this caption’s style to all captions', onclick: () => ops.styleAllCaptions(app, null, c.id) }) : null));
     } else if (g.type === 'shape') {
       this.el.append(this.section('Shape',
         row('Shape', this.sel(g.shape, [['rect', 'Rectangle'], ['ellipse', 'Ellipse'], ['triangle', 'Triangle'], ['line', 'Line']], (v) => up({ shape: v }), 'Shape')),
@@ -540,7 +630,7 @@ export class PropertiesPanel {
           i > 0 ? h('button', { class: 'studio-icon-btn is-small', type: 'button', title: 'Move up', 'aria-label': 'Move ' + def.label + ' up', onclick: () => move(-1) }, icon('chevronUp', 13)) : null,
           h('button', { class: 'studio-icon-btn is-small', type: 'button', 'aria-label': 'Reset ' + def.label, title: 'Reset', onclick: () => ops.setEffect(app, c.id, e.id, { params: defaultParams(e.type) }, 'Reset Effect') }, icon('rotate', 13)),
           h('button', { class: 'studio-icon-btn is-small', type: 'button', 'aria-label': 'Remove ' + def.label, title: 'Remove', onclick: () => ops.removeEffect(app, c.id, e.id) }, icon('trash', 13))),
-        def.ai ? h('p', { class: 'studio-small studio-faint', text: 'Runs an on-device people-segmentation model (downloaded once, then cached). Preview may lag on slow phones; export uses full quality.' }) : null,
+        def.ai ? h('p', { class: 'studio-small studio-faint', text: 'Runs a people-segmentation model on this device — nothing is uploaded. Blur / outline size and colour apply to the modes that use them. Preview may lag on slow phones; export uses full quality.' }) : null,
         ...def.params.map((p) => (def.options && def.options[p.key]
           ? h('div', { class: 'vp-prop' }, h('span', { class: 'vp-prop-label', text: p.label }),
             this.sel(e.params[p.key] ?? p.default, def.options[p.key](), (v) => ops.setEffect(app, c.id, e.id, { params: { [p.key]: Number(v) } }, def.label), p.label))
@@ -561,9 +651,12 @@ export class PropertiesPanel {
         h('div', { class: 'vp-kv' }, h('span', { text: 'Duration' }), h('span', { class: 'studio-mono', text: timecode(ops.seqDuration(s), s.fps) })),
         h('div', { class: 'vp-kv' }, h('span', { text: 'Clips' }), h('span', { text: String(s.clips.length) })),
         h('div', { class: 'vp-kv' }, h('span', { text: 'Markers' }), h('span', { text: String(s.markers.length) })),
+        h('div', { class: 'vp-fx-group', text: 'Aspect ratio' }),
+        h('div', { class: 'vp-presets' }, ops.ASPECTS.map(([l, w, hh]) => h('button', { class: 'studio-btn is-small' + (s.width === w && s.height === hh ? ' is-active' : ''), type: 'button', text: l, title: `${w} × ${hh}`, onclick: () => ops.setAspect(app, w, hh) }))),
         h('button', { class: 'studio-btn is-small', type: 'button', text: 'Sequence settings…', onclick: () => ops.sequenceSettings(app) })),
       this.section('Quick add',
-        h('div', { class: 'vp-presets' }, Object.entries(GEN_TEMPLATES).map(([k, t]) => h('button', { class: 'studio-btn is-small', type: 'button', text: '+ ' + t.label, onclick: () => ops.addGenerated(app, k) })))),
+        h('div', { class: 'vp-presets' }, Object.entries(GEN_TEMPLATES).map(([k, t]) => h('button', { class: 'studio-btn is-small', type: 'button', text: '+ ' + t.label, onclick: () => ops.addGenerated(app, k) })),
+          h('button', { class: 'studio-btn is-small', type: 'button', text: 'Import SRT / VTT', onclick: () => importCaptions(app) }))),
       ...(app.project.meta?.source === 'prproj' ? [this.section('Imported project', h('p', { class: 'studio-small studio-dim', text: `From Premiere project “${app.project.meta.prproj?.file || ''}”. Effects, transitions and proprietary features were not reproduced — see File ▸ Project Import Report.` }))] : []));
     if (s.markers.length) {
       const list = h('div', { class: 'vp-markers' }, s.markers.slice().sort((a, b) => a.time - b.time).map((mk) => h('button', { class: 'vp-marker-item', type: 'button', onclick: () => app.engine.seek(mk.time) }, h('span', { class: 'vp-marker-dot', style: { background: mk.color } }), h('span', { class: 'studio-mono', text: timecode(mk.time, s.fps) }), h('span', { text: mk.name }))));

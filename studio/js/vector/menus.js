@@ -31,6 +31,8 @@ export function buildMenus(app) {
       { label: 'Back to Portfolio', action: () => goPortfolio() },
     ] },
     { label: 'Edit', items: [
+      { label: 'Fonts… (add from device / Google Fonts)', action: () => import('../core/fonts.js').then((m) => m.fontManagerDialog()), icon: 'text' },
+      { separator: true },
       { label: () => 'Undo' + (app.undoStack.length ? ' ' + app.undoStack[app.undoStack.length - 1].label : ''), shortcut: 'Mod+Z', action: () => app.undo(), enabled: () => app.undoStack.length > 0, icon: 'undo' },
       { label: () => 'Redo' + (app.redoStack.length ? ' ' + app.redoStack[app.redoStack.length - 1].label : ''), shortcut: 'Mod+Shift+Z', action: () => app.redo(), enabled: () => app.redoStack.length > 0, icon: 'redo' },
       { separator: true },

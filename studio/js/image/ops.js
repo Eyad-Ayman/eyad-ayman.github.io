@@ -883,6 +883,7 @@ export function fullscreen() {
 export function togglePanels(app) {
   const on = !app.root.classList.contains('is-panels-hidden');
   app.root.classList.toggle('is-panels-hidden', on);
+  import('./workspace.js').then((m) => m.applyWidth(app));
   setTimeout(() => app.view.resize(), 50);
 }
 export function brushSize(app, dir) {

@@ -1,6 +1,6 @@
 // EYAD IMAGE — compositor. Draws the layer tree into a 2D context whose
 // coordinate system is document pixels.
-import { GCO, nodeMatrix, localSize, layoutText, fontString, makeCanvas } from './doc.js';
+import { GCO, nodeMatrix, localSize, layoutText, fontString, makeCanvas, hasFx } from './doc.js';
 
 // Small pool of scratch canvases, keyed by size.
 const pool = [];
@@ -100,6 +100,7 @@ export function renderNode(n, ctx, o = {}, ignoreBlend = false) {
     return;
   }
   const live = o.live && o.live.nodeId === n.id ? o.live : null;
+  if (hasFx(n)) { renderWithFx(n, ctx, o, live, ignoreBlend); return; }
   const needsIsolation = (n.mask && n.maskEnabled) || (live && live.isolate);
   ctx.save();
   ctx.globalAlpha *= n.opacity;
@@ -223,3 +224,73 @@ export function nodeThumb(doc, n, size = 40) {
 }
 
 export function localBoxSize(n) { return localSize(n); }
+
+// ---------------------------------------------------------------- layer styles (fx)
+function rgba(hex, a) { const v = parseInt(hex.slice(1), 16); return `rgba(${v >> 16 & 255},${v >> 8 & 255},${v & 255},${a})`; }
+function renderWithFx(n, ctx, o, live, ignoreBlend) {
+  const base = ctx.getTransform();
+  const k = Math.sqrt(Math.abs(base.a * base.d - base.b * base.c)) || 1; // doc px → device px
+  const W = o.width, H = o.height;
+  // 1) the layer's own pixels (with its mask), full alpha, in device space
+  const content = getScratch(W, H);
+  const cg = content.getContext('2d');
+  cg.setTransform(base.multiply(nodeMatrix(n)));
+  if (live) live.draw(cg, n); else drawContent(n, cg);
+  if (n.mask && n.maskEnabled) applyMask(cg, n, base.multiply(nodeMatrix(n)));
+  cg.setTransform(1, 0, 0, 1, 0, 0);
+  const fx = n.fx || {};
+  const out = getScratch(W, H), og = out.getContext('2d');
+  const FAR = 20000;
+  const shadowOf = (e, blurPx, dx, dy, color) => { og.save(); og.shadowColor = color; og.shadowBlur = blurPx; og.shadowOffsetX = dx + FAR; og.shadowOffsetY = dy; og.drawImage(content, -FAR, 0); og.restore(); };
+  if (fx.dropShadow && fx.dropShadow.on) {
+    const e = fx.dropShadow, a = (e.angle || 0) * Math.PI / 180;
+    shadowOf(e, e.size * k, -Math.cos(a) * e.distance * k, Math.sin(a) * e.distance * k, rgba(e.color, e.opacity));
+  }
+  if (fx.outerGlow && fx.outerGlow.on) { const e = fx.outerGlow; shadowOf(e, e.size * k, 0, 0, rgba(e.color, e.opacity)); shadowOf(e, e.size * k * 0.4, 0, 0, rgba(e.color, e.opacity * 0.6)); }
+  // silhouette helper
+  const sil = (color) => { const s = getScratch(W, H), sg = s.getContext('2d'); sg.drawImage(content, 0, 0); sg.globalCompositeOperation = 'source-in'; sg.fillStyle = color; sg.fillRect(0, 0, W, H); return s; };
+  if (fx.stroke && fx.stroke.on && fx.stroke.position !== 'inside') {
+    const e = fx.stroke, s = sil(rgba(e.color, 1)), r = Math.max(1, e.size * k * (e.position === 'center' ? 0.5 : 1));
+    og.save(); og.globalAlpha = e.opacity;
+    const steps = Math.min(48, Math.max(12, Math.round(r * 1.5)));
+    for (let i = 0; i < steps; i++) { const t = i / steps * Math.PI * 2; og.drawImage(s, Math.cos(t) * r, Math.sin(t) * r); }
+    og.drawImage(s, 0, 0);
+    og.restore(); releaseScratch(s);
+  }
+  // 2) content (Fill opacity), overlays clipped to it
+  const body = getScratch(W, H), bg = body.getContext('2d');
+  bg.drawImage(content, 0, 0);
+  if (fx.gradientOverlay && fx.gradientOverlay.on) {
+    const e = fx.gradientOverlay, a = e.angle * Math.PI / 180, cx = W / 2, cy = H / 2, L = Math.max(W, H) / 2;
+    const gr = bg.createLinearGradient(cx - Math.cos(a) * L, cy + Math.sin(a) * L, cx + Math.cos(a) * L, cy - Math.sin(a) * L);
+    gr.addColorStop(0, e.from); gr.addColorStop(1, e.to);
+    bg.save(); bg.globalCompositeOperation = 'source-atop'; bg.globalAlpha = e.opacity; bg.fillStyle = gr; bg.fillRect(0, 0, W, H); bg.restore();
+  }
+  if (fx.colorOverlay && fx.colorOverlay.on) { const e = fx.colorOverlay; bg.save(); bg.globalCompositeOperation = 'source-atop'; bg.globalAlpha = e.opacity; bg.fillStyle = e.color; bg.fillRect(0, 0, W, H); bg.restore(); }
+  if (fx.innerShadow && fx.innerShadow.on) {
+    const e = fx.innerShadow, a = (e.angle || 0) * Math.PI / 180;
+    const inv = getScratch(W, H), ig = inv.getContext('2d');
+    ig.fillStyle = '#000'; ig.fillRect(0, 0, W, H); ig.globalCompositeOperation = 'destination-out'; ig.drawImage(content, 0, 0);
+    bg.save(); bg.globalCompositeOperation = 'source-atop';
+    bg.shadowColor = rgba(e.color, e.opacity); bg.shadowBlur = e.size * k; bg.shadowOffsetX = -Math.cos(a) * e.distance * k + FAR; bg.shadowOffsetY = Math.sin(a) * e.distance * k;
+    bg.drawImage(inv, -FAR, 0); bg.restore(); releaseScratch(inv);
+  }
+  if (fx.stroke && fx.stroke.on && fx.stroke.position !== 'outside') {
+    const e = fx.stroke, r = Math.max(1, e.size * k * (e.position === 'center' ? 0.5 : 1));
+    const inv = getScratch(W, H), ig = inv.getContext('2d');
+    ig.fillStyle = e.color; ig.fillRect(0, 0, W, H); ig.globalCompositeOperation = 'destination-out';
+    const steps = Math.min(48, Math.max(12, Math.round(r * 1.5)));
+    for (let i = 0; i < steps; i++) { const t = i / steps * Math.PI * 2; ig.drawImage(content, Math.cos(t) * r, Math.sin(t) * r); }
+    bg.save(); bg.globalCompositeOperation = 'source-atop'; bg.globalAlpha = e.opacity; bg.drawImage(inv, 0, 0); bg.restore(); releaseScratch(inv);
+  }
+  og.save(); og.globalAlpha = n.fillOpacity == null ? 1 : n.fillOpacity; og.drawImage(body, 0, 0); og.restore();
+  releaseScratch(body); releaseScratch(content);
+  // 3) onto the canvas with the layer's opacity and blend mode
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.globalAlpha *= n.opacity;
+  ctx.globalCompositeOperation = o.forceOp || (ignoreBlend ? 'source-over' : (GCO[n.blend] || 'source-over'));
+  ctx.drawImage(out, 0, 0);
+  ctx.restore();
+  releaseScratch(out);
+}

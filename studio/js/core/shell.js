@@ -71,7 +71,7 @@ export function appSwitcher(current) {
     ['vector', 'Vector', 'vector'],
     ['video', 'Video', 'video'],
     ['3d', '3D', 'cube'],
-    ['camera', 'Camera', 'camera'],
+    ['camera', 'Kamera', 'camera'],
     ['templates', 'Templates', 'grid'],
     ['projects', 'Projects', 'folder'],
     ['settings', 'Settings', 'gear'],
@@ -112,7 +112,15 @@ export function registerServiceWorker() {
   if (!('serviceWorker' in navigator)) return;
   if (location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') return;
   const swUrl = new URL('./sw.js', STUDIO_ROOT);
-  navigator.serviceWorker.register(swUrl, { scope: STUDIO_ROOT.pathname }).then((reg) => {
+  // A new version took over while this page was open: offer a reload (never forced — there may be unsaved work).
+  const hadController = !!navigator.serviceWorker.controller;
+  let told = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!hadController || told) return; told = true;
+    import('./ui.js').then(({ toast }) => toast('EYAD Studio was updated.', { timeout: 0, action: { label: 'Reload', fn: () => location.reload() } })).catch(() => {});
+  });
+  navigator.serviceWorker.register(swUrl, { scope: STUDIO_ROOT.pathname, updateViaCache: 'none' }).then((reg) => {
+    reg.update().catch(() => {});
     // The portfolio's own service worker clears caches it doesn't own when it
     // updates; ask ours to re-check its shell cache so offline keeps working.
     const sw = reg.active || reg.waiting || reg.installing;
@@ -133,7 +141,7 @@ export function bootStudio() {
   });
   registerServiceWorker();
   matchMedia('(prefers-color-scheme: light)').addEventListener?.('change', applyUiSettings);
-  // EYAD Experience: window buttons on every editor, first-run tour, offline pack after install
+  // EYAD Studio: window buttons on every editor, first-run tour, offline pack after install
   const app = (location.pathname.match(/\/studio\/(image|vector|video|3d)\//) || [])[1];
   if (app) {
     const inject = () => {
@@ -146,11 +154,12 @@ export function bootStudio() {
     setTimeout(() => { if (!document.querySelector('.studio-scrim, .xp-tour') && innerWidth > 760) startTour(app); }, 2600);
   }
   if (document.body.classList.contains('is-hub') || app) {
-    // Ctrl/Cmd + Alt + 0 → EYAD Experience home
+    // Ctrl/Cmd + Alt + 0 → EYAD Studio home
     addEventListener('keydown', (e) => { if ((e.ctrlKey || e.metaKey) && e.altKey && e.code === 'Digit0') { e.preventDefault(); location.href = ROUTES.home; } });
   }
   document.documentElement.classList.toggle('xp-standalone', matchMedia('(display-mode: standalone), (display-mode: window-controls-overlay)').matches || navigator.standalone === true);
   autoOfflinePack();
+  import('./fonts.js').then((m) => m.loadUserFonts()).catch(() => {});
   requestAnimationFrame(() => dispatchEvent(new Event('eyad:ready')));
 }
 
@@ -164,7 +173,7 @@ export function themeToggle() {
   return b;
 }
 
-/** Header used by the non-editor pages (home, projects, settings, help): the EYAD Experience menu bar. */
+/** Header used by the non-editor pages (home, projects, settings, help): the EYAD Studio menu bar. */
 export function hubHeader(current) {
   const clock = h('span', { class: 'xp-clock studio-mono', 'aria-hidden': 'true' });
   const tick = () => { clock.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); };
@@ -174,7 +183,7 @@ export function hubHeader(current) {
   upd(); addEventListener('online', upd); addEventListener('offline', upd);
   const install = h('button', { class: 'xp-bar-btn', type: 'button', onclick: () => installGuide(), hidden: matchMedia('(display-mode: standalone)').matches || navigator.standalone === true }, icon('install', 14), h('span', { text: 'Install' }));
   return h('header', { class: 'studio-hub-header xp-menubar' },
-    h('div', { class: 'studio-hub-header-left' }, brandMark({ app: 'EXPERIENCE' }), appSwitcher(current)),
+    h('div', { class: 'studio-hub-header-left' }, brandMark({ app: 'STUDIO' }), appSwitcher(current)),
     h('div', { class: 'studio-hub-header-right xp-menubar-right' },
       net, install,
       h('button', { class: 'xp-bar-btn', type: 'button', title: 'Report a bug', 'aria-label': 'Report a bug', onclick: () => bugReportDialog(current) }, icon('bug', 14)),

@@ -163,7 +163,7 @@ export async function exportFrame(app) {
   const s = app.seq;
   const c = document.createElement('canvas');
   c.width = s.width; c.height = s.height;
-  app.engine.drawFrame(c.getContext('2d'), c.width, c.height, app.engine.time);
+  app.engine.drawFrame(c.getContext('2d'), c.width, c.height, app.engine.time, true);
   c.toBlob((b) => { if (b) { downloadBlob(b, `${sanitizeFilename(app.project.name)}-frame-${Math.round(app.engine.time * s.fps)}.png`); toast('Frame exported', { type: 'ok', timeout: 1400 }); } }, 'image/png');
 }
 

@@ -15,7 +15,7 @@ export function page(current, ...content) {
     hubHeader(current),
     main,
     h('footer', { class: 'studio-hub-footer' },
-      h('span', { text: 'EYAD Experience · by Eyad Ayman · your files stay on this device' }),
+      h('span', { text: 'EYAD Studio · by Eyad Ayman · your files stay on this device' }),
       h('span', {}, h('a', { href: ROUTES.help, text: 'Help & supported files' }), ' · ', h('a', { href: ROUTES.portfolio, text: '← Back to portfolio' }))),
     xpDock(current));
   body.classList.add('xp-has-dock');
