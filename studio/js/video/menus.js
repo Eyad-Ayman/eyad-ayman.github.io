@@ -121,6 +121,7 @@ export function buildMenus(app) {
       { separator: true },
       { label: 'Text Styles', submenu: Object.entries(TEXT_STYLES).map(([k, st]) => ({ label: st.label, action: () => ops.applyTextStyle(app, k), enabled: has })) },
       { separator: true },
+      { label: 'Auto Captions from Speech…', action: () => import('./autocap.js').then((m) => m.autoCaptions(app)), enabled: has, icon: 'captions' },
       { label: 'Import Captions (SRT / VTT)…', action: () => importCaptions(app), icon: 'captions' },
       { label: 'Export Captions (SRT)', action: () => exportCaptions(app, 'srt'), enabled: has },
     ] },

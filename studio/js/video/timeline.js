@@ -592,6 +592,7 @@ export class Timeline {
       { label: 'Apply default transition', shortcut: 'Mod+D', action: () => ops.applyTransition(app, 'dissolve'), enabled: tr.kind === 'video' },
       { label: 'Remove transitions', action: () => ops.removeTransitions(app), enabled: !!(c.transIn || c.transOut) },
       { label: 'Animation presets…', action: () => app.showEffects && app.showEffects('presets'), enabled: tr.kind === 'video' },
+      !c.gen && c.mediaId && (tr.kind === 'audio' || c.linkId) ? { label: 'Auto captions from speech…', action: () => import('./autocap.js').then((mod) => mod.autoCaptions(app, { clipId: c.id })) } : null,
       { label: 'Remove all keyframes', action: () => ops.clearKeys(app), enabled: !!c.keys },
       c.gen && (c.gen.type === 'text' || c.gen.type === 'caption') ? { label: 'Edit text…', action: () => ops.editGenText(app, c) } : null,
       { label: 'Rename…', action: async () => { const n = await promptDialog('Rename clip', 'Name', c.name); if (n) ops.updateClips(app, [c.id], { name: n.slice(0, 300) }, 'Rename Clip'); } },

@@ -6,7 +6,7 @@
  * cached shell offline; static files = cache first, refreshed in the background.
  */
 "use strict";
-var VERSION = "9f3ba1863e";
+var VERSION = "33b94eaa97";
 var CACHE = "eyad-studio-" + VERSION;
 var SHELL = [
 "./3d/",
@@ -121,7 +121,12 @@ var SHELL = [
 "./js/core/open.js",
 "./js/core/settings.js",
 "./js/core/shell.js",
+"./js/core/stt-engine.js",
+"./js/core/stt-worker.js",
+"./js/core/stt.js",
 "./js/core/ui.js",
+"./js/core/upscale-worker.js",
+"./js/core/upscale.js",
 "./js/core/zip.js",
 "./js/file-notice.js",
 "./js/image/ai.js",
@@ -173,6 +178,7 @@ var SHELL = [
 "./js/vector/tools.js",
 "./js/video/anim.js",
 "./js/video/app.js",
+"./js/video/autocap.js",
 "./js/video/captions.js",
 "./js/video/collect.js",
 "./js/video/effects.js",
@@ -198,6 +204,10 @@ var SHELL = [
 "./models/depth_anything_v2_vits.onnx.parts.json",
 "./models/migan_pipeline_v2.onnx.parts.json",
 "./models/selfie_segmenter.tflite",
+"./models/whisper_base_decoder.onnx.parts.json",
+"./models/whisper_base_encoder.onnx.parts.json",
+"./models/whisper_tiny_decoder.onnx.parts.json",
+"./models/whisper_tiny_encoder.onnx.parts.json",
 "./moodboard/",
 "./moodboard/index.html",
 "./projects/",

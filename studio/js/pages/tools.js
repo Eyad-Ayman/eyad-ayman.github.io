@@ -1,5 +1,6 @@
 // EYAD Studio — Quick tools (/studio/tools/). Small, single-purpose tools that run on this device:
-// compress & convert images, remove a background, pull a colour palette, make a QR code, record the screen.
+// compress & convert images, remove a background, pull a colour palette, make a QR code, record the screen,
+// upscale an image with an on-device network.
 // Imported files are untrusted: they are only ever decoded as images by the browser and redrawn on a canvas.
 import { h, formatBytes } from '../core/dom.js';
 import { icon } from '../core/icons.js';
@@ -206,12 +207,136 @@ function screenTool() {
     h('div', { class: 'qt-actions' }, go, save, h('a', { class: 'studio-btn', href: ROUTES.video, text: 'Open VIDEO' }), status), video);
 }
 
-const tools = [compressTool(), cutoutTool(), paletteTool(), qrTool(), screenTool()];
+// ------------------------------------------------------------------ 6. AI upscale
+function upscaleTool() {
+  let file = null, src = null, result = null, blob = null, ctrl = null, running = false, up = null, name = 'image', split = 0.5, detail = false;
+  const scale = select([['4', '×4 — four times larger'], ['2', '×2 — twice as large']], '4');
+  const kind = select([['photo', 'Photo, logo or scan'], ['art', 'Flat illustration (faster)']], 'photo');
+  const fmt = select([['image/png', 'PNG (lossless)'], ['image/jpeg', 'JPEG'], ['image/webp', 'WebP']], 'image/png');
+  const info = h('p', { class: 'po-mono qt-upinfo', text: 'No image yet' });
+  const status = h('span', { class: 'po-mono', 'aria-live': 'polite' });
+  const fill = h('i', {}); const bar = h('div', { class: 'qt-bar', hidden: true, role: 'progressbar', 'aria-valuemin': 0, 'aria-valuemax': 100 }, fill);
+  const before = h('canvas', { class: 'qt-cmp-before' }), after = h('canvas', { class: 'qt-cmp-after' });
+  const knob = h('div', { class: 'qt-cmp-knob', role: 'slider', tabIndex: 0, 'aria-label': 'Before and after', 'aria-valuemin': 0, 'aria-valuemax': 100 }, h('span', {}));
+  const cmp = h('div', { class: 'qt-compare', hidden: true }, after, before, knob, h('span', { class: 'po-mono qt-cmp-tag is-l', text: 'Before' }), h('span', { class: 'po-mono qt-cmp-tag is-r', text: 'After' }));
+  const zoom = h('button', { class: 'po-pill', type: 'button', hidden: true, text: 'Show detail (100%)', onclick: () => { detail = !detail; zoom.textContent = detail ? 'Show whole image' : 'Show detail (100%)'; paint(); } });
+  const mp = (w, h2) => { const v = w * h2 / 1e6; return (v < 10 ? v.toFixed(1) : Math.round(v)) + ' MP'; };
+  const dur = (s) => s < 90 ? `${Math.max(1, Math.round(s))} s` : `${Math.round(s / 60)} min`;
+  const engine = async () => (up = up || await import('../core/upscale.js'));
+
+  /** What will happen with the chosen image on this device (sizes, time) — said before anything starts. */
+  async function describe() {
+    if (!src) { info.textContent = 'No image yet'; return null; }
+    const u = await engine(), k = +scale.value, fit = u.fitInput(src.width, src.height), est = u.estimateSeconds(fit.width, fit.height, kind.value);
+    const lim = u.upscaleLimits();
+    info.textContent = `${src.width}×${src.height} · ${formatBytes(file.size)} → ${fit.width * k}×${fit.height * k} · about ${dur(est.seconds)} on this device${est.measured ? '' : ' (rough guess until the first run)'}`
+      + (fit.reduced ? ` — this image is ${mp(src.width, src.height)}; this device upscales up to ${mp(lim.maxPixels, 1)} and ${lim.maxSide} px a side, so it is first reduced to ${fit.width}×${fit.height}.` : '');
+    run.textContent = fit.reduced ? 'Reduce and upscale' : 'Upscale';
+    return fit;
+  }
+  function clearResult() { result = null; blob = null; cmp.hidden = true; save.hidden = true; edit.hidden = true; zoom.hidden = true; status.textContent = ''; }
+  async function setFile(f) {
+    if (running || !f) return;
+    const bmp = await decode(f);
+    file = f; name = sanitizeFilename(baseName(f.name)) || 'image';
+    src = draw(bmp); bmp.close && bmp.close();
+    clearResult(); run.disabled = false;
+    await describe();
+  }
+  // before/after: both drawn at the size of the box (not the full result), so a 30-megapixel result stays light
+  function paint() {
+    if (!result || cmp.hidden) return;
+    const dpr = Math.min(2, window.devicePixelRatio || 1), cw = cmp.clientWidth; if (!cw) return;
+    const maxH = Math.min(520, Math.round(window.innerHeight * 0.7));
+    const w = cw, hh = Math.max(120, Math.min(maxH, Math.round(cw * result.height / result.width)));
+    cmp.style.height = hh + 'px';
+    const pw = Math.round(w * dpr), ph = Math.round(hh * dpr);
+    // what is shown: the whole result fitted in the box, or its middle at one result pixel per screen pixel
+    const k = detail ? 1 : Math.min(pw / result.width, ph / result.height);
+    const sw = Math.min(result.width, pw / k), sh = Math.min(result.height, ph / k), dw = sw * k, dh = sh * k;
+    const sx = (result.width - sw) / 2, sy = (result.height - sh) / 2, kx = src.width / result.width, ky = src.height / result.height;
+    for (const [c, img, k1, k2] of [[after, result, 1, 1], [before, src, kx, ky]]) {
+      c.width = pw; c.height = ph; const g = c.getContext('2d'); g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high';
+      g.drawImage(img, sx * k1, sy * k2, sw * k1, sh * k2, (pw - dw) / 2, (ph - dh) / 2, dw, dh);
+    }
+    setSplit(split);
+  }
+  function setSplit(v) {
+    split = Math.max(0, Math.min(1, v)); const pc = (split * 100).toFixed(2) + '%';
+    before.style.clipPath = `inset(0 ${(100 - split * 100).toFixed(2)}% 0 0)`; before.style.webkitClipPath = before.style.clipPath;
+    knob.style.left = pc; knob.setAttribute('aria-valuenow', Math.round(split * 100));
+  }
+  const fromEvent = (e) => { const r = cmp.getBoundingClientRect(); setSplit((e.clientX - r.left) / Math.max(1, r.width)); };
+  let drag = false;
+  cmp.addEventListener('pointerdown', (e) => { drag = true; try { cmp.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ } fromEvent(e); });
+  cmp.addEventListener('pointermove', (e) => { if (drag) fromEvent(e); });
+  for (const t of ['pointerup', 'pointercancel']) cmp.addEventListener(t, () => { drag = false; });
+  knob.addEventListener('keydown', (e) => { const d = e.key === 'ArrowLeft' ? -0.05 : e.key === 'ArrowRight' ? 0.05 : 0; if (d) { e.preventDefault(); setSplit(split + d); } });
+  let rz = 0; addEventListener('resize', () => { cancelAnimationFrame(rz); rz = requestAnimationFrame(paint); });
+
+  async function encode() {
+    if (!result) return;
+    let c = result;
+    if (fmt.value === 'image/jpeg' && result._alpha) { c = document.createElement('canvas'); c.width = result.width; c.height = result.height; const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height); g.drawImage(result, 0, 0); }
+    blob = await toBlob(c, fmt.value, 0.92); if (c !== result) c.width = c.height = 1;
+    if (!blob) { status.textContent = 'This browser could not save that format — try PNG.'; save.hidden = true; return; }
+    const got = { 'image/jpeg': 'JPEG', 'image/webp': 'WebP', 'image/png': 'PNG' }[blob.type] || 'PNG';
+    status.textContent = `${result.width}×${result.height} · ${formatBytes(blob.size)} ${got} · took ${dur(result._seconds)}` + (blob.type !== fmt.value ? ' (this browser cannot write that format, so it is a PNG)' : '');
+    save.hidden = false; edit.hidden = false;
+  }
+  async function go() {
+    if (running) return;
+    if (!src) { const f = (await pick(false))[0]; if (!f) return; await setFile(f); if (!src) return; }
+    const u = await engine(), fit = await describe(), k = +scale.value;
+    running = true; ctrl = new AbortController(); clearResult();
+    run.disabled = true; choose.disabled = true; cancel.hidden = false; bar.hidden = false; fill.style.transform = 'scaleX(0)';
+    for (const s of [scale, kind]) s.disabled = true;
+    let input = src;
+    try {
+      if (fit.reduced) input = draw(src, Math.max(fit.width, fit.height));
+      const out = await u.upscale(input, { scale: k, model: kind.value, signal: ctrl.signal, onProgress: (f, msg, x) => {
+        if (f != null) { fill.style.transform = `scaleX(${f})`; bar.setAttribute('aria-valuenow', Math.round(f * 100)); }
+        status.textContent = msg + (x && x.eta > 0 && isFinite(x.eta) ? ` · about ${dur(x.eta)} left` : '');
+      } });
+      result = out; if (input !== src) { src = input; } // "before" is what the network was given
+      status.textContent = 'Preparing the file…';
+      cmp.hidden = false; zoom.hidden = false; detail = false; zoom.textContent = 'Show detail (100%)'; split = 0.5; paint();
+      await encode();
+    } catch (e) {
+      if (e && e.name === 'AbortError') status.textContent = 'Cancelled — nothing was saved.';
+      else { status.textContent = ''; toast(e && e.message ? e.message : 'Upscaling did not work on this device.', { type: 'error' }); }
+    }
+    running = false; ctrl = null; run.disabled = false; choose.disabled = false; cancel.hidden = true; bar.hidden = true;
+    for (const s of [scale, kind]) s.disabled = false;
+    describe().catch(() => {});
+  }
+  const choose = btn('Choose image', async () => { try { const f = (await pick(false))[0]; if (f) await setFile(f); } catch (e) { toast(e && e.message ? e.message : 'Could not read this file', { type: 'error' }); } });
+  const run = btn('Upscale', go, true);
+  const cancel = btn('Cancel', () => { if (ctrl) ctrl.abort(); }); cancel.hidden = true;
+  const save = btn('Save', () => blob && downloadBlob(blob, `${name}-x${result.width / src.width | 0}.${({ 'image/jpeg': 'jpg', 'image/webp': 'webp' })[blob.type] || 'png'}`)); save.hidden = true;
+  const edit = btn('Edit in IMAGE', () => busy(edit, 'Opening…', async () => {
+    const png = fmt.value === 'image/png' && blob && blob.type === 'image/png' ? blob : await toBlob(result, 'image/png');
+    const { putHandoff } = await import('../core/db.js');
+    const id = await putHandoff([new File([png], `${name}-x${result.width / src.width | 0}.png`, { type: 'image/png' })]);
+    location.href = ROUTES.image + '?handoff=' + id;
+  })); edit.hidden = true;
+  scale.addEventListener('change', () => { describe().catch(() => {}); });
+  kind.addEventListener('change', () => { describe().catch(() => {}); });
+  fmt.addEventListener('change', () => { if (result && !running) encode(); });
+  const el = tool(6, 'upscale', 'AI upscale', 'Make a small image two or four times larger, on this device. AI upscaling rebuilds detail from patterns it learned — great for photos, logos and old low-res images; it cannot recover text or faces that are not there.',
+    h('div', { class: 'qt-controls' }, field('Scale', scale), field('Kind of image', kind), field('Save as', fmt)),
+    h('div', { class: 'qt-actions' }, choose, run, cancel, save, edit, zoom),
+    info, bar, h('p', { class: 'qt-upstatus' }, status), cmp);
+  el._drop = (fs) => setFile(fs[0]).catch((e) => toast(e && e.message ? e.message : 'Could not read this file', { type: 'error' }));
+  return el;
+}
+
+const tools = [compressTool(), cutoutTool(), paletteTool(), qrTool(), screenTool(), upscaleTool()];
 page('tools',
   h('section', { class: 'hub-pagehead' }, h('div', {},
     h('h1', { class: 'studio-page-title', text: 'Tools' }),
     h('p', { class: 'studio-dim', text: 'Quick one-job tools. They run on this device — nothing you open is uploaded.' }),
-    h('nav', { class: 'qt-jump' }, [['compress', 'Compress & convert'], ['cutout', 'Remove background'], ['palette', 'Colour palette'], ['qr', 'QR code'], ['screen', 'Screen recorder']].map(([id, t]) => h('a', { class: 'po-pill', href: '#' + id, text: t }))))),
+    h('nav', { class: 'qt-jump' }, [['compress', 'Compress & convert'], ['cutout', 'Remove background'], ['palette', 'Colour palette'], ['qr', 'QR code'], ['screen', 'Screen recorder'], ['upscale', 'AI upscale']].map(([id, t]) => h('a', { class: 'po-pill', href: '#' + id, text: t }))))),
   h('div', { class: 'qt-grid' }, tools));
 
 // drop images onto a tool

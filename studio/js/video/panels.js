@@ -242,6 +242,7 @@ export class EffectsPanel {
         list(Object.entries(GEN_TEMPLATES).map(([key, t]) => item(genIcon(t), t.label, () => ops.addGenerated(app, key)))),
         group('Captions'),
         h('div', { class: 'vp-presets' },
+          chip('captions', 'Auto captions', () => import('./autocap.js').then((m) => m.autoCaptions(app)), 'Turn the speech in the selected clip (or the whole sequence) into captions — on this device'),
           chip('captions', 'Import SRT / VTT', () => importCaptions(app), 'Import subtitles as caption clips'),
           chip('download', 'Export SRT', () => exportCaptions(app, 'srt')),
           chip('download', 'Export VTT', () => exportCaptions(app, 'vtt'))),
@@ -695,6 +696,7 @@ export class PropertiesPanel {
         h('button', { class: 'studio-btn is-small', type: 'button', text: 'Sequence settings…', onclick: () => ops.sequenceSettings(app) })),
       this.section('Quick add',
         h('div', { class: 'vp-presets' }, Object.entries(GEN_TEMPLATES).map(([k, t]) => h('button', { class: 'studio-btn is-small', type: 'button', text: '+ ' + t.label, onclick: () => ops.addGenerated(app, k) })),
+          h('button', { class: 'studio-btn is-small', type: 'button', text: 'Auto captions', onclick: () => import('./autocap.js').then((m) => m.autoCaptions(app)) }),
           h('button', { class: 'studio-btn is-small', type: 'button', text: 'Import SRT / VTT', onclick: () => importCaptions(app) }))),
       ...(app.project.meta?.source === 'prproj' ? [this.section('Imported project', h('p', { class: 'studio-small studio-dim', text: `From Premiere project “${app.project.meta.prproj?.file || ''}”. Effects, transitions and proprietary features were not reproduced — see File ▸ Project Import Report.` }))] : []));
     if (s.markers.length) {

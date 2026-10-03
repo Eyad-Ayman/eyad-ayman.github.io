@@ -232,7 +232,7 @@ export class VideoApp {
       act('audio', 'volume', 'Audio', () => this.toggleSheet('audio')),
       act('speed', 'clock', 'Speed', withClip(() => ops.speedDialog(this))),
       act('duplicate', 'duplicate', 'Duplicate', withClip(() => ops.duplicateSelected(this))),
-      act('captions', 'captions', 'Captions', () => import('./captions.js').then((m) => m.importCaptions(this))),
+      act('captions', 'captions', 'Captions', () => import('./autocap.js').then((m) => m.captionsSheet(this))),
       act('animate', 'keyframe', 'Animate', () => this.toggleSheet('effects', 'presets')),
     ];
     for (const b of items) this.dockBtns[b.dataset.act] = b;

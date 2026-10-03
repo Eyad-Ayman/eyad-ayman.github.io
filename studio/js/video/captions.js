@@ -42,26 +42,38 @@ export async function importCaptions(app, file, opts = {}) {
   if (file.size > 5 * 1024 * 1024) { toast('Caption file is too large (max 5 MB).', { type: 'error' }); return; }
   const cues = parseCaptions(await file.text());
   if (!cues.length) { toast(`No captions found in ${sanitizeFilename(file.name)} (expected SRT or WebVTT).`, { type: 'error' }); return; }
-  // default look: readable boxed subtitles (the Arabic variant when the file is Arabic); the style
-  // picker for all captions is in Properties and in Effects ▸ Titles & graphics — no dialog in the way
-  const rtl = cues.some((q) => /[\u0591-\u07FF\uFB50-\uFDFF\uFE70-\uFEFC]/.test(q.text));
-  const style = opts.style || (rtl ? 'arabicCaption' : 'subtitleBg'), position = opts.position || 'bottom';
   if (!app.project) await app.ensureProject();
+  const ids = addCaptionCues(app, cues, { label: 'Import Captions', style: opts.style, position: opts.position });
+  toast(`Imported ${cues.length} caption${cues.length === 1 ? '' : 's'} on a new “Captions” track`, { type: 'ok', detail: 'Pick a look for all of them under “Style for all captions”.', timeout: 6000, action: { label: 'Caption style', fn: () => app.showProperties() } });
+  return ids;
+}
+
+const RTL_TEXT = /[\u0591-\u07FF\uFB50-\uFDFF\uFE70-\uFEFC]/;
+/**
+ * Put cues [{ start, end, text }] on a new “Captions” track as caption clips (one undo step). → clip ids.
+ * Used by SRT / VTT import and by auto captions. opts: { label, style, position }.
+ */
+export function addCaptionCues(app, cues, opts = {}) {
+  // default look: readable boxed subtitles (the Arabic variant when the text is Arabic); the style
+  // picker for all captions is in Properties and in Effects ▸ Titles & graphics — no dialog in the way
+  const rtl = cues.some((q) => RTL_TEXT.test(q.text));
+  const style = opts.style || (rtl ? 'arabicCaption' : 'subtitleBg'), position = opts.position || 'bottom';
   const tpl = GEN_TEMPLATES.caption;
   const look = style && style !== 'classic' && TEXT_STYLES[style] ? textStylePatch(style) : { wrap: 86 };
   const track = makeTrack('video', 'Captions');
   const ids = [];
-  edit(app, 'Import Captions', (seq) => {
+  edit(app, opts.label || 'Captions', (seq) => {
     const lastV = seq.tracks.map((x) => x.kind).lastIndexOf('video');
     seq.tracks.splice(lastV + 1, 0, track);
     for (const q of cues) {
       const c = makeClip({ trackId: track.id, name: q.text.split('\n')[0].slice(0, 40), start: q.start, in: 0, out: q.end - q.start, gen: { ...structuredClone(tpl.gen), ...look, type: 'caption', text: q.text } });
+      // mixed-language captions: a line without Arabic / Hebrew letters stays left-to-right inside an RTL look
+      if (rtl && look.dir === 'rtl' && !RTL_TEXT.test(q.text)) c.gen.dir = 'ltr';
       c.transform.y = Math.round(seq.height * (CAP_POS[position] ?? CAP_POS.bottom));
       seq.clips.push(c); ids.push(c.id);
     }
   });
   if (ids.length) app.select([ids[0]]);
-  toast(`Imported ${cues.length} caption${cues.length === 1 ? '' : 's'} on a new “Captions” track`, { type: 'ok', detail: 'Pick a look for all of them under “Style for all captions”.', timeout: 6000, action: { label: 'Caption style', fn: () => app.showProperties() } });
   return ids;
 }
 

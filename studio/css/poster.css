@@ -253,3 +253,22 @@ body.xp-home .xp-recover { border-radius: 0; background: transparent; border: 1.
 @media (pointer: coarse) { .mb-grip { width: 44px; height: 44px; right: -22px; bottom: -22px; } }
 .po-quick { grid-template-columns: repeat(6, minmax(0, 1fr)); }
 :root body.studio-app.is-hub .mb-bar select.studio-input, :root body.studio-app.is-hub .mb-selbar select.studio-input { width: auto; min-width: 130px; height: 34px; }
+
+/* quick tools — AI upscale (06) */
+.qt-tool#upscale:last-child { grid-column: auto; }
+.qt-upinfo { margin: 0 0 10px; max-width: 70ch; line-height: 1.5; }
+.qt-upstatus { margin: 0 0 10px; min-height: 1.2em; }
+.qt-bar { height: 6px; margin: 0 0 10px; overflow: hidden; box-shadow: inset 0 0 0 1.5px var(--po-type); }
+.qt-bar i { display: block; height: 100%; background: var(--po-type); transform: scaleX(0); transform-origin: 0 50%; transition: transform .25s linear; }
+.qt-compare { position: relative; width: 100%; overflow: hidden; border: 1.5px solid var(--st-line-2); cursor: ew-resize; touch-action: pan-y; -webkit-user-select: none; user-select: none; background: repeating-conic-gradient(rgba(128, 128, 128, .28) 0% 25%, transparent 0% 50%) 50% / 22px 22px; }
+.qt-compare canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; pointer-events: none; }
+.qt-cmp-knob { position: absolute; top: 0; bottom: 0; width: 44px; margin-left: -22px; display: grid; place-items: center; outline: none; }
+.qt-cmp-knob::before { content: ''; position: absolute; top: 0; bottom: 0; left: 50%; width: 2px; margin-left: -1px; background: #fff; box-shadow: 0 0 0 1px rgba(0, 0, 0, .45); }
+.qt-cmp-knob span { position: relative; width: 34px; height: 34px; border-radius: 50%; background: var(--po-type); box-shadow: 0 0 0 2px #fff, 0 0 0 3px rgba(0, 0, 0, .35); }
+.qt-cmp-knob span::before, .qt-cmp-knob span::after { content: ''; position: absolute; top: 50%; width: 7px; height: 7px; margin-top: -4px; border: solid var(--po-on); border-width: 2px 0 0 2px; }
+.qt-cmp-knob span::before { left: 8px; transform: rotate(-45deg); } .qt-cmp-knob span::after { right: 8px; transform: rotate(135deg); }
+.qt-cmp-knob:focus-visible span { box-shadow: 0 0 0 2px #fff, 0 0 0 5px var(--po-type); }
+.qt-cmp-tag { position: absolute; top: 8px; padding: 4px 7px; background: rgba(0, 0, 0, .6); color: #fff; pointer-events: none; }
+.qt-cmp-tag.is-l { left: 8px; } .qt-cmp-tag.is-r { right: 8px; }
+#upscale [hidden] { display: none !important; }
+.po-quick { grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 0 16px; }

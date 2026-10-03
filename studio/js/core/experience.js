@@ -248,6 +248,8 @@ export function offlineManifest() {
     { group: 'PDF & .ai import', urls: [v('pdfjs/pdf.min.mjs'), v('pdfjs/pdf.worker.min.mjs')] },
     { group: '3D engine', urls: [v('three/three.module.js'), v('three/three.core.js'), v('three/addons/loaders/GLTFLoader.js'), v('three/addons/loaders/OBJLoader.js'), v('three/addons/loaders/STLLoader.js'), v('three/addons/loaders/FBXLoader.js'), v('three/addons/controls/OrbitControls.js'), v('three/addons/controls/TransformControls.js'), v('three/addons/environments/RoomEnvironment.js'), v('three/addons/exporters/GLTFExporter.js'), v('three/addons/utils/BufferGeometryUtils.js'), v('three/addons/utils/SkeletonUtils.js'), v('three/addons/libs/fflate.module.js'), v('three/addons/curves/NURBSCurve.js'), v('three/addons/curves/NURBSUtils.js')] },
     { group: 'Design-file import', urls: [v('fflate/fflate.js'), v('fzstd/fzstd.js'), v('kiwi/kiwi-decode.js'), v('paper/paper-core.min.js')] },
+    { group: 'AI upscaler (Quick tools)', urls: [new URL('../models/realesr_general_x4v3.onnx', VENDOR).href, new URL('../models/realesr_animevideo_x4v3.onnx', VENDOR).href] },
+    { group: 'Auto captions — speech model (39 MB)', urls: ['whisper_tokens.txt', 'whisper_tiny_encoder.onnx.parts.json', 'whisper_tiny_encoder.onnx.part1', 'whisper_tiny_decoder.onnx.parts.json', 'whisper_tiny_decoder.onnx.part1', 'whisper_tiny_decoder.onnx.part2'].map((f) => new URL('../models/' + f, VENDOR).href) },
   ];
 }
 
