@@ -30,6 +30,7 @@ export const DEFAULTS = {
   panelSide: 'right',       // right | left  (editors' panel column)
   toolbarSide: 'left',      // left | right  (tools column)
   forceDesktop: false,      // phones: show the full desktop interface (zoomed out)
+  poster: 'signal',          // home / hub colour mode
   splash: 'installed',      // installed | always | never — app launch screen
   tourDone: false,
   // Pen tablet

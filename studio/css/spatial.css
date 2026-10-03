@@ -480,3 +480,7 @@ body:has(.studio-scrim, .studio-sheet, .xp-tour) .xp-dock { opacity: 0; pointer-
   body.xp-has-dock .studio-hub-main { padding-bottom: calc(58px + env(safe-area-inset-bottom, 0px)); }
 }
 @media (max-width: 1000px) { :root .studio-app .studio-hub-header .studio-switcher { display: none; } }
+
+/* full-screen apps use the real visible height (see file-notice.js) — fixes the bottom being cut off on iPhone */
+:root body.studio-app:is(.img-app, .vid-app, .cam-app) { top: 0; left: 0; right: 0; bottom: auto; height: 100vh; height: var(--app-h, 100dvh); }
+html.studio-root:has(> body:is(.img-app, .vid-app, .cam-app)) { height: var(--app-h, 100dvh); overflow: hidden; overscroll-behavior: none; }

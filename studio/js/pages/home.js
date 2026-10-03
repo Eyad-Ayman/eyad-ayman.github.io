@@ -10,6 +10,7 @@ import { chooseFiles } from '../core/open.js';
 import { appIcon, APPS } from '../core/appicons.js';
 import { startTour, installGuide, offlineStatus, isStandalone } from '../core/experience.js';
 import { page, routeFiles, bindPageDrop, projectUrl, thumbImg } from './common.js';
+import { getSettings, setSetting } from '../core/settings.js';
 
 document.body.classList.add('xp-home');
 
@@ -30,110 +31,105 @@ function launchFrom(el, href) {
   setTimeout(() => z.remove(), 2500); // back/forward cache
 }
 
-// ---------------------------------------------------------------- card helper
-/** A floating glass card. `d` is its depth: how far it drifts with the pointer. */
-const card = (cls, d, ...kids) => h('section', { class: 'hm-card ' + cls, style: { '--d': d, '--fd': (d * -0.7).toFixed(1) + 's' } }, ...kids);
-const head = (title, ...right) => h('div', { class: 'hm-card-head' }, h('h2', { text: title }), ...right);
-const go = (link, iconEl) => link.addEventListener('click', (e) => { if (e.metaKey || e.ctrlKey || e.shiftKey || e.button) return; e.preventDefault(); launchFrom(iconEl(), link.href); });
+// ---------------------------------------------------------------- poster home
+const PORTFOLIO_IMG = (p) => new URL('assets/images/' + p, ROUTES.portfolio).href;
+const hideOnError = (img) => { img.addEventListener('error', () => { img.hidden = true; }, { once: true }); return img; };
+const go = (link, from) => link.addEventListener('click', (e) => { if (e.metaKey || e.ctrlKey || e.shiftKey || e.button) return; e.preventDefault(); launchFrom(from(), link.href); });
 
-// ---------------------------------------------------------------- hero
-const clock = h('b', { class: 'hm-clock' }), day = h('span', { class: 'hm-day' });
-const tick = () => { const n = new Date(); clock.textContent = n.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); day.textContent = n.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' }); };
-tick(); setInterval(tick, 20000);
-const search = h('input', { class: 'hm-search-input', type: 'search', placeholder: 'Search apps, sizes, projects', 'aria-label': 'Search', autocomplete: 'off' });
-const hero = card('hm-hero', 6,
-  h('div', { class: 'hm-hero-top' }, h('span', { class: 'hm-brand' }, h('i', { class: 'studio-brand-mark', 'aria-hidden': 'true' }), h('b', { text: 'EYAD' }), h('span', { text: 'STUDIO' }), h('em', { text: '5' })), h('span', { class: 'hm-time' }, clock, day)),
-  h('span', { class: 'hm-greet', text: greet + ' — everything runs on this device.' }),
-  h('h1', { class: 'hm-title' }, 'What are we ', h('em', { text: 'making' }), ' today?'),
-  h('label', { class: 'hm-search' }, icon('search', 16), search, h('kbd', { text: '/' })),
-  h('div', { class: 'hm-quick' },
-    h('button', { class: 'studio-btn is-primary', type: 'button', onclick: OPEN_ALL }, icon('folder', 15), 'Open a file'),
-    h('button', { class: 'studio-btn', type: 'button', onclick: () => openAny('Open PSD', ACCEPT.psd, 'image') }, icon('layers', 15), 'PSD'),
-    h('button', { class: 'studio-btn', type: 'button', onclick: () => openAny('Open PDF, .ai or .fig', '.pdf,.ai,.eps,.fig,.svg', 'image') }, icon('vector', 15), 'PDF · AI · SVG'),
-    h('a', { class: 'studio-btn', href: ROUTES.image + '?new=1' }, icon('plus', 15), 'Custom size')));
-
-// ---------------------------------------------------------------- studios
 const STUDIOS = [
-  ['image', 'Photo & design', 'Layers · PSD · Raw · AI'],
-  ['vector', 'Logos & layout', 'Pen · type · PDF · SVG'],
-  ['video', 'Edit & colour', 'Timeline · titles · SRT'],
-  ['3d', 'Model & render', 'Scenes · lights · camera'],
-  ['camera', 'Shoot', 'Film · Y2K · 3D ×4'],
+  ['image', 'Photo · PSD'], ['vector', 'Logos · type'], ['video', 'Cut · colour'], ['3d', 'Model · render'], ['camera', 'Film · Y2K'],
 ];
-const appsGrid = h('nav', { class: 'xp-launch hm-apps', 'aria-label': 'Studios' }, STUDIOS.map(([id, what, sub], i) => {
+const appsGrid = h('nav', { class: 'po-idx hm-apps', 'aria-label': 'Studios' }, STUDIOS.map(([id, sub], i) => {
   const a = APPS[id];
-  const ic = h('span', { class: 'hm-icon' }, appIcon(id, 112));
-  const link = h('a', { class: 'xp-app hm-app', href: ROUTES[a.route], style: { '--i': i, '--c1': a.c[0], '--c2': a.c[1] }, dataset: { q: (a.name + ' ' + what + ' ' + sub + ' ' + (a.desc || '')).toLowerCase() }, title: a.desc || a.name },
-    ic, h('span', { class: 'xp-app-name', text: a.short }), h('span', { class: 'hm-app-what', text: what }), h('span', { class: 'hm-app-sub', text: sub }));
-  go(link, () => ic);
+  const link = h('a', { class: 'po-app', href: ROUTES[a.route], dataset: { q: (a.name + ' ' + sub + ' ' + (a.desc || '')).toLowerCase() }, title: a.desc || a.name },
+    h('b', { text: `(${i + 1}) ${a.short}` }), h('span', { class: 'po-mono', text: sub + ' →' }));
+  go(link, () => link);
   return link;
 }));
-const MORE = ['templates', 'projects', 'settings', 'help'];
-const moreRow = h('div', { class: 'hm-more' }, MORE.map((id) => { const a = APPS[id]; return h('a', { class: 'hm-chip', href: ROUTES[a.route], dataset: { q: (a.name + ' ' + (a.desc || '')).toLowerCase() }, title: a.desc }, appIcon(id, 28), h('span', { text: a.short })); }));
-const studios = card('hm-studios', 10, head('Studios', h('span', { class: 'hm-card-note', text: 'Five apps, one project format' })), appsGrid, moreRow);
 
-// ---------------------------------------------------------------- start new
+const installBtn = h('button', { class: 'po-pill', type: 'button', onclick: () => installGuide(), text: isStandalone() ? 'Installed' : 'Install' });
+installBtn.hidden = isStandalone();
+const nav = h('header', { class: 'po-nav' },
+  h('a', { class: 'po-logo', href: ROUTES.home, 'aria-label': 'EYAD Studio' }, 'EYAD®STUDIO'),
+  h('nav', { class: 'po-links po-mono', 'aria-label': 'Sections' },
+    h('a', { href: ROUTES.templates, text: 'Templates' }), h('a', { href: ROUTES.projects, text: 'Projects' }),
+    h('a', { href: ROUTES.settings, text: 'Settings' }), h('a', { href: ROUTES.help, text: 'Help' }),
+    h('a', { href: ROUTES.portfolio, text: 'Portfolio ↗' })),
+  h('div', { class: 'po-nav-r' }, installBtn, h('button', { class: 'po-pill is-fill', type: 'button', onclick: OPEN_ALL, text: 'Open a file' })));
+
+const stage = h('section', { class: 'po-stage', 'aria-label': 'EYAD Studio' },
+  h('div', { class: 'po-big', 'aria-hidden': 'true' }, 'EYAD', h('sup', { text: '®' })),
+  hideOnError(h('img', { class: 'po-me', src: PORTFOLIO_IMG('hero/portrait.webp'), alt: 'Eyad Ayman', decoding: 'async', draggable: false })),
+  h('div', { class: 'po-num', 'aria-hidden': 'true', text: '05' }),
+  h('p', { class: 'po-cap po-k1 po-mono' }, 'Only on', h('br'), 'your device'),
+  h('p', { class: 'po-cap po-k2 po-mono' }, 'Cairo', h('br'), 'Egypt — ' + new Date().getFullYear()),
+  h('h1', { class: 'po-over' }, h('i', { text: 'The studio' }), h('i', { text: 'for every' }), h('i', {}, 'thing', h('span', { text: '®' }))),
+  h('p', { class: 'po-cap po-k3 po-mono', text: 'Photo, design, video, 3D and a film camera. Made by Eyad Ayman. Nothing is uploaded.' }),
+  h('p', { class: 'po-cap po-k4 po-mono' }, greet, h('br'), 'World is yours'));
+
+// ---- colour modes
+const MODES = [['signal', 'Signal'], ['night', 'Night'], ['redroom', 'Red room'], ['ink', 'Ink'], ['cobalt', 'Cobalt'], ['sun', 'Sun'], ['forest', 'Forest'], ['lime', 'Lime'], ['blush', 'Blush'], ['royal', 'Royal'], ['mono', 'Mono'], ['clay', 'Clay']];
+const setMode = (id) => { document.documentElement.dataset.poster = id; setSetting('poster', id); for (const b of modes.querySelectorAll('button')) b.setAttribute('aria-pressed', String(b.dataset.mode === id)); };
+const modes = h('div', { class: 'po-modes', role: 'group', 'aria-label': 'Colour mode' },
+  h('span', { class: 'po-mono', text: 'Colour mode' }),
+  MODES.map(([id, name]) => h('button', { class: 'po-mode', type: 'button', title: name, 'aria-label': name, dataset: { mode: id, poster: id }, onclick: () => setMode(id) })));
+
+const hero = h('div', { class: 'po-hero' }, nav, stage, appsGrid);
+
+// ---- below the fold: search, continue, start new, this device, work
+const search = h('input', { class: 'po-search-input', type: 'search', placeholder: 'Search apps, sizes, projects', 'aria-label': 'Search', autocomplete: 'off' });
+const sec = (n, title, cls, ...kids) => h('section', { class: 'po-sec ' + cls }, h('h2', { class: 'po-h' }, h('span', { class: 'po-mono', text: `(0${n})` }), title), ...kids);
+
 const SIZES = [
   ['image', 'Instagram post', 1080, 1080], ['image', 'Portrait 4:5', 1080, 1350], ['image', 'Story / Reel', 1080, 1920], ['image', 'YouTube thumbnail', 1280, 720],
   ['image', 'A4 poster @300', 2480, 3508], ['vector', 'Logo', 1000, 1000], ['vector', 'Business card', 1050, 600], ['vector', 'Slide 16:9', 1920, 1080],
   ['video', 'Reel 9:16', 1080, 1920], ['video', 'Full HD video', 1920, 1080], ['3d', '3D scene', 1920, 1080], ['camera', 'Take a photo', 1080, 1440],
 ];
 const newUrl = (kind, name, w, hh) => (kind === '3d' || kind === 'camera') ? ROUTES[kind] : `${ROUTES[kind]}?new=1&w=${w}&h=${hh}&name=${encodeURIComponent(name)}`;
-const createGrid = h('div', { class: 'xp-quick-grid hm-sizes' }, SIZES.map(([k, name, w, hh]) => {
-  const r = w / hh, bw = r >= 1 ? 30 : Math.round(30 * r), bh = r >= 1 ? Math.round(30 / r) : 30;
-  return h('a', { class: 'xp-size hm-size', href: newUrl(k, name, w, hh), dataset: { q: (name + ' ' + k).toLowerCase() } },
-    h('span', { class: 'hm-size-shape' }, h('i', { style: { width: bw + 'px', height: bh + 'px' } })),
-    h('span', { class: 'hm-size-text' }, h('b', { text: name }), h('span', { text: `${APPS[k].short}${k === '3d' || k === 'camera' ? '' : ` · ${w}×${hh}`}` })));
-}));
-const create = card('hm-create xp-quick', 14, head('Start new', h('a', { class: 'studio-btn is-small', href: ROUTES.templates, text: 'Templates' })), createGrid);
-
-// ---------------------------------------------------------------- continue
-const recentBox = h('div', { class: 'xp-recent-list hm-recent' }, h('p', { class: 'studio-dim', text: 'Loading…' }));
-const recent = card('hm-continue xp-recent', 8, head('Continue', h('a', { class: 'studio-btn is-small', href: ROUTES.projects, text: 'All projects' })), recentBox);
-
-// ---------------------------------------------------------------- this device
-const W = (ic, label) => { const v = h('b', { text: '—' }); const s = h('span', { class: 'sp-w-sub' }); return { el: h('div', { class: 'hm-widget' }, h('span', { class: 'sp-w-ic' }, icon(ic, 16)), h('span', { class: 'sp-w-label', text: label }), v, s), v, s }; };
-const wStore = W('hdd', 'Storage'), wOff = W('cloud', 'Offline'), wProj = W('folder', 'Projects');
-const installBtn = h('button', { class: 'studio-btn is-primary is-small', type: 'button', onclick: () => installGuide() }, icon('install', 14), h('span', { text: isStandalone() ? 'Installed' : 'Install app' }));
-installBtn.disabled = isStandalone();
+const createGrid = h('div', { class: 'po-sizes xp-quick-grid' }, SIZES.map(([k, name, w, hh]) =>
+  h('a', { class: 'po-size', href: newUrl(k, name, w, hh), dataset: { q: (name + ' ' + k).toLowerCase() } },
+    h('b', { text: name }), h('span', { class: 'po-mono', text: `${APPS[k].short}${k === '3d' || k === 'camera' ? '' : ` · ${w}×${hh}`}` }))));
+const recentBox = h('div', { class: 'po-recent' }, h('p', { class: 'po-mono', text: 'Loading…' }));
+const W = (label) => { const v = h('b', { text: '—' }); const s = h('span', { class: 'po-mono' }); return { el: h('div', { class: 'po-stat' }, h('span', { class: 'po-mono', text: label }), v, s), v, s }; };
+const wStore = W('Storage'), wOff = W('Offline'), wProj = W('Projects');
 const recoverBox = h('div', { class: 'xp-recover', hidden: true });
-const device = card('hm-device xp-now', 18, head('This device', installBtn),
-  h('div', { class: 'hm-widgets' }, wStore.el, wOff.el, wProj.el), recoverBox,
-  h('p', { class: 'hm-note studio-dim', text: 'Private by design — nothing is uploaded. Drop files anywhere to open them.' }),
-  h('button', { class: 'hm-link', type: 'button', onclick: () => startTour('home', { force: true }) }, icon('compass', 14), 'Take the tour'));
 
-const shell = h('div', { class: 'hm-shell hm-board' }, hero, studios, recent, create, device);
+const WORK = ['09-travis-scott-ft-ferrari-poster', '11-ahmed-santa-music-poster', '170245581-redbull-poster', '12-ford-mustang-classic-poster', '163747233-maadi-town-mafia-gta-cover-style', '02-mercedes-g63', '165709049-marwan-moussa-drogba-song', '170329483-nissan-gtr-r35-ad-poster'];
+const work = h('a', { class: 'po-work', href: ROUTES.portfolio, title: 'See the work in the portfolio' },
+  WORK.map((n) => hideOnError(h('img', { src: PORTFOLIO_IMG('behance/' + n + '.webp'), alt: '', loading: 'lazy', decoding: 'async' }))));
 
-// cards drift a little with the pointer — the "floating" feel (mouse only)
-if (matchMedia('(hover: hover) and (pointer: fine)').matches && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
-  let raf = 0, px = 0, py = 0;
-  addEventListener('pointermove', (e) => {
-    px = e.clientX / innerWidth - 0.5; py = e.clientY / innerHeight - 0.5;
-    if (!raf) raf = requestAnimationFrame(() => { raf = 0; shell.style.setProperty('--px', px.toFixed(3)); shell.style.setProperty('--py', py.toFixed(3)); });
-  }, { passive: true });
-}
+const below = h('div', { class: 'po-below' },
+  h('div', { class: 'po-tools' }, h('label', { class: 'po-search' }, icon('search', 16), search), modes),
+  sec(1, 'Continue', 'po-continue xp-recent', h('a', { class: 'po-more po-mono', href: ROUTES.projects, text: 'All projects →' }), recentBox),
+  sec(2, 'Start new', 'po-new', h('a', { class: 'po-more po-mono', href: ROUTES.templates, text: 'Templates →' }), createGrid),
+  sec(3, 'This device', 'po-device', h('div', { class: 'po-stats' }, wStore.el, wOff.el, wProj.el), recoverBox,
+    h('div', { class: 'po-actions' },
+      h('button', { class: 'po-pill', type: 'button', onclick: () => openAny('Open PSD', ACCEPT.psd, 'image'), text: 'Open PSD' }),
+      h('button', { class: 'po-pill', type: 'button', onclick: () => openAny('Open PDF, .ai or .fig', '.pdf,.ai,.eps,.fig,.svg', 'image'), text: 'PDF · AI · SVG' }),
+      h('button', { class: 'po-pill', type: 'button', onclick: () => startTour('home', { force: true }), text: 'Take the tour' }))),
+  sec(4, 'Selected work', 'po-worksec', h('a', { class: 'po-more po-mono', href: ROUTES.portfolio, text: 'Portfolio ↗' }), work),
+  h('p', { class: 'po-foot po-mono' }, 'EYAD Studio 5 · by Eyad Ayman · your files stay on this device'));
+
+const shell = h('div', { class: 'po' }, hero, below);
 
 addEventListener('keydown', (e) => {
   if (e.target.closest && e.target.closest('input, textarea, select, .studio-dialog')) return;
   if (e.ctrlKey || e.metaKey || e.altKey) return;
   const n = +e.key; if (n >= 1 && n <= STUDIOS.length) { appsGrid.children[n - 1].click(); return; }
-  if (e.key === '/') { e.preventDefault(); search.focus(); }
+  if (e.key === '/') { e.preventDefault(); search.scrollIntoView({ block: 'center' }); search.focus(); }
 });
-
 let recentCards = [];
-search.addEventListener('input', () => {
-  const q = search.value.trim().toLowerCase();
-  for (const el of [...appsGrid.children, ...moreRow.children, ...createGrid.children, ...recentCards]) el.classList.toggle('is-dim', !!q && !el.dataset.q.includes(q));
-});
+const searchable = () => [...appsGrid.children, ...createGrid.children, ...recentCards];
+search.addEventListener('input', () => { const q = search.value.trim().toLowerCase(); for (const el of searchable()) el.classList.toggle('is-dim', !!q && !el.dataset.q.includes(q)); });
 search.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') { search.value = ''; search.dispatchEvent(new Event('input')); search.blur(); return; }
   if (e.key !== 'Enter' || !search.value.trim()) return;
-  const a = [...appsGrid.children, ...moreRow.children, ...createGrid.children, ...recentCards].find((x) => !x.classList.contains('is-dim'));
-  if (a) a.click();
+  const a = searchable().find((x) => !x.classList.contains('is-dim')); if (a) a.click();
 });
 
 page('home', shell);
 bindPageDrop();
+setMode(getSettings().poster || 'signal');
 
 (async () => {
   const q = new URLSearchParams(location.search);
@@ -147,13 +143,11 @@ bindPageDrop();
   try { projects = await listProjects(); } catch (e) { projects = null; }
   const recent = projects ? projects.sort((a, b) => (b.opened || b.updated) - (a.opened || a.updated)).slice(0, 10) : [];
   if (recent.length) {
-    recentCards = recent.slice(0, 6).map((p) => { const k = APPS[p.kind] ? p.kind : 'image'; return h('a', { class: 'hm-proj', href: projectUrl(p), dataset: { q: (p.name + ' ' + k).toLowerCase() }, title: p.name },
-      h('span', { class: 'hm-proj-media' }, thumbImg(p), appIcon(k, 26)),
-      h('b', { text: p.name }), h('span', { text: `${APPS[k].short}${p.source === 'psd' ? ' · PSD' : ''} · ${formatDate(p.updated)}` })); });
+    recentCards = recent.slice(0, 6).map((p) => { const k = APPS[p.kind] ? p.kind : 'image'; return h('a', { class: 'po-proj', href: projectUrl(p), dataset: { q: (p.name + ' ' + k).toLowerCase() }, title: p.name },
+      h('span', { class: 'po-proj-media' }, thumbImg(p)), h('b', { text: p.name }), h('span', { class: 'po-mono', text: `${APPS[k].short}${p.source === 'psd' ? ' · PSD' : ''} · ${formatDate(p.updated)}` })); });
     recentBox.replaceChildren(...recentCards);
   } else {
-    recentBox.replaceChildren(h('div', { class: 'hm-empty' }, appIcon('projects', 56), h('div', {}, h('b', { text: projects ? 'No projects yet' : 'Storage is unavailable' }),
-      h('span', { class: 'studio-dim', text: projects ? 'Everything you save lands here, ready to pick up where you left off.' : 'This browser blocks local storage (private mode?). You can still download your work as .eyad files.' }))));
+    recentBox.replaceChildren(h('p', { class: 'po-empty', text: projects ? 'No projects yet — everything you save lands here.' : 'This browser blocks local storage (private mode?). You can still download your work as .eyad files.' }));
   }
   try {
     const rec = await listRecovery();

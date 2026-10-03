@@ -76,7 +76,7 @@ export function dock(current = '') {
 
 let deferred = null;
 addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferred = e; });
-addEventListener('appinstalled', () => { deferred = null; toast('EYAD Studio is installed. Open it from your apps — it works offline.', { type: 'ok', timeout: 6000 }); });
+addEventListener('appinstalled', () => { deferred = null; offlineSetup({ auto: true }); });
 export const canPromptInstall = () => !!deferred;
 
 export async function installGuide() {
@@ -94,7 +94,7 @@ export async function installGuide() {
   const otherIos = /CriOS|FxiOS|EdgiOS|OPiOS/.test(ua);
   let note = 'Nothing is installed from a store and no account is needed. After installing, open Settings ▸ Offline pack once to keep every tool available without internet.';
   if (IS_IOS) {
-    note = 'iPhone and iPad do not let a website install itself — Apple only allows it through the Share menu, so these taps are the only way. It takes ten seconds and then EYAD opens full screen from your Home Screen, even offline.';
+    note = 'iPhone and iPad do not let a website install itself — Apple only allows it through the Share menu, so these taps are the only way. The first time you open EYAD from the Home Screen it sets itself up to work offline, automatically.';
     if (inApp) steps = [step(1, 'You are inside another app’s browser. Tap ⋯ (or the compass icon) and choose “Open in Safari” / “Open in browser”.', 'compass'), step(2, 'In Safari, tap the Share button — the square with an arrow pointing up, in the bar at the bottom.', 'upload'), step(3, 'Scroll down the list and tap “Add to Home Screen”, then “Add” at the top right.', 'plus'), step(4, 'Open EYAD from your Home Screen.', 'star')];
     else if (otherIos) steps = [step(1, 'Tap the Share button — the square with an arrow pointing up, at the right end of the address bar.', 'upload'), step(2, 'Scroll down the list and tap “Add to Home Screen”, then “Add”. (If it is not in the list, open this page in Safari and do the same.)', 'plus'), step(3, 'Open EYAD from your Home Screen — full screen, like an app.', 'star')];
     else steps = [step(1, 'Tap the Share button — the square with an arrow pointing up, in the middle of the bar at the bottom of Safari (on iPad: top right).', 'upload'), step(2, 'Scroll down the list and tap “Add to Home Screen”. Not there? Scroll to the end, tap “Edit Actions” and add it.', 'plus'), step(3, 'Tap “Add” at the top right.', 'check'), step(4, 'Open EYAD from your Home Screen — full screen, like an app, and it keeps working offline.', 'star')];
@@ -161,11 +161,11 @@ export async function bugReportDialog(appId) {
 
 const TOURS = {
   home: [
-    { sel: '.xp-menubar', title: 'Welcome to EYAD Studio', text: 'A complete creative suite that runs on your device — in the browser or installed as an app. Nothing you open is uploaded.' },
+    { sel: '.po-stage', title: 'Welcome to EYAD Studio', text: 'A complete creative suite that runs on your device — in the browser or installed as an app. Nothing you open is uploaded.' },
     { sel: '.hm-apps', title: 'Your studios', text: 'IMAGE for photos and layered design, VECTOR for logos, VIDEO for editing, 3D for scenes and models, KAMERA for film looks, Y2K video and 3D photos. Keys 1–5 open them.' },
-    { sel: '.hm-continue', title: 'Continue', text: 'Your latest projects, saved on this device. Start new has ready sizes, and / searches everything on this screen.' },
-    { sel: '.xp-dock', title: 'The Dock', text: 'Jump between apps any time. Shortcut: Ctrl/⌘ + Alt + 1…6.' },
-    { sel: '.xp-menubar-right', title: 'Install & offline', text: 'Install it like a real app (Android, iPhone, Windows, Mac) — then every tool and AI model works without internet.' },
+    { sel: '.po-modes', title: 'Colour modes', text: 'Twelve colour modes for the home and the Studio pages. Pick the one that feels like you — it is remembered on this device.' },
+    { sel: '.po-continue', title: 'Continue', text: 'Your latest projects, saved on this device. Start new has ready sizes, and / searches everything on this screen.' },
+    { sel: '.po-nav-r', title: 'Install & open', text: 'Install EYAD like a real app (Android, iPhone, Windows, Mac) — it sets itself up to work offline. Open a file takes PSD, images, video, PDF, SVG and 3D models.' },
   ],
   image: [
     { sel: '.img-menubar', title: 'Menus', text: 'Everything lives here — Adjustments, Raw Develop, Film Lab, 40+ filters, AI and Generate. Ctrl/⌘ + K searches every command.' },
@@ -261,13 +261,14 @@ export async function offlineStatus() {
 }
 
 /** Download and keep every on-demand part. onProgress(done, total, label). */
-export async function downloadOfflinePack(onProgress = () => {}) {
+export async function downloadOfflinePack(onProgress = () => {}, { models: withModels = true, signal = null } = {}) {
   if (!('caches' in window)) throw new Error('This browser has no offline storage (Cache Storage).');
   try { await navigator.storage?.persist?.(); } catch (e) { /* ignore */ }
   const c = await caches.open(OFFLINE_CACHE);
   const all = offlineManifest().flatMap((g) => g.urls.map((u) => [g.group, u]));
   let n = 0, failed = 0;
   for (const [group, u] of all) {
+    if (signal && signal.aborted) break;
     onProgress(n, all.length, group);
     if (!(await c.match(u))) {
       try { const r = await fetch(u, { cache: 'reload' }); if (r.ok) await c.put(u, r); else failed++; } catch (e) { failed++; }
@@ -277,7 +278,7 @@ export async function downloadOfflinePack(onProgress = () => {}) {
   onProgress(n, all.length, 'Done');
   // AI models: whatever the Studio can reach (self-hosted studio/models/ first, then the model host)
   let models = 0;
-  try {
+  if (withModels && !(signal && signal.aborted)) try {
     const ai = await import('./ai.js');
     if (ai.cacheAllModels) models = await ai.cacheAllModels((label) => onProgress(n, all.length, label));
   } catch (e) { /* models are optional */ }
@@ -296,26 +297,63 @@ export function installHint() {
   }, 9000);
 }
 
+/** Phones with little memory (and Android 8/9 era devices): skip pre-downloading the big AI models — they load on first use instead. */
+function lowMemoryDevice() {
+  const m = navigator.deviceMemory; if (m && m <= 3) return true;
+  const a = /Android (\d+)/.exec(navigator.userAgent); if (a && +a[1] <= 9) return true;
+  return false;
+}
+
+let setupRunning = false;
+/** First-run setup after installing: a full-screen sheet that downloads what the Studio needs to work offline. */
+export async function offlineSetup({ auto = false } = {}) {
+  if (setupRunning) return; setupRunning = true;
+  let st = null; try { st = await offlineStatus(); } catch (e) { /* ignore */ }
+  if (!st || !st.supported || st.done) { try { localStorage.setItem('eyad:offline-auto', '1'); } catch (e) { /* ignore */ } setupRunning = false; if (!auto && st && st.done) toast('EYAD already works offline on this device.', { type: 'ok' }); return; }
+  const lite = lowMemoryDevice();
+  const ctl = new AbortController();
+  const pct = h('b', { text: '0%' }), what = h('span', { text: 'Starting…' }), fill = h('i');
+  const skip = h('button', { type: 'button', text: 'Skip — do it later', onclick: () => { ctl.abort(); } });
+  const css = h('style', { text: `
+.xp-setup{position:fixed !important;inset:0;z-index:2147483000 !important;background:#f4260f;color:#0d0d0d;display:grid;grid-template-rows:auto 1fr auto;padding:calc(18px + env(safe-area-inset-top,0px)) 20px calc(18px + env(safe-area-inset-bottom,0px));font:400 11px/1.5 'Poster MO',ui-monospace,Menlo,monospace;text-transform:uppercase;letter-spacing:.05em;animation:xpsu .35s ease both}
+.xp-setup *{text-transform:uppercase !important}
+.xp-setup header,.xp-setup footer{display:flex;justify-content:space-between;gap:12px;align-items:center}
+.xp-setup main{align-self:center;display:grid;gap:6px}
+.xp-setup h2{margin:0;font:400 min(15vw,110px)/.82 'Poster BN','Poster AB',Impact,sans-serif !important;letter-spacing:0 !important;color:#0d0d0d !important}
+.xp-setup b{font:400 min(40vw,300px)/.8 'Poster AB','Splash AB',Impact,sans-serif;letter-spacing:-.07em}
+.xp-setup .bar{height:3px;background:rgba(13,13,13,.22);margin:14px 0 8px}.xp-setup .bar i{display:block;height:100%;width:0;background:#0d0d0d;transition:width .3s}
+.xp-setup p{margin:0;max-width:520px;text-transform:none !important;letter-spacing:0;font:400 14px/1.45 var(--st-ui,system-ui)}
+.xp-setup button{font:inherit;height:38px;padding:0 16px;border:1.5px solid #0d0d0d;background:transparent;color:#0d0d0d;cursor:pointer}
+.xp-setup.is-out{opacity:0;transition:opacity .3s}
+@keyframes xpsu{from{opacity:0}}` });
+  const root = h('div', { class: 'xp-setup', role: 'dialog', 'aria-label': 'Setting up EYAD Studio' }, css,
+    h('header', {}, h('span', { text: 'EYAD®Studio' }), h('span', { text: 'First-time setup' })),
+    h('main', {}, h('h2', { text: 'Setting up' }), pct, h('div', { class: 'bar' }, fill), what,
+      h('p', { text: lite ? 'Saving the tools on this device so EYAD opens fast and works without internet. On this phone the AI models are fetched the first time you use them, to keep it light.' : 'Saving the tools and AI models on this device so EYAD opens fast and works without internet. This happens once.' })),
+    h('footer', {}, h('span', { text: 'Nothing is uploaded' }), skip));
+  document.body.appendChild(root);
+  let lock = null; try { lock = await navigator.wakeLock?.request?.('screen'); } catch (e) { /* optional */ }
+  let res = null;
+  try {
+    res = await downloadOfflinePack((d, n, label) => { const v = Math.round(d / Math.max(1, n) * (lite ? 100 : 80)); pct.textContent = v + '%'; fill.style.width = v + '%'; what.textContent = String(label || '').slice(0, 60); if (d >= n && !lite) { what.textContent = String(label || 'AI models…').slice(0, 60); fill.style.width = '90%'; pct.textContent = '90%'; } }, { models: !lite, signal: ctl.signal });
+  } catch (e) { /* reported below */ }
+  try { lock && lock.release(); } catch (e) { /* ignore */ }
+  try { localStorage.setItem('eyad:offline-auto', '1'); } catch (e) { /* ignore */ }
+  if (!ctl.signal.aborted) { pct.textContent = '100%'; fill.style.width = '100%'; what.textContent = 'Ready'; await new Promise((r) => setTimeout(r, 500)); }
+  root.classList.add('is-out'); setTimeout(() => root.remove(), 320);
+  setupRunning = false;
+  if (ctl.signal.aborted) toast('Setup skipped. Finish it any time from Settings ▸ Offline pack.', { timeout: 6000 });
+  else if (!res) toast('Setup could not finish (no connection?). It will try again next time.', { type: 'warn', timeout: 6000 });
+  else toast(res.failed ? `EYAD is set up. ${res.failed} parts will download when first needed.` : 'EYAD is set up — it now works offline.', { type: 'ok', timeout: 5000 });
+}
+
+/** Runs the first-time setup automatically the first time the INSTALLED app opens. */
 export function autoOfflinePack() {
-  if (!isStandalone()) return;
+  if (!isStandalone() || navigator.webdriver) return;
   try { if (localStorage.getItem('eyad:offline-auto')) return; } catch (e) { return; }
   const conn = navigator.connection;
   if (conn && (conn.saveData || /2g/.test(conn.effectiveType || ''))) return;
-  // Never download the big pack on our own: it made the first launch crawl on phones. Offer it once instead.
-  setTimeout(async () => {
-    try {
-      const st = await offlineStatus(); if (!st.supported || st.done) { localStorage.setItem('eyad:offline-auto', '1'); return; }
-      localStorage.setItem('eyad:offline-auto', '1');
-      toast('Use EYAD without internet? Download the offline pack (AI models and engines).', { timeout: 12000, action: { label: 'Download', fn: async () => {
-        const t = toast('Downloading the offline pack…', { timeout: 0 });
-        try {
-          const r = await downloadOfflinePack((d, n) => t.set && t.set(`Downloading the offline pack… ${Math.round(d / n * 100)}%`));
-          t.close && t.close();
-          toast(r.failed ? `Offline pack: ${r.files} parts saved, ${r.failed} will download when needed.` : 'Every tool now works offline.', { type: 'ok', timeout: 5000 });
-        } catch (e) { t.close && t.close(); toast('The offline pack could not be downloaded. Try again from Settings.', { type: 'error' }); }
-      } } });
-    } catch (e) { /* ask again next launch */ }
-  }, 20000);
+  setTimeout(() => { if (!document.querySelector('.studio-scrim, .xp-tour')) offlineSetup({ auto: true }); else setTimeout(() => offlineSetup({ auto: true }), 15000); }, 2500);
 }
 
 export { route as experienceRoute, formatBytes, clear, setSetting };

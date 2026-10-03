@@ -16,6 +16,8 @@
     if (t === 'system') t = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
     else if (t !== 'light' && t !== 'dark') t = localStorage.getItem('theme') === 'dark' ? 'dark' : 'light';
     document.documentElement.setAttribute('data-studio-theme', t);
+    // home / hub colour mode (poster look)
+    document.documentElement.setAttribute('data-poster', /^[a-z]{2,12}$/.test(st.poster || '') ? st.poster : 'signal');
   } catch (e) { /* storage blocked: light */ }
   // Arriving from the portfolio's "Enter Studio" transition: the portfolio
   // closed a black curtain before navigating; open it here so it reads as one move.
@@ -26,6 +28,21 @@
       setTimeout(function () { document.documentElement.classList.remove('eyad-arrive'); }, 1400);
     }
   } catch (e) { /* ignore */ }
+})();
+/* ---- The real visible height. iPhone Safari's bars and the installed app make 100vh / fixed inset:0 taller than
+ * what is on screen, which cut the bottom of the editors and the camera. Every full-screen layout uses --app-h. */
+(function () {
+  var de = document.documentElement, last = 0;
+  function set() {
+    var hgt = window.innerHeight || de.clientHeight;
+    if (!hgt || hgt === last) return; last = hgt;
+    de.style.setProperty('--app-h', hgt + 'px');
+  }
+  set();
+  window.addEventListener('resize', set);
+  window.addEventListener('orientationchange', function () { setTimeout(set, 60); setTimeout(set, 400); });
+  window.addEventListener('pageshow', set);
+  document.addEventListener('DOMContentLoaded', set);
 })();
 /* ---- Diagnostics: keep the last errors of this session for “Report a bug”. */
 (function () {
@@ -55,7 +72,8 @@
   } catch (e) { /* ignore */ }
 })();
 
-/* ---- Launch screen: shown when the installed app starts (or always / never, from Settings). */
+/* ---- Opening animation: the EYAD® poster. Red sheet, the name rises letter by letter, then the sheet lifts
+ * like a curtain. Shown when the installed app starts and once per browser session (Settings can turn it off). */
 (function () {
   if (location.protocol === 'file:') return;
   var st = {};
@@ -63,42 +81,44 @@
   var mode = st.splash || 'installed';
   var standalone = window.matchMedia && matchMedia('(display-mode: standalone), (display-mode: fullscreen), (display-mode: window-controls-overlay), (display-mode: minimal-ui)').matches || navigator.standalone === true;
   var force = /[?&]splash=1\b/.test(location.search);
-  if (!force && (mode === 'never' || (mode === 'installed' && !standalone))) return;
+  if (!force && (mode === 'never' || navigator.webdriver)) return;
   var m = location.pathname.match(/\/studio\/(image|vector|video|3d|camera|templates|projects|settings|help)\//);
   var app = m ? m[1] : 'home';
-  var key = 'eyad:splash:' + app;
+  // once per session in the browser; once per app per session when installed (or "always")
+  var key = (standalone || mode === 'always') ? 'eyad:splash:' + app : 'eyad:splash:any';
   try { if (!force && sessionStorage.getItem(key)) return; sessionStorage.setItem(key, '1'); } catch (e) { /* ignore */ }
   var NAMES = { home: 'Studio', image: 'Image', vector: 'Vector', video: 'Video', '3d': '3D', camera: 'Kamera', templates: 'Templates', projects: 'Projects', settings: 'Settings', help: 'Help' };
-  var dark = document.documentElement.getAttribute('data-studio-theme') !== 'light';
-  var ink = dark ? '#f5f5f7' : '#16161a', dim = dark ? 'rgba(245,245,247,.55)' : 'rgba(22,22,26,.55)';
-  // The launch screen is only the brand, briefly — it never waits on fake steps.
-  var css = '#eyad-splash{position:fixed;inset:0;z-index:2147483600;display:grid;place-items:center;background:' + (dark ? '#0b0b10' : '#ececf0') + ';color:' + ink + ';transition:opacity .35s ease;font-family:"Studio Inter",Inter,system-ui,-apple-system,"Segoe UI",sans-serif}'
-    + '#eyad-splash.is-out{opacity:0;pointer-events:none}'
-    + '#eyad-splash .in{display:grid;justify-items:center;gap:18px;animation:eyin .5s cubic-bezier(.2,.8,.2,1) both}'
-    + '#eyad-splash .mark{width:84px;height:84px;border-radius:26px;background:linear-gradient(#fff,#fff) 24px 23px/36px 8px no-repeat,linear-gradient(#fff,#fff) 24px 38px/23px 8px no-repeat,linear-gradient(#fff,#fff) 24px 53px/36px 8px no-repeat,linear-gradient(145deg,#ff6a4d,#e8261f 55%,#b3121a);box-shadow:inset 0 1px 0 rgba(255,255,255,.45),0 18px 40px -10px rgba(232,38,31,.6)}'
-    + '#eyad-splash b{font:700 30px/1 "Studio Oswald",Oswald,Impact,"Arial Narrow",sans-serif;letter-spacing:.06em}'
-    + '#eyad-splash b em{font:500 12px/1 "Studio Inter",Inter,system-ui,sans-serif;letter-spacing:.3em;margin-left:10px;color:' + dim + ';font-style:normal;vertical-align:middle}'
-    + '#eyad-splash i{display:block;width:120px;height:3px;border-radius:3px;overflow:hidden;background:' + (dark ? 'rgba(255,255,255,.12)' : 'rgba(0,0,0,.1)') + '}'
-    + '#eyad-splash i::after{content:"";display:block;width:40%;height:100%;border-radius:3px;background:#ff3b2f;animation:eybar .9s ease-in-out infinite alternate}'
-    + '@keyframes eybar{from{transform:translateX(-20%)}to{transform:translateX(170%)}}'
-    + '@keyframes eyin{from{opacity:0;transform:scale(.94)}}'
-    + '@media (prefers-reduced-motion:reduce){#eyad-splash .in,#eyad-splash i::after{animation:none}}';
+  var base = (document.currentScript && document.currentScript.src) ? document.currentScript.src.replace(/js\/file-notice\.js.*$/, '') : '/studio/';
+  var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var css = '@font-face{font-family:"Splash AB";font-display:block;src:url("' + base + 'fonts/archivo-black-latin-400-normal.woff2") format("woff2")}'
+    + '#eyad-splash{position:fixed;inset:0;z-index:2147483600;background:#f4260f;color:#0d0d0d;display:grid;grid-template-rows:auto 1fr auto;padding:calc(16px + env(safe-area-inset-top,0px)) 20px calc(16px + env(safe-area-inset-bottom,0px));overflow:hidden;transition:transform .55s cubic-bezier(.7,0,.2,1);font:400 10.5px/1.45 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;text-transform:uppercase;letter-spacing:.05em}'
+    + '#eyad-splash.is-out{transform:translateY(-101%)}'
+    + '#eyad-splash .r{display:flex;justify-content:space-between;gap:12px}'
+    + '#eyad-splash .w{align-self:center;justify-self:center;display:flex;font:400 min(31vw,46vh)/.8 "Splash AB",Impact,"Arial Black",sans-serif;letter-spacing:-.075em;overflow:hidden;padding:.04em .04em .02em 0}'
+    + '#eyad-splash .w span{display:block;transform:translateY(105%);animation:eyup .6s cubic-bezier(.2,.8,.2,1) forwards}'
+    + '#eyad-splash .w span:nth-child(2){animation-delay:.07s}#eyad-splash .w span:nth-child(3){animation-delay:.14s}#eyad-splash .w span:nth-child(4){animation-delay:.21s}'
+    + '#eyad-splash .w sup{font-size:.1em;letter-spacing:0;align-self:flex-start;margin:.5em 0 0 .6em;opacity:0;animation:eyfade .3s .55s forwards}'
+    + '#eyad-splash .b{height:2px;background:rgba(13,13,13,.25);margin-bottom:10px;overflow:hidden}#eyad-splash .b i{display:block;height:100%;width:100%;background:#0d0d0d;transform:translateX(-100%);animation:eybar 1.1s cubic-bezier(.4,0,.2,1) forwards}'
+    + '@keyframes eyup{to{transform:none}}@keyframes eyfade{to{opacity:1}}@keyframes eybar{to{transform:none}}'
+    + '@media (prefers-reduced-motion:reduce){#eyad-splash .w span,#eyad-splash .w sup,#eyad-splash .b i{animation:none;transform:none;opacity:1}#eyad-splash{transition:opacity .3s}#eyad-splash.is-out{transform:none;opacity:0}}';
   var style = document.createElement('style'); style.textContent = css;
   var root = document.createElement('div'); root.id = 'eyad-splash'; root.setAttribute('role', 'status'); root.setAttribute('aria-label', 'Opening EYAD ' + NAMES[app]);
-  var inner = document.createElement('div'); inner.className = 'in';
-  var mark = document.createElement('div'); mark.className = 'mark';
-  var word = document.createElement('b'); word.textContent = 'EYAD'; var em = document.createElement('em'); em.textContent = NAMES[app].toUpperCase(); word.appendChild(em);
-  inner.appendChild(mark); inner.appendChild(word); inner.appendChild(document.createElement('i')); root.appendChild(inner);
+  function row(a, b2) { var r = document.createElement('div'); r.className = 'r'; var x = document.createElement('span'); x.textContent = a; var y = document.createElement('span'); y.textContent = b2; r.appendChild(x); r.appendChild(y); return r; }
+  var w = document.createElement('div'); w.className = 'w'; w.setAttribute('aria-hidden', 'true');
+  'EYAD'.split('').forEach(function (ch) { var sp = document.createElement('span'); sp.textContent = ch; w.appendChild(sp); });
+  var sup = document.createElement('sup'); sup.textContent = '®'; w.appendChild(sup);
+  var foot = document.createElement('div'); var bar = document.createElement('div'); bar.className = 'b'; bar.appendChild(document.createElement('i')); foot.appendChild(bar);
+  foot.appendChild(row('Made by Eyad Ayman — Cairo', 'Runs on your device'));
+  root.appendChild(row('EYAD®Studio', NAMES[app] + ' — vol. 5')); root.appendChild(w); root.appendChild(foot);
   document.documentElement.appendChild(style); document.documentElement.appendChild(root);
-  var gone = false, t0 = Date.now();
+  var gone = false, t0 = Date.now(), MIN = reduce ? 300 : 1150;
   function hide() {
     if (gone) return; gone = true;
-    setTimeout(function () { root.classList.add('is-out'); setTimeout(function () { root.remove(); style.remove(); }, 380); }, Math.max(0, 450 - (Date.now() - t0)));
+    setTimeout(function () { root.classList.add('is-out'); setTimeout(function () { root.remove(); style.remove(); }, 600); }, Math.max(0, MIN - (Date.now() - t0)));
   }
   window.addEventListener('eyad:ready', hide);
-  document.addEventListener('DOMContentLoaded', function () { setTimeout(hide, 900); });
   window.addEventListener('load', hide);
-  setTimeout(hide, 2500);
+  setTimeout(hide, 3000);
 })();
 
 /* ---- Start-up watchdog: if the app never reports ready (a script failed to load, or an old browser), say so
