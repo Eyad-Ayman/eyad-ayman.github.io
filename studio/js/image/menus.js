@@ -6,15 +6,23 @@ import { resetTransform } from './tools.js';
 import { ROUTES, goPortfolio } from '../core/shell.js';
 import { listProjects } from '../core/db.js';
 import { BLEND_MODES } from './doc.js';
-import * as pro from './pro.js';
-import * as ai from './ai.js';
-import * as gen from './generate.js';
-import * as film from './filmlab.js';
-import * as artboards from './artboards.js';
 import * as ws from './workspace.js';
-import * as multi from './multi.js';
 import * as styles from './styles.js';
-import * as selmod from './selmodify.js';
+
+// Heavy features load on first use (Raw develop, Film Lab, AI, Generate, artboards,
+// multi-window…) so the editor opens fast. Each proxy forwards a call to the real
+// module once it has been fetched; errors surface as a toast instead of silence.
+const lazy = (load) => new Proxy({}, { get: (_, fn) => (...args) => load().then((m) => m[fn](...args)).catch((e) => { console.error(e); import('../core/ui.js').then(({ toast }) => toast('Could not load this feature — check your connection and try again.', { type: 'error' })); }) });
+const pro = lazy(() => import('./pro.js'));
+const ai = lazy(() => import('./ai.js'));
+const gen = lazy(() => import('./generate.js'));
+const film = lazy(() => import('./filmlab.js'));
+const artboards = lazy(() => import('./artboards.js'));
+const multi = lazy(() => import('./multi.js'));
+const selmod = lazy(() => import('./selmodify.js'));
+/** Render ▸ texture generators (the list lives in filmlab.js; names are mirrored here so the menu needs no heavy import). */
+const TEXTURES = [['gradient', 'Gradient'], ['mesh', 'Mesh gradient'], ['aurora', 'Aurora glow'], ['stars', 'Star field'], ['grain', 'Film grain (overlay)'], ['paper', 'Paper texture'], ['grid', 'Technical grid'], ['halftone', 'Halftone dots'], ['bokeh', 'Bokeh lights']];
+const hasArtboards = (doc) => doc.layers.some((n) => n.type === 'group' && n.artboard);
 import { experienceHelp } from '../core/experience.js';
 
 export function buildMenus(app) {
@@ -52,7 +60,7 @@ export function buildMenus(app) {
         { separator: true },
         { label: 'Export PSD', badge: 'Experimental', action: () => io.exportPsdDialog(app), enabled: hasDoc },
         { separator: true },
-        { label: 'Artboards to Files…', action: () => artboards.exportArtboards(app), enabled: () => hasDoc() && artboards.artboardsOf(app.doc).length > 0 },
+        { label: 'Artboards to Files…', action: () => artboards.exportArtboards(app), enabled: () => hasDoc() && hasArtboards(app.doc) },
       ] },
       { separator: true },
       { label: 'Close', shortcut: 'Mod+W', action: () => app.closeDoc(), enabled: hasDoc },
@@ -207,7 +215,7 @@ export function buildMenus(app) {
       { label: 'Noise', submenu: [adj('noise'), adj('reduceNoise'), adj('dustScratches'), adj('median'), adj('addGrain')] },
       { label: 'Pixelate', submenu: [adj('pixelate'), adj('halftone')] },
       { label: 'Render', submenu: [adj('clouds'), adj('vignette'), { separator: true },
-        ...Object.entries(film.GENERATORS).map(([k, g]) => ({ label: g.label + '…', action: () => film.renderTextureDialog(app, k), enabled: hasDoc }))] },
+        ...TEXTURES.map(([k, label]) => ({ label: label + '…', action: () => film.renderTextureDialog(app, k), enabled: hasDoc }))] },
       { label: 'Stylize', submenu: [{ label: 'Emboss', action: () => ops.quickOp(app, 'emboss'), enabled: hasDoc }, { label: 'Find Edges', action: () => ops.quickOp(app, 'findEdges'), enabled: hasDoc }, { label: 'Solarize', action: () => ops.quickOp(app, 'solarize'), enabled: hasDoc }, adj('oilPaint')] },
       { label: 'Other', submenu: [adj('highPass')] },
     ] },
@@ -256,7 +264,7 @@ export function buildMenus(app) {
         { label: 'Tip: hold R and drag, or twist two fingers', enabled: false },
       ] },
       { separator: true },
-      { label: 'Rulers', shortcut: 'Mod+R', checked: () => !!app.view.showRulers, action: () => { app.view.showRulers = !app.view.showRulers; try { localStorage.setItem('eyad-studio:image:rulers', app.view.showRulers ? '1' : '0'); } catch (e) { /* ignore */ } app.view.requestDraw(); } },
+      { label: 'Rulers', shortcut: 'Mod+R', checked: () => !!app.view.showRulers, action: () => app.view.setRulers(!app.view.showRulers) },
       { label: 'Grid', shortcut: "Mod+'", checked: () => app.view.showGrid, action: () => ops.toggleGrid(app) },
       { label: 'Guides', shortcut: 'Mod+;', checked: () => app.view.showGuides, action: () => ops.toggleGuides(app) },
       { label: 'Snap', checked: () => app.view.snap, action: () => ops.toggleSnap(app) },

@@ -13,9 +13,14 @@ import { loadWorkspace, saveWorkspace, enableCustomisation, applyWidth, DEFAULT_
 import { LayersPanel, PropertiesPanel, ColorPanel, HistoryPanel } from './panels.js';
 import * as ops from './ops.js';
 import * as io from './io.js';
-import * as pro from './pro.js';
+// Raw develop / Levels / Curves / auto adjustments load on first use.
+const pro = new Proxy({}, { get: (_, fn) => (...args) => import('./pro.js').then((m) => m[fn](...args)) });
 
 const OPTS_KEY = 'eyad-studio:image-tool-options:v1';
+const MQ_PHONE = '(max-width: 760px) and (orientation: portrait), (max-width: 540px)';
+const MQ_RAIL = '(orientation: landscape) and (max-height: 540px) and (min-width: 541px), (orientation: portrait) and (min-width: 761px) and (max-width: 1023px)';
+const PANEL_TITLES = { color: 'Colour', properties: 'Properties', layers: 'Layers', history: 'History' };
+const PANEL_ICONS = { color: 'palette', properties: 'sliders', layers: 'layers', history: 'history' };
 
 export class ImageApp {
   constructor(root) {
@@ -31,7 +36,14 @@ export class ImageApp {
     this.clipboard = null;
     this.cloneState = null;
     this.selectedIds = new Set();
-    this.mobile = matchMedia('(max-width: 760px) and (orientation: portrait), (max-width: 540px)');
+    // Three layouts (the same queries live in image.css — keep them in sync):
+    //   phone  — portrait phones: bottom tool dock, panels as bottom sheets
+    //   rail   — phone landscape + tablet portrait: tool rail left, panel rail right, panels as a side drawer
+    //   desk   — everything else: tools left, canvas centre, panel column right
+    // `mobile` is true for phone + rail (panels live in sheets, menus in the ⋯ sheet).
+    this.phone = matchMedia(MQ_PHONE);
+    this.rail = matchMedia(MQ_RAIL);
+    this.mobile = matchMedia(MQ_PHONE + ', ' + MQ_RAIL);
     this.toolOpts = this.loadToolOptions();
     this.tools = createTools();
     for (const t of this.tools) t.app = this;
@@ -86,10 +98,9 @@ export class ImageApp {
         h('div', { class: 'img-m-only img-m-titlewrap' }, this.titleEl)),
       h('div', { class: 'img-top-right' },
         h('div', { class: 'img-d-only' }, this.saveInd.el),
-        iconButton('layers', 'Show / hide panels', () => { this.root.classList.toggle('is-panels-collapsed'); setTimeout(() => this.view.resize(), 30); }, { cls: 'img-land-only' }),
         this.undoBtn, this.redoBtn,
         iconButton('save', 'Save', () => io.save(this), { shortcut: 'Mod+S', cls: 'img-m-only' }),
-        iconButton('dots', 'Menu', () => menuSheet('EYAD IMAGE', [...this.menus, { label: '← Back to portfolio', action: () => goPortfolio() }]), { cls: 'img-m-only' }),
+        iconButton('dots', 'Menu', () => menuSheet('Menu', [...this.menus, { label: 'Back to portfolio', action: () => goPortfolio() }]), { cls: 'img-m-only' }),
         h('div', { class: 'img-d-only img-top-apps' }, appSwitcher('image')),
         iconButton('command', 'Command palette', () => this.palette.show(), { shortcut: 'Mod+K', cls: 'img-d-only' }),
         h('div', { class: 'img-d-only' }, installButton()),
@@ -124,15 +135,19 @@ export class ImageApp {
     this.buildToolbar();
     this.buildDock();
     this.menus = buildMenus(this);
-    createMenubar(this.menubarEl, this.menus);
+    this.fitMenubar();
     this.palette = commandPalette(() => this.commands());
     this.bindKeyboard();
     this.bindDrop();
     this.bindPaste();
     this.selectTool('move');
     this.refresh();
-    this.mobile.addEventListener?.('change', () => { closeSheet(); this.buildPanels(); this.view.resize(); });
-    addEventListener('resize', () => applyWidth(this));
+    const relayout = () => { closeSheet(); this.buildPanels(); this.fitChrome(); this.view.resize(); };
+    for (const mq of [this.phone, this.rail]) mq.addEventListener ? mq.addEventListener('change', relayout) : mq.addListener && mq.addListener(relayout);
+    let rz = 0;
+    addEventListener('resize', () => { applyWidth(this); cancelAnimationFrame(rz); rz = requestAnimationFrame(() => this.fitChrome()); });
+    document.fonts && document.fonts.ready && document.fonts.ready.then(() => this.fitChrome()).catch(() => {});
+    this.fitChrome();
     onSettings(() => { this.view._checker = null; this.view.requestDraw(); this.updateStatus(); });
     addEventListener('beforeunload', (e) => {
       if (getSettings().warnOnLeave && this.records.some((r2) => r2.history.dirty)) { io.autosaveNow(this); e.preventDefault(); e.returnValue = ''; }
@@ -157,26 +172,104 @@ export class ImageApp {
 
   buildPanels() {
     clear(this.panelsEl);
-    if (this.mobile.matches) { this.root.classList.add('is-mobile'); return; }
+    this.root.classList.toggle('is-rail', this.rail.matches);
+    this.root.classList.toggle('is-phone', this.phone.matches && !this.rail.matches);
+    if (this.mobile.matches) { this.root.classList.add('is-mobile'); this.optionsBar.hidden = false; return; }
     this.root.classList.remove('is-mobile');
-    for (const k of this.ws.order) {
-      const p = this.panels[k];
-      p.el.hidden = !this.panelVis[k];
-      this.panelsEl.appendChild(p.el);
+    for (const p of Object.values(this.panels)) { p.head.after(p.body); p.el.classList.remove('is-tab-hidden', 'is-tabbed'); }
+    const shown = this.ws.order.filter((k) => this.panelVis[k]);
+    for (const k of this.ws.order) this.panels[k].el.hidden = !this.panelVis[k];
+    // Short windows (laptops, tablets) cannot stack four panels: pair them into two tabbed groups
+    // (Photoshop-style) so nothing ever needs scrolling out of view. Tall windows keep them stacked.
+    const tabbed = this.panelsTabbed = shown.length > 2 && this.panelColumnHeight() < 880;
+    this.panelsEl.classList.toggle('is-tabbed', tabbed);
+    if (tabbed) {
+      this.panelTabSel = this.panelTabSel || {};
+      // the group that holds Layers gets the flexible height
+      const groups = [];
+      for (let i = 0; i < shown.length; i += 2) groups.push(shown.slice(i, i + 2));
+      groups.forEach((keys, gi) => {
+        const sel = keys.includes(this.panelTabSel[gi]) ? this.panelTabSel[gi] : (keys.includes('layers') ? 'layers' : keys.includes('properties') ? 'properties' : keys[0]);
+        this.panelTabSel[gi] = sel;
+        const tabs = h('div', { class: 'img-ptabs', role: 'tablist' }, keys.map((k) => h('button', { class: 'img-ptab' + (k === sel ? ' is-active' : ''), type: 'button', role: 'tab', 'aria-selected': String(k === sel), dataset: { panel: k }, onclick: () => { this.panelTabSel[gi] = k; this.buildPanels(); } }, icon(PANEL_ICONS[k], 14), h('span', { text: PANEL_TITLES[k] }))));
+        const group = h('div', { class: 'img-pgroup' + (keys.includes('layers') ? ' is-flex' : '') + (keys.includes(sel) && (sel === 'layers' || sel === 'history') ? ' is-list' : '') }, tabs);
+        for (const k of keys) { const p = this.panels[k]; p.el.classList.add('is-tabbed'); p.el.classList.remove('is-collapsed'); p.el.classList.toggle('is-tab-hidden', k !== sel); group.appendChild(p.el); }
+        this.panelsEl.appendChild(group);
+      });
+      for (const k of this.ws.order) if (!this.panelVis[k]) this.panelsEl.appendChild(this.panels[k].el);
+    } else {
+      for (const k of this.ws.order) this.panelsEl.appendChild(this.panels[k].el);
     }
     this.optionsBar.hidden = !this.panelVis.options;
     this.ws.vis = { ...this.panelVis }; saveWorkspace(this.ws);
     enableCustomisation(this);
+    for (const p of Object.values(this.panels)) if (this.panelOnScreen(p)) p.refresh();
+  }
+  /** Height the panel column will get (the column itself may not be laid out yet). */
+  panelColumnHeight() { const m = this.root.querySelector('.img-main'); return m && m.clientHeight ? m.clientHeight : innerHeight - 150; }
+  /** Is this panel's body actually visible (so refreshing it is worth the work)? */
+  panelOnScreen(p) {
+    if (this.mobile.matches) return !!p.body.closest('.studio-sheet');
+    return p.el.isConnected && !p.el.hidden && !p.el.classList.contains('is-tab-hidden');
   }
 
   openPanelSheet(key) {
     const p = this.panels[key];
-    const titles = { color: 'Colour', properties: 'Properties', layers: 'Layers', history: 'History' };
     p.el.hidden = false;
     const body = p.body;
-    const sheet = openSheet({ title: titles[key], content: body, onClose: () => { p.head.after(body); } });
+    const sheet = openSheet({ title: PANEL_TITLES[key], content: body, onClose: () => { p.head.after(body); } });
+    sheet.panel.classList.add('img-panel-sheet', 'is-' + key);
     p.refresh();
     return sheet;
+  }
+
+  /** Tool options that do not fit scroll sideways; a fade on the cut edge says so. */
+  fitOptions() {
+    const bar = this.optionsBar;
+    if (!bar._fit) {
+      bar._fit = () => { const over = bar.scrollWidth > bar.clientWidth + 2; bar.classList.toggle('is-overflow', over); bar.classList.toggle('is-end', over && bar.scrollLeft + bar.clientWidth >= bar.scrollWidth - 4); };
+      let q = 0;
+      bar.addEventListener('scroll', () => { if (q) return; q = requestAnimationFrame(() => { q = 0; bar._fit(); }); }, { passive: true });
+    }
+    requestAnimationFrame(bar._fit);
+  }
+  /** Things CSS alone cannot decide: how many menus fit, whether the tool bar needs two columns, whether panels tab. */
+  fitChrome() {
+    this.fitMenubar();
+    this.fitToolbar();
+    this.fitOptions();
+    if (!this.mobile.matches) {
+      const tabbed = Object.values(this.panelVis).length && this.ws.order.filter((k) => this.panelVis[k]).length > 2 && this.panelColumnHeight() < 880;
+      if (tabbed !== !!this.panelsTabbed) this.buildPanels();
+    }
+  }
+  /** Desktop menubar: when the window is too narrow for every menu, the rest move into a "More" menu (never cut off). */
+  fitMenubar() {
+    if (!this.menus) return;
+    if (this.mobile.matches) { if (this._menuN !== 0) { clear(this.menubarEl); this._menuN = 0; } return; }
+    const wrap = this.menubarEl.parentElement, all = this.menus;
+    if (this._menuN !== all.length || !this._menuW) {
+      createMenubar(this.menubarEl, all); this._menuN = all.length;
+      const x0 = this.menubarEl.getBoundingClientRect().left;
+      this._menuW = Array.from(this.menubarEl.children).map((b) => b.getBoundingClientRect().right - x0);
+    }
+    const avail = wrap.clientWidth, widths = this._menuW;
+    if (!avail || !widths.length || !widths[widths.length - 1]) { this._menuW = null; return; }
+    let n = all.length;
+    if (widths[n - 1] > avail) { n = 0; while (n < all.length && widths[n] <= avail - 62) n++; n = Math.max(1, n); }
+    if (n === this._menuShown) return;
+    this._menuShown = n;
+    createMenubar(this.menubarEl, n >= all.length ? all : [...all.slice(0, n), { label: 'More', items: all.slice(n).map((m) => ({ label: m.label, submenu: m.items })) }]);
+  }
+  /** Tool bar: one column when it fits the window height, two when it does not (never a clipped, scrolling pill). */
+  fitToolbar() {
+    const tb = this.toolbarEl; if (!tb || this.mobile.matches) return;
+    const main = this.root.querySelector('.img-main'); if (!main || !main.clientHeight) return;
+    tb.classList.remove('is-2col');
+    const two = tb.scrollHeight > main.clientHeight + 1;
+    tb.classList.toggle('is-2col', two);
+    this.root.classList.toggle('is-tools-2col', two);
+    applyWidth(this);
   }
 
   buildToolbar() {
@@ -196,13 +289,14 @@ export class ImageApp {
       const cur = members.includes(this.groupSel[g]) ? this.groupSel[g] : (members.includes(id) ? id : members[0]);
       this.groupSel[g] = cur;
       const t = this.tools.find((x) => x.id === cur);
-      const b = h('button', { class: 'img-tool' + (members.length > 1 ? ' has-group' : ''), type: 'button', 'aria-label': t.label, 'aria-pressed': 'false', dataset: { tool: cur, group: g }, onclick: () => this.selectTool(this.groupSel[g]) }, icon(t.icon, 19));
-      b.title = `${t.label} (${t.id === 'bucket' ? 'Shift+G' : t.key || '—'})${members.length > 1 ? ' · right-click or hold for more' : ''}`;
+      const b = h('button', { class: 'img-tool' + (members.length > 1 ? ' has-group' : ''), type: 'button', 'aria-label': t.label, 'aria-pressed': 'false', dataset: { tool: cur, group: g }, onclick: () => { if (members.length > 1 && this.tool && this.tool.id === this.groupSel[g] && b._open) b._open(); else this.selectTool(this.groupSel[g]); } }, icon(t.icon, 19));
+      b.title = `${t.label} (${t.id === 'bucket' ? 'Shift+G' : t.key || '—'})${members.length > 1 ? ' · click again, right-click or hold for more' : ''}`;
       if (members.length > 1) {
         const open = () => {
           const r = b.getBoundingClientRect();
           contextMenu(r.right + 6, r.top, members.map((m) => { const mt = this.tools.find((x) => x.id === m); return { label: mt.label + (mt.key ? '   ' + mt.key : ''), checked: () => this.tool && this.tool.id === m, action: () => this.selectTool(m) }; }));
         };
+        b._open = open;
         b.addEventListener('contextmenu', (e) => { e.preventDefault(); open(); });
         let hold = 0;
         b.addEventListener('pointerdown', () => { hold = setTimeout(() => { hold = -1; open(); }, 480); });
@@ -216,6 +310,7 @@ export class ImageApp {
     this.swatchEl = h('div', { class: 'img-swatches' });
     this.toolbarEl.appendChild(this.swatchEl);
     this.renderSwatches();
+    this.fitToolbar();
   }
 
   renderSwatches() {
@@ -236,7 +331,7 @@ export class ImageApp {
     const tools = h('div', { class: 'img-dock-tools' });
     for (const id of ['move', 'brush', 'eraser', 'marquee', 'lasso', 'aiselect', 'quick', 'wand', 'heal', 'text', 'shape', 'crop', 'gradient', 'bucket', 'clone', 'historybrush', 'dodge', 'burn', 'sponge', 'blurtool', 'sharpentool', 'smudge', 'pen', 'polylasso', 'eyedropper', 'ruler', 'hand', 'zoom']) {
       const t = this.tools.find((x) => x.id === id);
-      const short = { marquee: 'Select', bucket: 'Fill', clone: 'Clone', eyedropper: 'Picker', quick: 'Quick', wand: 'Wand', heal: 'Heal', polylasso: 'Polygon', aiselect: 'AI Select' }[id] || t.label.split(' ')[0];
+      const short = { marquee: 'Select', bucket: 'Fill', clone: 'Clone', eyedropper: 'Picker', quick: 'Quick', wand: 'Wand', heal: 'Heal', polylasso: 'Polygon', aiselect: 'Object', historybrush: 'Hist. brush', blurtool: 'Blur', sharpentool: 'Sharpen' }[id] || t.label.split(' ')[0];
       tools.appendChild(h('button', { class: 'img-dock-tool', type: 'button', 'aria-label': t.label, dataset: { tool: id }, onclick: () => this.selectTool(id) }, icon(t.icon, 22), h('span', { text: short })));
     }
     const panelsRow = h('div', { class: 'img-dock-panels' },
@@ -260,7 +355,7 @@ export class ImageApp {
     if (g && this.toolbarEl) {
       this.groupSel = this.groupSel || {}; this.groupSel[g] = id;
       const gb = this.toolbarEl.querySelector(`[data-group="${g}"]`);
-      if (gb && gb.dataset.tool !== id) { gb.dataset.tool = id; gb.setAttribute('aria-label', t.label); gb.title = `${t.label} (${t.key || '—'}) · right-click or hold for more`; gb.replaceChildren(icon(t.icon, 19)); }
+      if (gb && gb.dataset.tool !== id) { gb.dataset.tool = id; gb.setAttribute('aria-label', t.label); gb.title = `${t.label} (${t.key || '—'}) · click again, right-click or hold for more`; gb.replaceChildren(icon(t.icon, 19)); }
     }
     this.root.querySelectorAll('[data-tool]').forEach((b) => { const on = b.dataset.tool === id; b.classList.toggle('is-active', on); b.setAttribute('aria-pressed', String(on)); });
     this.renderOptions();
@@ -275,11 +370,13 @@ export class ImageApp {
     this.optionsBar.append(
       h('div', { class: 'img-opt-tool' }, icon(t.icon, 16), h('span', { text: t.label })),
       h('div', { class: 'img-opt-items' }, this.doc ? t.options(this) : h('span', { class: 'studio-dim studio-small', text: 'Open or create a document to use this tool.' })));
+    this.optionsBar.scrollLeft = 0;
+    this.fitOptions();
   }
   updateCursor() { if (this.view && this.tool) this.view.canvas.style.cursor = this.view.spaceDown ? 'grab' : (this.tool.cursor || 'default'); }
 
   // ------------------------------------------------------------ colours
-  setFg(c) { this.fg = c; this.pushRecent(c); this.renderSwatches(); if (this.dockSwatch) this.dockSwatch.style.background = c; this.panels.color.refresh(); }
+  setFg(c) { this.fg = c; this.pushRecent(c); this.renderSwatches(); if (this.dockSwatch) this.dockSwatch.style.background = c; this.panels.color.refresh(); if (this.tool && this.tool.showsCursor) this.view.requestDraw(); }
   setBg(c) { this.bg = c; this.renderSwatches(); this.panels.color.refresh(); }
   swapColors() { [this.fg, this.bg] = [this.bg, this.fg]; this.renderSwatches(); if (this.dockSwatch) this.dockSwatch.style.background = this.fg; this.panels.color.refresh(); }
   resetColors() { this.fg = '#111111'; this.bg = '#ffffff'; this.renderSwatches(); if (this.dockSwatch) this.dockSwatch.style.background = this.fg; this.panels.color.refresh(); }
@@ -503,11 +600,18 @@ export class ImageApp {
       { label: 'Layer properties…', action: () => (this.mobile.matches ? this.openPanelSheet('properties') : this.panels.properties.el.scrollIntoView()) },
     ]);
   }
-  onPointerHover(pt) { this.cursorPos = pt; this.updateStatusCursor(); }
+  onPointerHover(pt) {
+    this.cursorPos = pt;
+    if (this._posQueued || this.mobile.matches) return; // the read-out lives in the desktop status bar only
+    this._posQueued = true;
+    requestAnimationFrame(() => { this._posQueued = false; this.updateStatusCursor(); });
+  }
 
   docMenuMobile() {
     const items = this.records.map((r2, i) => ({ label: (r2.history.dirty ? '• ' : '') + r2.doc.name, checked: i === this.current, action: () => this.switchTo(i) }));
-    menuSheet('Documents', [{ label: 'Open documents', items: [...items, { separator: true }, { label: 'New image…', action: () => io.newDocDialog(this) }, { label: 'Open…', action: () => io.openDialog(this) }, { label: 'Rename…', action: () => ops.renameDoc(this), enabled: !!this.doc }, { label: 'Close document', action: () => this.closeDoc(), enabled: !!this.doc }] }]);
+    menuSheet(this.records.length ? 'Documents' : 'EYAD IMAGE', [...items,
+      { label: 'New image…', action: () => io.newDocDialog(this) }, { label: 'Open…', action: () => io.openDialog(this) },
+      { label: 'Rename…', action: () => ops.renameDoc(this), enabled: !!this.doc }, { label: 'Close document', action: () => this.closeDoc(), enabled: !!this.doc }]);
   }
 
   // ------------------------------------------------------------ refresh
@@ -516,7 +620,7 @@ export class ImageApp {
     this._refreshQueued = true;
     requestAnimationFrame(() => {
       this._refreshQueued = false;
-      for (const p of Object.values(this.panels)) p.refresh();
+      for (const p of Object.values(this.panels)) if (this.panelOnScreen(p)) p.refresh();
       this.renderTabs();
       this.updateStatus();
       const hst = this.history;
@@ -593,7 +697,7 @@ export class ImageApp {
       'Shift+W': () => this.doc && this.selectTool({ aiselect: 'quick', quick: 'wand', wand: 'aiselect' }[this.tool?.id] || 'aiselect'), J: tool('heal'),
       'Mod+M': () => pro.curvesDialog(this), 'Mod+Shift+A': () => pro.cameraRawDialog(this), 'Mod+Shift+F': () => import('./filmlab.js').then((m) => m.filmLabDialog(this)), 'Mod+Alt+A': () => import('./multi.js').then((m) => m.selectAllLayers(this)), 'Mod+Alt+N': () => import('./multi.js').then((m) => m.newWindow()), 'Mod+B': () => ops.adjust(this, 'colorBalance'),
       'Mod+Alt+Shift+B': () => ops.adjust(this, 'blackWhite'), 'Mod+Shift+L': () => pro.autoAdjust(this, 'tone'), 'Mod+Alt+Shift+L': () => pro.autoAdjust(this, 'contrast'),
-      'Mod+Shift+B': () => pro.autoAdjust(this, 'color'), 'Mod+Alt+G': () => this.active && ops.toggleClip(this, this.active), 'Mod+Alt+Shift+S': () => import('./styles.js').then((m) => m.layerStyleDialog(this)), 'Mod+R': () => { this.view.showRulers = !this.view.showRulers; try { localStorage.setItem('eyad-studio:image:rulers', this.view.showRulers ? '1' : '0'); } catch (e) { /* ignore */ } this.view.requestDraw(); },
+      'Mod+Shift+B': () => pro.autoAdjust(this, 'color'), 'Mod+Alt+G': () => this.active && ops.toggleClip(this, this.active), 'Mod+Alt+Shift+S': () => import('./styles.js').then((m) => m.layerStyleDialog(this)), 'Mod+R': () => this.view.setRulers(!this.view.showRulers),
       'Shift+Escape': () => this.view.setRotation(0),
       T: tool('text'), U: tool('shape'), P: tool('pen'), I: tool('eyedropper'), H: tool('hand'), Z: tool('zoom'),
       O: tool('dodge'), 'Shift+O': () => this.doc && this.selectTool({ dodge: 'burn', burn: 'sponge', sponge: 'dodge' }[this.tool?.id] || 'dodge'),

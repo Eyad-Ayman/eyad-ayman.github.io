@@ -71,7 +71,7 @@ export function supportedFilesDialog() { return dialog({ title: 'Supported files
 export function shortcutsDialog() { return dialog({ title: 'Keyboard shortcuts', body: shortcutsTable(), width: 620 }); }
 export function aboutDialog() {
   return dialog({ title: 'About EYAD Studio', width: 460, body: h('div', { class: 'studio-stack' },
-    h('p', { text: 'EYAD Studio 4.0 is Eyad Ayman’s own creative suite: EYAD IMAGE (layered photo editing, PSD), EYAD VECTOR (vector design, SVG / PDF / .ai), EYAD VIDEO (timeline editing), EYAD 3D, EYAD KAMERA (film looks) and Templates. Original design and code — it runs in the browser or installed as an app.' }),
+    h('p', { text: 'EYAD Studio 5.0 is Eyad Ayman’s own creative suite: EYAD IMAGE (layered photo editing, PSD), EYAD VECTOR (vector design, SVG / PDF / .ai), EYAD VIDEO (timeline editing), EYAD 3D, EYAD KAMERA (film looks) and Templates. Original design and code — it runs in the browser or installed as an app.' }),
     h('p', { class: 'studio-dim', text: 'Everything runs locally in your browser. Files you open are never uploaded; projects are stored in this browser’s storage until you download them.' }),
     h('p', { class: 'studio-dim', text: 'Inspired by professional creative tools but not affiliated with, endorsed by, or compatible-certified by Adobe. “Photoshop” and “Premiere Pro” are trademarks of Adobe Inc.; their file formats are read on a best-effort basis.' }),
     h('p', { class: 'studio-dim studio-small', text: 'Open-source parts: ag-psd, pdf.js, three.js, Paper.js, MediaPipe, ONNX Runtime, fflate, fzstd (MIT / Apache-2.0). Fonts under the SIL Open Font Licence. Licences are in studio/vendor and studio/fonts.' })) });

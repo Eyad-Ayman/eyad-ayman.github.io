@@ -11,8 +11,13 @@ import { ROUTES } from '../core/shell.js';
 import { createDoc, makeNode, serializeDoc, deserializeDoc, canvasToBlob, MAX_SIDE, MAX_AREA, makeCanvas, estimateBytes } from './doc.js';
 import { flatten } from './render.js';
 import { placeCanvas } from './ops.js';
-import { showReport } from '../core/docs.js';
-export { supportedFilesDialog, shortcutsDialog, aboutDialog, psdCompatDialog } from '../core/docs.js';
+// Help dialogs + the import report load on first use.
+const docs = () => import('../core/docs.js');
+export const supportedFilesDialog = (...a) => docs().then((m) => m.supportedFilesDialog(...a));
+export const shortcutsDialog = (...a) => docs().then((m) => m.shortcutsDialog(...a));
+export const aboutDialog = (...a) => docs().then((m) => m.aboutDialog(...a));
+export const psdCompatDialog = (...a) => docs().then((m) => m.psdCompatDialog(...a));
+const showReport = (...a) => docs().then((m) => m.showReport(...a));
 
 // ================================================================= new
 

@@ -1,11 +1,12 @@
 // EYAD IMAGE — more selection & retouch tools: Magic Wand, Quick Selection,
 // Polygonal Lasso and Spot Healing Brush. Same contract as tools.js: every
 // tool makes a real, undoable edit.
+import { h } from '../core/dom.js';
+import { icon } from '../core/icons.js';
 import { toast } from '../core/ui.js';
 import { makeCanvas } from './doc.js';
 import { selectionCmd } from './history.js';
 import { selectionFromCanvas, selectionFromPath, combine } from './selection.js';
-import { objectSelectTool } from './ai.js';
 import { optSlider, optCheck, optSeg, optButton, sep, selectionModeSeg, modeFromEvent, screenDist, floodMask } from './tools.js';
 
 export const EXTRA_DEFAULTS = {
@@ -202,6 +203,34 @@ const healTool = {
     const hov = view.hover; if (!hov) return;
     const s = view.docToScreen(hov.x, hov.y), r = Math.max(3, this.app.opt('heal').size / 2 * view.zoom);
     ctx.beginPath(); ctx.arc(s.x, s.y, r, 0, Math.PI * 2); ctx.strokeStyle = 'rgba(0,0,0,.7)'; ctx.lineWidth = 1.5; ctx.stroke(); ctx.strokeStyle = '#fff'; ctx.lineWidth = 1; ctx.stroke();
+  },
+};
+
+// Object Selection (AI): the on-device models and their glue code load on first use.
+const loadAI = () => import('./ai.js');
+const objectSelectTool = {
+  id: 'aiselect', label: 'Object Selection (AI)', icon: 'sparkle', key: 'W', cursor: 'crosshair',
+  hint: 'Click an object to select it with on-device AI · Shift adds · Alt subtracts',
+  options(app) {
+    return [h('span', { class: 'img-opt studio-dim', text: 'Click any object' }),
+      h('button', { class: 'studio-btn is-small', type: 'button', onclick: () => loadAI().then((m) => m.selectSubject(app)) }, icon('sparkle', 14), h('span', { text: 'Select Subject' })),
+      h('button', { class: 'studio-btn is-small', type: 'button', onclick: () => loadAI().then((m) => m.selectSky(app)) }, h('span', { text: 'Select Sky' }))];
+  },
+  async down(pt) {
+    const app = this.app, d = app.doc;
+    if (this.busy || pt.x < 0 || pt.y < 0 || pt.x > d.width || pt.y > d.height) return;
+    this.busy = { x: pt.x, y: pt.y }; app.view.requestDraw();
+    try { const m = await loadAI(); await m.objectSelectAt(app, pt); }
+    catch (e) { console.error(e); toast('Object selection could not start. Check your connection and try again.', { type: 'error' }); }
+    this.busy = null; app.view.requestDraw();
+  },
+  overlay(ctx, view) {
+    if (!this.busy) return;
+    const s = view.docToScreen(this.busy.x, this.busy.y), t = performance.now() / 300;
+    ctx.lineWidth = 3; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.arc(s.x, s.y, 14, 0, Math.PI * 2); ctx.strokeStyle = 'rgba(0,0,0,.45)'; ctx.stroke();
+    ctx.beginPath(); ctx.arc(s.x, s.y, 14, t, t + 4.2); ctx.strokeStyle = '#fff'; ctx.stroke();
+    view.requestDraw();
   },
 };
 

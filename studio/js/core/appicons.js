@@ -7,7 +7,7 @@
 const NS = 'http://www.w3.org/2000/svg';
 
 export const APPS = {
-  home: { name: 'EYAD Studio', short: 'Home', route: 'home', code: 'EYD', c: ['#f4f5f9', '#8e95a8'] },
+  home: { name: 'EYAD Studio', short: 'Home', route: 'home', code: 'EYD', c: ['#ff6a4d', '#b3121a'] },
   image: { code: 'IMG', name: 'EYAD IMAGE', short: 'Image', route: 'image', desc: 'Layers, PSD, Raw Develop, Film Lab, AI', c: ['#ff8a7a', '#e2366b'] },
   vector: { code: 'VEC', name: 'EYAD VECTOR', short: 'Vector', route: 'vector', desc: 'Pen, shapes, type, PDF · AI · SVG', c: ['#ffc56b', '#f0762e'] },
   video: { code: 'VID', name: 'EYAD VIDEO', short: 'Video', route: 'video', desc: 'Timeline, keyframes, titles, colour', c: ['#b49bff', '#5a3fd6'] },
@@ -22,8 +22,8 @@ export const APPS = {
 // Glyphs: [back layer, front layer] — drawn in a 100×100 box, white.
 const W = 'fill="#fff"', S = (w) => `fill="none" stroke="#fff" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round"`;
 const GLYPH = {
-  home: [`<rect x="29" y="29" width="42" height="42" rx="12" ${W}/>`,
-    `<path d="M41 38h19M41 50h15M41 62h19M41 38v24" ${S(6)}/>`],
+  home: [``,
+    `<rect x="29" y="28" width="42" height="10.5" rx="5.25" ${W}/><rect x="29" y="44.75" width="27" height="10.5" rx="5.25" ${W}/><rect x="29" y="61.5" width="42" height="10.5" rx="5.25" ${W}/>`],
   image: [`<rect x="27" y="31" width="46" height="38" rx="9" ${W}/>`,
     `<circle cx="60" cy="43" r="5" ${W}/><path d="M30 66l14-15 10 10 6-6 11 11z" ${W}/>`],
   vector: [`<path d="M28 66C33 44 49 34 72 34" ${S(4)}/><rect x="24" y="62" width="9" height="9" rx="2" ${W}/><rect x="68" y="30" width="9" height="9" rx="2" ${W}/>`,
@@ -59,13 +59,13 @@ export function appIconSVG(id, { size = 64 } = {}) {
 <linearGradient id="${u}b" x1=".15" y1="0" x2=".85" y2="1"><stop offset="0" stop-color="${a.c[0]}"/><stop offset="1" stop-color="${a.c[1]}"/></linearGradient>
 <radialGradient id="${u}g" cx=".5" cy="0" r=".75"><stop offset="0" stop-color="#fff" stop-opacity="${dark ? '.34' : '.55'}"/><stop offset=".6" stop-color="#fff" stop-opacity="0"/></radialGradient>
 <radialGradient id="${u}s" cx=".5" cy="1" r=".7"><stop offset="0" stop-color="#000" stop-opacity=".22"/><stop offset="1" stop-color="#000" stop-opacity="0"/></radialGradient>
-<filter id="${u}d" x="-20%" y="-20%" width="140%" height="150%"><feDropShadow dx="0" dy="2.2" stdDeviation="2" flood-color="#000" flood-opacity="${dark ? '.5' : '.28'}"/></filter>
 </defs>
 <circle cx="50" cy="50" r="47" fill="url(#${u}b)"/>
 <circle cx="50" cy="50" r="47" fill="url(#${u}s)"/>
 <circle cx="50" cy="50" r="47" fill="url(#${u}g)"/>
 <g class="eyad-icon-back" opacity=".38">${back}</g>
-<g class="eyad-icon-front" filter="url(#${u}d)">${front}</g>
+<g transform="translate(0 2.2)" opacity="${dark ? '.4' : '.2'}" style="filter:none">${front.replace(/#fff/g, '#000')}</g>
+<g class="eyad-icon-front">${front}</g>
 <circle cx="50" cy="50" r="46.3" fill="none" stroke="#fff" stroke-opacity=".45" stroke-width="1.4"/>
 <path d="M18 30a38 38 0 0 1 64 0" fill="none" stroke="#fff" stroke-opacity=".35" stroke-width="1.2" stroke-linecap="round"/>
 </svg>`;

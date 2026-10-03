@@ -6,7 +6,7 @@ import { applyUiSettings, toggleTheme, resolvedTheme, onSettings } from './setti
 export const STUDIO_ROOT = new URL('../../', import.meta.url);       // …/studio/
 export const PORTFOLIO_ROOT = new URL('../', STUDIO_ROOT);            // site root
 
-import { windowControls, startTour, autoOfflinePack, installGuide, bugReportDialog, dock as xpDock } from './experience.js';
+import { windowControls, startTour, autoOfflinePack, installHint, installGuide, bugReportDialog, dock as xpDock } from './experience.js';
 
 export const ROUTES = {
   home: new URL('./', STUDIO_ROOT).href,
@@ -119,13 +119,18 @@ export function registerServiceWorker() {
     if (!hadController || told) return; told = true;
     import('./ui.js').then(({ toast }) => toast('EYAD Studio was updated.', { timeout: 0, action: { label: 'Reload', fn: () => location.reload() } })).catch(() => {});
   });
-  navigator.serviceWorker.register(swUrl, { scope: STUDIO_ROOT.pathname, updateViaCache: 'none' }).then((reg) => {
-    reg.update().catch(() => {});
-    // The portfolio's own service worker clears caches it doesn't own when it
-    // updates; ask ours to re-check its shell cache so offline keeps working.
-    const sw = reg.active || reg.waiting || reg.installing;
-    if (sw && sw.state === 'activated') sw.postMessage({ type: 'ensure-cache' });
-  }).catch(() => { /* offline shell is optional */ });
+  // Register only once the page has loaded and settled, so caching the app shell never competes with first paint.
+  const start = () => {
+    navigator.serviceWorker.register(swUrl, { scope: STUDIO_ROOT.pathname, updateViaCache: 'none' }).then((reg) => {
+      reg.update().catch(() => {});
+      // The portfolio's own service worker clears caches it doesn't own when it
+      // updates; ask ours to re-check its shell cache so offline keeps working.
+      const sw = reg.active || reg.waiting || reg.installing;
+      if (sw && sw.state === 'activated') sw.postMessage({ type: 'ensure-cache' });
+    }).catch(() => { /* offline shell is optional */ });
+  };
+  const later = () => setTimeout(start, 2500);
+  if (document.readyState === 'complete') later(); else addEventListener('load', later, { once: true });
 }
 
 /** Common bootstrap for every Studio page. */
@@ -158,7 +163,7 @@ export function bootStudio() {
     addEventListener('keydown', (e) => { if ((e.ctrlKey || e.metaKey) && e.altKey && e.code === 'Digit0') { e.preventDefault(); location.href = ROUTES.home; } });
   }
   document.documentElement.classList.toggle('xp-standalone', matchMedia('(display-mode: standalone), (display-mode: window-controls-overlay)').matches || navigator.standalone === true);
-  autoOfflinePack();
+  autoOfflinePack(); installHint();
   import('./fonts.js').then((m) => m.loadUserFonts()).catch(() => {});
   requestAnimationFrame(() => dispatchEvent(new Event('eyad:ready')));
 }

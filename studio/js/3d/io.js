@@ -13,7 +13,7 @@ import { saveProject, loadProjectBlob, getProject, touchProject, putRecovery, li
 import { ROUTES } from '../core/shell.js';
 import { prepareImported, createLight, LIGHTS, boundsOf, editorObjects, isAux, isCam, createCamera, camOf, ensureAreaLights } from './objects.js';
 import { validateAnim } from './anim.js';
-import { defaultSettings } from './viewport.js';
+import { defaultSettings, ENVS } from './viewport.js';
 import { WebMWriter } from './webm.js';
 
 export const MAX_MODEL = 200 * 1024 * 1024;
@@ -315,7 +315,7 @@ function validateSettings(s) {
   const e = s.env || {}, g = s.ground || {}, c = s.camera || {}, r = s.render || {}, vv = s.video || {}, sn = s.snap || {};
   const vec = (v, dd) => (Array.isArray(v) && v.length === 3 ? v.map((x, i) => num(x, dd[i], -1e6, 1e6)) : dd);
   return {
-    env: { lighting: oneOf(e.lighting, ['studio', 'none'], d.env.lighting), intensity: num(e.intensity, 1, 0, 10), background: oneOf(e.background, ['gradient', 'solid', 'transparent', 'environment'], d.env.background), color: color(e.color, d.env.color), top: color(e.top, d.env.top), bottom: color(e.bottom, d.env.bottom), blur: num(e.blur, d.env.blur, 0, 1), toneMapping: oneOf(e.toneMapping, ['aces', 'agx', 'neutral', 'none'], 'aces'), exposure: num(e.exposure, 1, 0.05, 8) },
+    env: { lighting: oneOf(e.lighting, ENVS.map((x) => x[0]), d.env.lighting), intensity: num(e.intensity, 1, 0, 10), background: oneOf(e.background, ['gradient', 'solid', 'transparent', 'environment'], d.env.background), color: color(e.color, d.env.color), top: color(e.top, d.env.top), bottom: color(e.bottom, d.env.bottom), blur: num(e.blur, d.env.blur, 0, 1), toneMapping: oneOf(e.toneMapping, ['aces', 'agx', 'neutral', 'none'], 'aces'), exposure: num(e.exposure, 1, 0.05, 8) },
     ground: { mode: oneOf(g.mode, ['shadow', 'solid', 'none'], 'shadow'), color: color(g.color, d.ground.color), opacity: num(g.opacity, 0.35, 0, 1), grid: bool(g.grid, true) },
     shadows: bool(s.shadows, true),
     snap: { on: bool(sn.on, false), move: num(sn.move, 0.25, 0.001, 100), rotate: num(sn.rotate, 15, 0.1, 180), scale: num(sn.scale, 0.1, 0.001, 10) },
@@ -614,6 +614,23 @@ export async function renderImageDialog(app, { dest = 'download' } = {}) {
   W = Math.round(Math.max(16, Math.min(max, W || 1920))); H = Math.round(Math.max(16, Math.min(max, H || 1080)));
   const samples = Number(v.samples) || 1;
   app.settings.render = { w: W, h: H, transparent: !!v.transparent, ss: !!v.ss, samples, camera: v.camera === 'view' ? 'view' : 'active' };
+  await renderImage(app, { W, H, transparent: v.transparent, ss: v.ss, samples, camera: v.camera, dest: v.dest });
+}
+
+/** Size / quality presets shared by the Render tab and the phone Render sheet. */
+export const RENDER_SIZES = [['1920x1080', 'HD'], ['3840x2160', '4K'], ['1080x1080', 'Square'], ['1080x1350', '4:5'], ['1080x1920', 'Story']];
+export const RENDER_QUALITY = [[1, 'Draft'], [8, 'Good'], [32, 'Best']];
+
+/** Render a PNG straight from the saved render settings (no dialog). */
+export async function renderImageNow(app, { dest = 'download' } = {}) {
+  const r = app.settings.render;
+  const max = Math.min(4096, app.viewport.maxOutputSize());
+  const W = Math.round(Math.max(16, Math.min(max, r.w || 1920))), H = Math.round(Math.max(16, Math.min(max, r.h || 1080)));
+  await renderImage(app, { W, H, transparent: r.transparent, ss: r.ss, samples: r.samples || 1, camera: r.camera === 'view' || !app.activeCamera() ? 'view' : 'active', dest });
+}
+
+async function renderImage(app, { W, H, transparent, ss, samples, camera, dest }) {
+  const v = { transparent, ss, camera, dest };
   const prog = progressDialog('Rendering', { cancellable: false }); prog.set(null, `${W} × ${H} px…`);
   try {
     await sleep(40);
@@ -623,9 +640,37 @@ export async function renderImageDialog(app, { dest = 'download' } = {}) {
     if (v.dest === 'image') {
       const id = await putHandoff([new File([blob], fname, { type: 'image/png' })]);
       await leaveTo(app, ROUTES.image + '?handoff=' + id);
-    } else { downloadBlob(blob, fname); toast(`Rendered ${W} × ${H} PNG (${formatBytes(blob.size)})`, { type: 'ok', timeout: 2200 }); }
+    } else {
+      // desktop: the file downloads straight away; touch devices save from the result (a download prompt mid-render is awkward there)
+      const touch = matchMedia('(pointer: coarse)').matches;
+      if (!touch) downloadBlob(blob, fname);
+      prog.close();
+      renderResult(app, blob, fname, { W, H, samples, saved: !touch });
+    }
   } catch (e) { toast(e.message || 'Render failed', { type: 'error' }); }
   finally { prog.close(); app.viewport.invalidate(); }
+}
+
+/** The finished render: preview, save / share, or continue in EYAD IMAGE. */
+async function renderResult(app, blob, fname, { W, H, samples, saved }) {
+  const url = URL.createObjectURL(blob);
+  const img = h('img', { class: 't3-result-img', src: url, alt: 'Rendered image', width: W, height: H, draggable: false });
+  const file = new File([blob], fname, { type: 'image/png' });
+  const canShare = !!(navigator.canShare && navigator.share && navigator.canShare({ files: [file] }));
+  const body = h('div', { class: 't3-result' }, h('div', { class: 't3-result-frame' }, img),
+    h('p', { class: 'studio-dim studio-small', text: `${W} × ${H} px · ${samples} sample${samples > 1 ? 's' : ''} · ${formatBytes(blob.size)}${saved ? ' · saved to your downloads' : ''}` }));
+  const buttons = [
+    { label: 'Open in EYAD IMAGE', value: 'image' },
+    canShare && !saved ? { label: 'Share…', value: 'share' } : null,
+    { label: saved ? 'Download again' : 'Save PNG', value: 'save', primary: !saved },
+    { label: 'Done', value: null, primary: saved },
+  ].filter(Boolean);
+  try {
+    const act = await dialog({ title: 'Render', width: 720, className: 't3-result-dialog', body, buttons });
+    if (act === 'save') { downloadBlob(blob, fname); toast(`Saved ${fname}`, { type: 'ok', timeout: 2000 }); }
+    else if (act === 'share') { try { await navigator.share({ files: [file], title: fname }); } catch (e) { /* cancelled */ } }
+    else if (act === 'image') { const id = await putHandoff([file]); await leaveTo(app, ROUTES.image + '?handoff=' + id); }
+  } finally { setTimeout(() => URL.revokeObjectURL(url), 4000); }
 }
 
 async function leaveTo(app, url) {
@@ -654,7 +699,7 @@ function recorderMime() {
   return null;
 }
 
-export async function renderVideoDialog(app, { dest = 'download' } = {}) {
+export async function renderVideoDialog(app, { dest = 'download', motion = null } = {}) {
   const vs = app.settings.video;
   const hasAnim = app.hasAnimation();
   const wc = typeof VideoEncoder !== 'undefined';
@@ -667,7 +712,7 @@ export async function renderVideoDialog(app, { dest = 'download' } = {}) {
     { key: 'fps', label: 'Frame rate', type: 'select', value: String(vs.fps), options: [24, 25, 30, 50, 60].map((f) => ({ value: String(f), label: f + ' fps' })) },
     { key: 'dur', label: 'Duration', type: 'number', value: +app.anim.duration.toFixed(2), min: 0.2, max: 120, step: 0.1, suffix: 's' },
     { key: 'camera', label: 'Camera', type: 'select', value: cameraOptions(app)[0].value, options: cameraOptions(app) },
-    { key: 'motion', label: 'Motion', type: 'select', value: hasAnim ? 'timeline' : 'turntable', options: [{ value: 'timeline', label: hasAnim ? 'Timeline animation' : 'Timeline animation (no keys yet)' }, { value: 'turntable', label: 'Viewport turntable (one full orbit, ignores the camera choice)' }] },
+    { key: 'motion', label: 'Motion', type: 'select', value: motion || (hasAnim ? 'timeline' : 'turntable'), options: [{ value: 'timeline', label: hasAnim ? 'Timeline animation' : 'Timeline animation (no keys yet)' }, { value: 'turntable', label: 'Viewport turntable (one full orbit, ignores the camera choice)' }] },
     { key: 'enc', label: 'Encoder', type: 'select', value: wc ? 'webcodecs' : 'recorder', options: [wc ? { value: 'webcodecs', label: 'Frame-accurate (WebCodecs, WebM)' } : null, rec ? { value: 'recorder', label: 'Real-time recorder (' + (rec.includes('mp4') ? 'MP4' : 'WebM') + ')' } : null].filter(Boolean) },
     { key: 'dest', label: 'Then', type: 'select', value: dest, options: [{ value: 'download', label: 'Download video' }, { value: 'video', label: 'Send to EYAD VIDEO' }] },
     { type: 'note', label: 'Frame-accurate rendering keeps exact timing even when frames are slow to draw. The real-time recorder captures as it plays, so heavy scenes may stutter.' },

@@ -516,7 +516,7 @@ export async function cameraRawDialog(app) {
   return new Promise((resolve) => {
     const overlay = h('div', { class: 'cr-overlay', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Raw Develop Filter' },
       h('header', { class: 'cr-top' },
-        h('div', { class: 'cr-brand' }, icon('aperture', 18), h('span', { text: 'RAW DEVELOP' }), h('em', { class: 'studio-faint', text: ctx.node.name })),
+        h('div', { class: 'cr-brand' }, icon('aperture', 18), h('span', { text: 'Raw develop' }), h('em', { class: 'studio-faint', text: ctx.node.name })),
         h('div', { class: 'cr-actions' }, beforeBtn,
           h('button', { class: 'studio-btn is-small', type: 'button', text: 'Auto', onclick: auto }),
           h('button', { class: 'studio-btn is-small', type: 'button', text: 'Reset', onclick: resetAll }),

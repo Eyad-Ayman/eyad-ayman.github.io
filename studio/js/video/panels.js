@@ -74,12 +74,13 @@ export class MediaBin {
     m.offline ? h('button', { class: 'studio-btn is-small vp-relink', type: 'button', text: 'Relink', onclick: (e) => { e.stopPropagation(); app.relinkMedia(m); } }) :
       h('button', { class: 'studio-icon-btn is-small vp-add', type: 'button', title: 'Add at playhead', 'aria-label': 'Add to timeline at playhead', onclick: (e) => { e.stopPropagation(); ops.placeMedia(app, m.id); } }, icon('plus', 15)));
     el.addEventListener('dragstart', (e) => { e.dataTransfer.setData('application/x-eyad-media', m.id); e.dataTransfer.effectAllowed = 'copy'; });
-    el.addEventListener('click', () => { if (!m.offline) app.openSource(m.id); });
+    let lpFired = false;
+    el.addEventListener('click', () => { if (lpFired) { lpFired = false; return; } if (m.offline) return; if (app.mobile.matches) ops.placeMedia(app, m.id); else app.openSource(m.id); });
     el.addEventListener('dblclick', () => { if (!m.offline) { app.openSource(m.id); app.showMonitor('source'); } });
     el.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !m.offline) ops.placeMedia(app, m.id); });
     el.addEventListener('contextmenu', (e) => { e.preventDefault(); this.menu(m, e.clientX, e.clientY); });
     let lp = 0;
-    el.addEventListener('pointerdown', (e) => { if (e.pointerType === 'touch') lp = setTimeout(() => this.menu(m, e.clientX, e.clientY), 550); });
+    el.addEventListener('pointerdown', (e) => { if (e.pointerType === 'touch') { lpFired = false; lp = setTimeout(() => { lpFired = true; this.menu(m, e.clientX, e.clientY); }, 550); } });
     ['pointerup', 'pointercancel', 'pointerleave'].forEach((t) => el.addEventListener(t, () => clearTimeout(lp)));
     return el;
   }
@@ -178,91 +179,129 @@ export class SourceMonitor {
 // ================================================================= Effects
 
 export class EffectsPanel {
+  /** One category at a time (Looks · Film · Effects · Transitions · Titles · Text styles · Animate · Auto mask);
+      each category's list is only built the first time it is opened, so the editor opens fast. */
   constructor(app) {
     this.app = app;
     this.el = h('div', { class: 'vp-effects' });
-    const search = h('input', { class: 'studio-input vp-fx-search', type: 'search', placeholder: 'Search effects, transitions, titles…', 'aria-label': 'Search effects' });
-    search.addEventListener('input', () => {
-      const q = search.value.trim().toLowerCase();
-      for (const b of this.el.querySelectorAll('.vp-fx-item')) b.hidden = !!q && !b.textContent.toLowerCase().includes(q);
-      for (const d of this.el.querySelectorAll('.vp-fx-bin')) { if (q) d.open = true; d.hidden = !!q && ![...d.querySelectorAll('.vp-fx-item')].some((b) => !b.hidden); }
-    });
-    this.el.appendChild(search);
-    const bin = (key, title, items, open = false) => {
-      const d = h('details', { class: 'vp-fx-bin', open, dataset: { bin: key } }, h('summary', { text: title }), h('div', { class: 'vp-fx-bin-body' }, items));
-      this.el.appendChild(d); return d;
-    };
-    const item = (ic, label, fn, drag) => {
-      const b = h('button', { class: 'vp-fx-item', type: 'button', draggable: !!drag, onclick: fn }, icon(ic, 14), h('span', { text: label }));
-      if (drag) b.addEventListener('dragstart', (e) => { e.dataTransfer.setData(drag[0], drag[1]); });
-      return b;
-    };
-    const genIcon = (t) => (t.gen.type === 'color' ? 'image' : t.gen.type === 'shape' ? 'rect' : t.gen.type === 'adjust' ? 'layers' : 'title');
-    const chip = (ic, label, fn, title) => h('button', { class: 'studio-btn is-small', type: 'button', title: title || label, onclick: fn }, icon(ic, 13), label);
-    // Quick access: the things people look for first
-    this.el.appendChild(h('div', { class: 'vp-presets vp-fx-quick' },
-      chip('film', `Film looks (${LOOKS.length})`, () => this.open('film'), 'Film, camera and LUT looks from Film Lab'),
-      chip('sparkle', 'Ready looks', () => this.open('looks'), 'One-click filter combinations'),
-      chip('mask', 'Auto mask', () => this.open('automask'), 'AI people mask: remove, blur or recolour the background'),
-      chip('captions', 'Import SRT / VTT', () => importCaptions(app), 'Import subtitles as caption clips'),
-      chip('text', 'Text styles', () => this.open('textstyles'))));
-    // Ready looks
-    bin('looks', 'Ready looks', [
-      h('p', { class: 'studio-dim studio-small', text: 'Select a clip and click a look. Choosing another look replaces the previous one; tweak or remove its effects in Properties.' }),
-      h('div', { class: 'vp-look-grid' }, Object.entries(LOOK_PRESETS).map(([k, l]) => h('button', { class: 'vp-fx-item vp-look', type: 'button', onclick: () => ops.applyLook(app, k) }, icon('sparkle', 14), h('span', { text: l.label })))),
-      item('close', 'Remove look', () => ops.clearLook(app))], true);
-    // Film looks (the same 136 looks as Film Lab / EYAD KAMERA)
-    const fg = {};
-    for (const l of LOOKS) (fg[l.group || 'Looks'] = fg[l.group || 'Looks'] || []).push(item('film', l.name, () => ops.setFilmLook(app, l.code)));
-    bin('film', `Film looks (${LOOKS.length})`, [
-      h('p', { class: 'studio-dim studio-small', text: 'Film stocks, cameras and LUT grades. Click one to put it on the selected clip — strength is in Properties.' }),
-      Object.entries(fg).map(([g, list]) => [h('div', { class: 'vp-fx-group', text: g }), list])]);
-    // Auto mask
-    bin('automask', 'Auto mask (AI people)', [
-      h('p', { class: 'studio-dim studio-small', text: 'Finds people in the selected video or image clip on this device — nothing is uploaded. Works in preview and export.' }),
-      MASK_MODES.map((m, i) => item('mask', m, () => ops.addAutoMask(app, i)))]);
-    // Titles & graphics
-    const capSel = h('select', { class: 'studio-input vp-cap-style', 'aria-label': 'Style for all captions' }, h('option', { value: '', text: 'Style for all captions…' }), CAPTION_STYLES.map(([k, l]) => h('option', { value: k, text: l })));
-    capSel.addEventListener('change', () => { if (capSel.value) ops.styleAllCaptions(app, capSel.value); capSel.value = ''; });
-    bin('gen', 'Titles & graphics', [
-      Object.entries(GEN_TEMPLATES).map(([k, t]) => item(genIcon(t), t.label, () => ops.addGenerated(app, k))),
-      h('div', { class: 'vp-fx-group', text: 'Captions' }),
-      h('div', { class: 'vp-presets' },
-        chip('captions', 'Import SRT / VTT', () => importCaptions(app)),
-        chip('download', 'Export SRT', () => exportCaptions(app, 'srt')),
-        chip('download', 'Export VTT', () => exportCaptions(app, 'vtt'))),
-      capSel], true);
-    // Text styles
-    bin('textstyles', 'Text styles', [
-      h('p', { class: 'studio-dim studio-small', text: 'Click to restyle the selected title or caption — or to add a new title in that style.' }),
-      Object.entries(TEXT_STYLES).map(([k, st]) => item('text', st.label, () => ops.applyTextStyle(app, k)))]);
-    // Video transitions
-    const tg = {};
-    const tItems = {};
-    const mark = () => { for (const [k, b] of Object.entries(tItems)) b.classList.toggle('is-active', k === (app.lastTransition || 'dissolve')); allBtn.lastChild.textContent = `Apply “${TRANSITIONS[app.lastTransition || 'dissolve'].label}” to all cuts`; };
-    for (const [k, t] of Object.entries(TRANSITIONS)) (tg[t.group] = tg[t.group] || []).push(tItems[k] = item('transition', t.label, () => { ops.applyTransition(app, k); mark(); }, ['application/x-eyad-transition', k]));
-    const allBtn = h('button', { class: 'studio-btn is-small is-primary vp-trans-all', type: 'button', onclick: () => { ops.applyTransitionAll(app, app.lastTransition || 'dissolve'); mark(); } }, icon('transition', 13), h('span', { text: 'Apply to all cuts' }));
-    bin('transitions', 'Video transitions', [
-      h('p', { class: 'studio-dim studio-small', text: 'Click a transition: it goes on the selected clip, or on the cut nearest the playhead. You can also drag one onto a clip.' }),
-      h('div', { class: 'vp-presets' }, allBtn),
-      Object.entries(tg).map(([g, list]) => [h('div', { class: 'vp-fx-group', text: g }), list])], true);
-    mark();
-    // Presets
-    const pg = {};
-    for (const [k, p] of Object.entries(PRESETS)) (pg[p.group] = pg[p.group] || []).push(item('keyframe', p.label, () => ops.applyPreset(app, k)));
-    bin('presets', 'Animation presets', Object.entries(pg).map(([g, list]) => [h('div', { class: 'vp-fx-group', text: g }), list]));
-    // Video effects
-    const groups = {};
-    for (const [type, def] of Object.entries(EFFECTS)) (groups[def.group] = groups[def.group] || []).push(item('fx', def.label, () => ops.addEffect(app, type), ['application/x-eyad-effect', type]));
-    bin('effects', 'Video effects', [
-      h('p', { class: 'studio-dim studio-small', text: 'Select a clip, then click an effect or drag it onto a clip. Effects also work on titles and on adjustment layers (which grade every track below). Every parameter can be keyframed (stopwatch in Properties).' }),
-      !glAvailable() && !canvasFilterSupported() ? h('div', { class: 'vp-note is-warn' }, icon('warn', 14), h('span', { text: 'This browser has neither WebGL nor canvas filters — effects are saved but not previewed.' })) : null,
-      Object.entries(groups).map(([g, list]) => [h('div', { class: 'vp-fx-group', text: g }), list])], true);
-    bin('builtin', 'Built into every clip', ['Motion (position, scale, rotation, anchor)', 'Opacity & blur', 'Crop', 'Speed & fades', 'Volume, EQ, compressor, pan'].map((x) => h('div', { class: 'vp-fx-item is-static' }, icon('sliders', 14), h('span', { text: x }))));
+    this.cat = null;
+    this.built = new Set();
+    this.tItems = {};
+    this.search = h('input', { class: 'studio-input vp-fx-search', type: 'search', placeholder: 'Search looks, effects, transitions…', 'aria-label': 'Search effects' });
+    this.search.addEventListener('input', () => this.filter());
+    this.cats = [
+      ['looks', 'Looks', 'sparkle', 'Ready looks'], ['film', 'Film', 'film', `Film looks (${LOOKS.length})`], ['effects', 'Effects', 'fx', 'Video effects'],
+      ['transitions', 'Transitions', 'transition', 'Video transitions'], ['gen', 'Titles', 'title', 'Titles and graphics'], ['textstyles', 'Text styles', 'text', 'Text styles'],
+      ['presets', 'Animate', 'keyframe', 'Animation presets'], ['automask', 'Auto mask', 'mask', 'Auto mask (AI people)'],
+    ];
+    this.catBtns = {}; this.bins = {};
+    const bar = h('div', { class: 'vp-fx-cats', role: 'tablist', 'aria-label': 'Effect categories' });
+    this.body = h('div', { class: 'vp-fx-body' });
+    for (const [k, label, ic, title] of this.cats) {
+      bar.appendChild(this.catBtns[k] = h('button', { class: 'vp-fx-cat', type: 'button', role: 'tab', dataset: { cat: k }, onclick: () => { if (this.search.value) { this.search.value = ''; this.filter(); } this.open(k); } }, icon(ic, 14), h('span', { text: label })));
+      this.body.appendChild(this.bins[k] = h('section', { class: 'vp-fx-bin', dataset: { bin: k }, hidden: true }, h('h3', { class: 'vp-fx-bin-title', text: title }), h('div', { class: 'vp-fx-bin-body' })));
+    }
+    this.el.append(h('div', { class: 'vp-fx-head' }, this.search, bar), this.body);
+    this.open('looks');
   }
+
+  item(ic, label, fn, drag) {
+    const b = h('button', { class: 'vp-fx-item', type: 'button', draggable: !!drag, title: label, onclick: fn }, icon(ic, 14), h('span', { text: label }));
+    if (drag) b.addEventListener('dragstart', (e) => { e.dataTransfer.setData(drag[0], drag[1]); });
+    return b;
+  }
+
+  build(k) {
+    if (this.built.has(k) || !this.bins[k]) return;
+    this.built.add(k);
+    const app = this.app;
+    const body = this.bins[k].querySelector('.vp-fx-bin-body');
+    const item = (...a) => this.item(...a);
+    const note = (t) => h('p', { class: 'vp-fx-note', text: t });
+    const group = (t) => h('div', { class: 'vp-fx-group', text: t });
+    const list = (items) => h('div', { class: 'vp-fx-list' }, items);
+    const chip = (ic, label, fn, title) => h('button', { class: 'studio-btn is-small', type: 'button', title: title || label, onclick: fn }, icon(ic, 13), label);
+    const grouped = (map) => Object.entries(map).map(([g, items]) => [group(g), list(items)]);
+    const add = (...kids) => { for (const x of kids.flat(3)) if (x) body.appendChild(x); };
+    if (k === 'looks') {
+      add(note('Select a clip and tap a look. Another look replaces it; fine-tune or remove its effects in the inspector.'),
+        list(Object.entries(LOOK_PRESETS).map(([key, l]) => h('button', { class: 'vp-fx-item vp-look', type: 'button', title: l.label, onclick: () => ops.applyLook(app, key) }, icon('sparkle', 14), h('span', { text: l.label })))),
+        h('div', { class: 'vp-presets' }, chip('close', 'Remove look', () => ops.clearLook(app)), chip('film', `Film looks (${LOOKS.length})`, () => this.open('film'), 'Film, camera and LUT looks from Film Lab')));
+    } else if (k === 'film') {
+      const fg = {};
+      for (const l of LOOKS) (fg[l.group || 'Looks'] = fg[l.group || 'Looks'] || []).push(item('film', l.name, () => ops.setFilmLook(app, l.code)));
+      add(note('Film stocks, cameras and LUT grades. Tap one to put it on the selected clip — strength is in the inspector.'), grouped(fg));
+    } else if (k === 'automask') {
+      add(note('Finds people in the selected video or image clip on this device — nothing is uploaded. Works in preview and export.'),
+        list(MASK_MODES.map((m, i) => item('mask', m, () => ops.addAutoMask(app, i)))));
+    } else if (k === 'gen') {
+      const capSel = h('select', { class: 'studio-input vp-cap-style', 'aria-label': 'Style for all captions' }, h('option', { value: '', text: 'Style for all captions…' }), CAPTION_STYLES.map(([key, l]) => h('option', { value: key, text: l })));
+      capSel.addEventListener('change', () => { if (capSel.value) ops.styleAllCaptions(app, capSel.value); capSel.value = ''; });
+      const genIcon = (t) => (t.gen.type === 'color' ? 'image' : t.gen.type === 'shape' ? 'rect' : t.gen.type === 'adjust' ? 'layers' : 'title');
+      add(note('Adds the clip at the playhead on a free video track. Edit its text and style in the inspector.'),
+        list(Object.entries(GEN_TEMPLATES).map(([key, t]) => item(genIcon(t), t.label, () => ops.addGenerated(app, key)))),
+        group('Captions'),
+        h('div', { class: 'vp-presets' },
+          chip('captions', 'Import SRT / VTT', () => importCaptions(app), 'Import subtitles as caption clips'),
+          chip('download', 'Export SRT', () => exportCaptions(app, 'srt')),
+          chip('download', 'Export VTT', () => exportCaptions(app, 'vtt'))),
+        capSel,
+        h('div', { class: 'vp-presets' }, chip('text', 'Text styles', () => this.open('textstyles'))));
+    } else if (k === 'textstyles') {
+      add(note('Tap to restyle the selected title or caption — or to add a new title in that style.'),
+        list(Object.entries(TEXT_STYLES).map(([key, st]) => item('text', st.label, () => ops.applyTextStyle(app, key)))));
+    } else if (k === 'transitions') {
+      const tg = {};
+      for (const [key, t] of Object.entries(TRANSITIONS)) (tg[t.group] = tg[t.group] || []).push(this.tItems[key] = item('transition', t.label, () => { ops.applyTransition(app, key); this.mark(); }, ['application/x-eyad-transition', key]));
+      this.allBtn = h('button', { class: 'studio-btn is-small is-primary vp-trans-all', type: 'button', onclick: () => { ops.applyTransitionAll(app, app.lastTransition || 'dissolve'); this.mark(); } }, icon('transition', 13), h('span', { text: 'Apply to all cuts' }));
+      add(note('Tap a transition: it goes on the selected clip, or on the cut nearest the playhead. On a computer you can also drag one onto a clip.'),
+        h('div', { class: 'vp-presets' }, this.allBtn), grouped(tg));
+      this.mark();
+    } else if (k === 'presets') {
+      const pg = {};
+      for (const [key, p] of Object.entries(PRESETS)) (pg[p.group] = pg[p.group] || []).push(item('keyframe', p.label, () => ops.applyPreset(app, key)));
+      add(note('Ready-made keyframe animations for the selected clip.'), grouped(pg));
+    } else if (k === 'effects') {
+      const groups = {};
+      for (const [type, def] of Object.entries(EFFECTS)) (groups[def.group] = groups[def.group] || []).push(item('fx', def.label, () => ops.addEffect(app, type), ['application/x-eyad-effect', type]));
+      add(note('Select a clip, then tap an effect. Effects also work on titles and on adjustment layers (which grade every track below). Every parameter can be keyframed with the stopwatch in the inspector.'),
+        !glAvailable() && !canvasFilterSupported() ? h('div', { class: 'vp-note is-warn' }, icon('warn', 14), h('span', { text: 'This browser has neither WebGL nor canvas filters — effects are saved but not previewed.' })) : null,
+        grouped(groups),
+        group('Built into every clip'),
+        h('p', { class: 'vp-fx-note', text: 'Motion (position, scale, rotation, anchor) · Opacity and blur · Crop · Speed and fades · Volume, EQ, compressor, pan — all in the inspector.' }));
+    }
+  }
+
+  mark() {
+    const app = this.app, cur = app.lastTransition || 'dissolve';
+    for (const [k, b] of Object.entries(this.tItems)) b.classList.toggle('is-active', k === cur);
+    if (this.allBtn) this.allBtn.lastChild.textContent = `Apply “${TRANSITIONS[cur].label}” to all cuts`;
+  }
+
+  /** Show one category. */
   open(which) {
-    const d = this.el.querySelector(`[data-bin="${which}"]`);
-    if (d) { d.open = true; d.scrollIntoView({ block: 'start', behavior: 'smooth' }); }
+    if (!this.bins[which]) which = 'looks';
+    this.build(which);
+    this.cat = which;
+    for (const [k, b] of Object.entries(this.catBtns)) { b.classList.toggle('is-active', k === which); b.setAttribute('aria-selected', String(k === which)); this.bins[k].hidden = k !== which; this.bins[k].classList.remove('is-result'); }
+    for (const b of this.el.querySelectorAll('.vp-fx-item[hidden], .vp-fx-group[hidden], .vp-fx-list[hidden]')) b.hidden = false;
+    this.body.scrollTop = 0;
+    this.body.classList.remove('is-empty');
+    const btn = this.catBtns[which], bar = btn.parentElement;
+    if (bar.scrollWidth > bar.clientWidth) bar.scrollLeft = Math.max(0, btn.offsetLeft - (bar.clientWidth - btn.offsetWidth) / 2);
+  }
+
+  /** Search across every category. */
+  filter() {
+    const q = this.search.value.trim().toLowerCase();
+    if (!q) { this.open(this.cat || 'looks'); return; }
+    for (const [k] of this.cats) this.build(k);
+    for (const b of Object.values(this.catBtns)) b.classList.remove('is-active');
+    for (const b of this.el.querySelectorAll('.vp-fx-item')) b.hidden = !b.textContent.toLowerCase().includes(q);
+    for (const l of this.el.querySelectorAll('.vp-fx-list')) { l.hidden = ![...l.children].some((x) => !x.hidden); const g = l.previousElementSibling; if (g && g.classList.contains('vp-fx-group')) g.hidden = l.hidden; }
+    let any = false;
+    for (const d of Object.values(this.bins)) { const hit = [...d.querySelectorAll('.vp-fx-item')].some((b) => !b.hidden); d.hidden = !hit; d.classList.toggle('is-result', hit); any = any || hit; }
+    this.body.classList.toggle('is-empty', !any);
   }
   refresh() {}
 }

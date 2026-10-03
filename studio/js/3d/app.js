@@ -22,6 +22,10 @@ import * as io from './io.js';
 const AUTOKEY_KEY = 'eyad-studio:3d:autokey';
 const MODES = [['select', 'Select', 'cursor', 'Q'], ['translate', 'Move', 'move', 'W'], ['rotate', 'Rotate', 'rotate', 'E'], ['scale', 'Scale', 'expand', 'T']];
 const HINT_KEY = 'eyad-studio:3d:hotkeys-hint';
+const UI_KEY = 'eyad-studio:3d:ui';
+const COMPACT_MQ = '(max-width: 760px) and (orientation: portrait), (max-width: 540px), (orientation: landscape) and (max-height: 540px)';
+const LAND_MQ = '(orientation: landscape) and (max-height: 540px) and (min-width: 541px)';
+const TOUCH_MQ = '(pointer: coarse), (hover: none)';
 export const SHADING = [['wire', 'Wireframe', 'shWire'], ['solid', 'Solid', 'shSolid'], ['material', 'Material preview', 'shMat'], ['rendered', 'Rendered', 'shRender']];
 
 export class App3D {
@@ -34,7 +38,9 @@ export class App3D {
     this.mixers = new Map();
     this.name = 'Untitled scene';
     this.rec = { projectId: null, created: Date.now(), id: uid('r') };
-    this.selected = null;
+    this.selected = null; // the active object (the gizmo and the property tabs follow it)
+    this.multi = []; // everything selected, the active object included
+    this.addMode = false; // touch: taps add to the selection
     this.mode = 'translate';
     this.space = 'world';
     this.uniformScale = true;
@@ -42,7 +48,12 @@ export class App3D {
     this.playing = false;
     this.autoKey = false;
     try { this.autoKey = localStorage.getItem(AUTOKEY_KEY) === '1'; } catch (e) { /* ignore */ }
-    this.mobile = matchMedia('(max-width: 760px) and (orientation: portrait), (max-width: 540px)');
+    // compact = phones (portrait and landscape): panels become sheets, tools move onto the viewport
+    this.mobile = matchMedia(COMPACT_MQ);
+    this.land = matchMedia(LAND_MQ);
+    this.touch = matchMedia(TOUCH_MQ);
+    this.ui = { panelW: 304, tl: null, touch: null };
+    try { Object.assign(this.ui, JSON.parse(localStorage.getItem(UI_KEY) || '{}')); } catch (e) { /* ignore */ }
     this.hist = new History({ limit: Math.max(20, getSettings().historyLimit || 60), onChange: () => this.onHistory() });
   }
 
@@ -58,33 +69,34 @@ export class App3D {
     this.titleEl = h('button', { class: 'img-m-title', type: 'button', onclick: () => io.renameScene(this) });
     this.undoBtn = iconButton('undo', 'Undo', () => this.undo(), { shortcut: 'Mod+Z' });
     this.redoBtn = iconButton('redo', 'Redo', () => this.redo(), { shortcut: 'Mod+Shift+Z' });
-    const top = h('header', { class: 'img-top' },
+    const top = h('header', { class: 'img-top t3-top' },
       h('div', { class: 'img-top-left' },
-        h('a', { class: 'studio-icon-btn img-m-only', href: ROUTES.home, 'aria-label': 'Back to Studio' }, icon('chevronLeft', 20)),
-        h('div', { class: 'img-d-only' }, brandMark({ app: '3D' })),
-        h('div', { class: 'img-d-only img-menubar-wrap' }, this.menubarEl),
-        h('div', { class: 'img-m-only img-m-titlewrap' }, this.titleEl)),
+        h('a', { class: 'studio-icon-btn t3-m-only', href: ROUTES.home, 'aria-label': 'Back to Studio' }, icon('chevronLeft', 20)),
+        h('div', { class: 't3-d-only' }, brandMark({ app: '3D' })),
+        h('div', { class: 't3-d-only img-menubar-wrap' }, this.menubarEl),
+        h('div', { class: 't3-m-only img-m-titlewrap' }, this.titleEl)),
       h('div', { class: 'img-top-right' },
-        h('div', { class: 'img-d-only' }, this.saveInd.el),
-        iconButton('layers', 'Show / hide panels', () => { this.root.classList.toggle('is-panels-collapsed'); }, { cls: 'img-land-only' }),
+        h('div', { class: 't3-d-only' }, this.saveInd.el),
         this.undoBtn, this.redoBtn,
-        iconButton('save', 'Save', () => io.save(this), { shortcut: 'Mod+S', cls: 'img-m-only' }),
-        iconButton('dots', 'Menu', () => menuSheet('EYAD 3D', [...this.menus, { label: '← Back to portfolio', action: () => goPortfolio() }]), { cls: 'img-m-only' }),
-        h('div', { class: 'img-d-only img-top-apps' }, appSwitcher('3d')),
-        iconButton('command', 'Command palette', () => this.palette.show(), { shortcut: 'Mod+K', cls: 'img-d-only' }),
-        h('div', { class: 'img-d-only' }, installButton()),
-        h('div', { class: 'img-d-only img-theme-wrap' }, themeToggle()),
-        h('div', { class: 'img-d-only' }, backToPortfolio({ compact: true }))));
+        iconButton('save', 'Save', () => io.save(this), { shortcut: 'Mod+S', cls: 't3-m-only' }),
+        iconButton('dots', 'Menu', () => menuSheet('EYAD 3D', [...this.menus, { label: '← Back to portfolio', action: () => goPortfolio() }]), { cls: 't3-m-only' }),
+        h('div', { class: 't3-d-only img-top-apps' }, appSwitcher('3d')),
+        iconButton('command', 'Command palette', () => this.palette.show(), { shortcut: 'Mod+K', cls: 't3-d-only' }),
+        h('div', { class: 't3-d-only' }, installButton()),
+        h('div', { class: 't3-d-only img-theme-wrap' }, themeToggle()),
+        h('div', { class: 't3-d-only' }, backToPortfolio({ compact: true }))));
     this.optionsBar = h('div', { class: 'img-options t3-options', role: 'toolbar', 'aria-label': 'Transform options' });
-    this.toolbarEl = h('div', { class: 'img-toolbar', role: 'toolbar', 'aria-label': 'Tools', 'aria-orientation': 'vertical' });
+    this.toolbarEl = h('div', { class: 'img-toolbar t3-toolbar', role: 'toolbar', 'aria-label': 'Tools', 'aria-orientation': 'vertical' });
     this.stage = h('div', { class: 'img-stage t3-stage' });
     this.timelineEl = h('div');
-    this.statusEl = h('div', { class: 'img-status' });
+    this.statusEl = h('div', { class: 'img-status t3-status' });
     this.panelsEl = h('aside', { class: 'img-panels t3-panels', 'aria-label': 'Panels' });
-    this.dockEl = h('div', { class: 'img-dock img-m-only' });
-    const main = h('div', { class: 'img-main' }, this.toolbarEl, h('div', { class: 'img-center' }, this.stage, this.timelineEl), this.panelsEl);
+    this.resizerEl = h('div', { class: 't3-resizer', role: 'separator', 'aria-orientation': 'vertical', 'aria-label': 'Resize panels', tabindex: '0', title: 'Drag to resize the panels · double-click to reset' });
+    this.dockEl = h('nav', { class: 'img-dock t3-dock', 'aria-label': 'Panels' });
+    const main = h('div', { class: 'img-main t3-main' }, this.toolbarEl, h('div', { class: 'img-center t3-center' }, this.stage, this.timelineEl), this.resizerEl, this.panelsEl);
     clear(r);
     r.append(top, this.optionsBar, main, this.statusEl, this.dockEl);
+    this.applyLayout();
 
     if (!this.webglOK()) { this.noWebGL(); return; }
     this.viewport = new Viewport(this, this.stage);
@@ -93,6 +105,8 @@ export class App3D {
     this.modal = new ModalTransform(this);
     this.nav = new NavGizmo(this);
     this.buildHud();
+    this.buildTouch();
+    this.bindResizer();
     this.buildToolbar();
     this.buildOptions();
     this.buildDock();
@@ -103,7 +117,8 @@ export class App3D {
     this.bindKeys();
     this.bindDrop();
     this.resetScene({ quiet: true });
-    this.mobile.addEventListener?.('change', () => { closeSheet(); this.panels.refresh(); });
+    const relayout = () => { closeSheet(); this.applyLayout(); this.panels.refresh(); this.timeline.update(true); this.updateStatus(); };
+    for (const mq of [this.mobile, this.land, this.touch]) mq.addEventListener?.('change', relayout);
     onSettings(() => this.viewport.invalidate());
     addEventListener('beforeunload', (e) => { if (!this.leaving && getSettings().warnOnLeave && this.dirty) { io.autosaveNow(this); e.preventDefault(); e.returnValue = ''; } });
     document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') io.autosaveNow(this); });
@@ -122,32 +137,130 @@ export class App3D {
   }
   onContextLost() { toast('The graphics context was lost — the view will come back when the browser restores it.', { type: 'warn', timeout: 6000 }); }
 
+  /** Which layout is live: 'wide' (desktop / tablet), 'port' (phone portrait) or 'land' (phone landscape). */
+  layout() { return this.mobile.matches ? (this.land.matches ? 'land' : 'port') : 'wide'; }
+  touchUI() { return this.ui.touch == null ? (this.touch.matches || this.mobile.matches) : !!this.ui.touch; }
+  saveUI() { try { localStorage.setItem(UI_KEY, JSON.stringify(this.ui)); } catch (e) { /* ignore */ } }
+  applyLayout() {
+    const r = this.root, lay = this.layout();
+    r.dataset.t3 = lay;
+    r.classList.toggle('is-touch', this.touchUI());
+    r.style.setProperty('--t3-pw', Math.round(Math.max(240, Math.min(520, this.ui.panelW || 304))) + 'px');
+    // the timeline starts folded away on a landscape phone (there is very little height)
+    const tl = this.ui.tl && this.ui.tl[lay] != null ? this.ui.tl[lay] : lay !== 'land';
+    r.classList.toggle('is-tl-collapsed', !tl);
+    this.syncTouch?.();
+  }
+  setTimelineOpen(on) {
+    const lay = this.layout();
+    this.ui.tl = { ...(this.ui.tl || {}), [lay]: !!on };
+    this.saveUI(); this.applyLayout(); this.timeline.update(true);
+  }
+  timelineOpen() { return !this.root.classList.contains('is-tl-collapsed'); }
+  setTouchUI(on) { this.ui.touch = !!on; this.saveUI(); this.applyLayout(); }
+  bindResizer() {
+    const el = this.resizerEl;
+    const set = (w) => { this.ui.panelW = Math.round(Math.max(240, Math.min(520, w))); this.root.style.setProperty('--t3-pw', this.ui.panelW + 'px'); };
+    el.addEventListener('pointerdown', (e) => {
+      if (e.button !== 0) return;
+      e.preventDefault(); el.setPointerCapture(e.pointerId); el.classList.add('is-on');
+      const x0 = e.clientX, w0 = this.panelsEl.getBoundingClientRect().width;
+      let raf = 0, last = x0;
+      const move = (ev) => { last = ev.clientX; if (!raf) raf = requestAnimationFrame(() => { raf = 0; set(w0 + (x0 - last)); }); };
+      const up = () => { el.removeEventListener('pointermove', move); el.removeEventListener('pointerup', up); el.removeEventListener('pointercancel', up); el.classList.remove('is-on'); this.saveUI(); };
+      el.addEventListener('pointermove', move); el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up);
+    });
+    el.addEventListener('dblclick', () => { set(304); this.saveUI(); });
+    el.addEventListener('keydown', (e) => { if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { e.preventDefault(); e.stopPropagation(); set((this.ui.panelW || 304) + (e.key === 'ArrowLeft' ? 16 : -16)); this.saveUI(); } });
+  }
+
   buildHud() {
-    this.camBtn = h('button', { class: 't3-hud-btn', type: 'button', 'aria-haspopup': 'menu', onclick: (e) => { const r = e.currentTarget.getBoundingClientRect(); contextMenu(r.left, r.bottom + 4, this.viewMenuItems()); } });
+    const menuAt = (e, items) => { const r = e.currentTarget.getBoundingClientRect(); contextMenu(r.left, r.bottom + 6, items); };
+    this.camBtn = h('button', { class: 't3-hud-btn', type: 'button', 'aria-haspopup': 'menu', 'aria-label': 'View', onclick: (e) => menuAt(e, this.viewMenuItems()) });
     this.hudTime = h('span', { class: 't3-hud-note studio-mono' });
     this.emptyEl = h('div', { class: 't3-empty' }, h('div', { class: 't3-empty-card' },
       h('div', { class: 'studio-label', text: 'EYAD 3D' }),
       h('h2', { class: 't3-empty-title', text: 'Build a scene' }),
-      h('p', { class: 'studio-dim', text: 'Add a shape, or bring in a model — .glb, .gltf, .obj, .stl or .fbx up to 200 MB. Drop files anywhere.' }),
+      h('p', { class: 'studio-dim', text: 'Add a shape, or bring in a model — .glb, .gltf, .obj, .stl or .fbx up to 200 MB.' }),
       h('div', { class: 't3-empty-actions' },
         h('button', { class: 'studio-btn is-primary', type: 'button', onclick: () => this.addPrimitive('cube') }, icon('cube', 16), h('span', { text: 'Add a cube' })),
         h('button', { class: 'studio-btn', type: 'button', onclick: () => io.importDialog(this) }, icon('upload', 16), h('span', { text: 'Import model' })),
         h('button', { class: 'studio-btn is-ghost', type: 'button', onclick: () => io.openDialog(this) }, icon('folder', 16), h('span', { text: 'Open project' })))));
-    this.camViewBtn = h('button', { class: 't3-hud-btn is-icon', type: 'button', 'aria-label': 'View through the active camera', title: 'View through the active camera (Numpad 0 or 0)', onclick: () => this.toggleCameraView() }, icon('camera', 15));
-    this.camLockBtn = h('button', { class: 't3-hud-btn is-icon', type: 'button', 'aria-label': 'Lock camera to view', title: 'Lock camera to view — orbiting moves the camera while looking through it', onclick: () => this.setCameraLock(!this.settings.lockCamera) }, icon('lock', 15));
-    this.stage.append(h('div', { class: 't3-hud' }, this.camBtn, this.camViewBtn, this.camLockBtn, this.hudTime), this.emptyEl);
+    this.shadeBtn = h('button', { class: 't3-hud-btn is-icon t3-hud-shade', type: 'button', 'aria-haspopup': 'menu', 'aria-label': 'Shading and overlays', title: 'Shading and overlays', onclick: (e) => menuAt(e, [...this.shadingMenuItems(), { heading: 'Overlays' }, ...this.overlayMenuItems().filter((x) => !x.separator), { heading: 'Snapping' }, { label: 'Snap to increments', checked: () => this.settings.snap.on, action: () => this.setSnap(!this.settings.snap.on) }]) }, icon('shRender', 16));
+    this.camViewBtn = h('button', { class: 't3-hud-btn is-icon', type: 'button', 'aria-label': 'View through the active camera', title: 'View through the active camera (Numpad 0 or 0)', onclick: () => this.toggleCameraView() }, icon('camera', 16));
+    this.camLockBtn = h('button', { class: 't3-hud-btn is-icon t3-hud-lock', type: 'button', 'aria-label': 'Lock camera to view', title: 'Lock camera to view — orbiting moves the camera while looking through it', onclick: () => this.setCameraLock(!this.settings.lockCamera) }, icon('lock', 16));
+    this.stage.append(h('div', { class: 't3-hud' }, this.camBtn, this.shadeBtn, this.camViewBtn, this.camLockBtn, this.hudTime), this.emptyEl);
   }
+
+  // ------------------------------------------------------------ touch controls (same transform system as G / R / S)
+  buildTouch() {
+    const tb = (cls, label, ic, fn, data) => h('button', { class: 't3-tb ' + cls, type: 'button', 'aria-label': label, title: label, dataset: data || {}, onclick: fn }, typeof ic === 'string' ? icon(ic, 19) : ic);
+    const modes = h('div', { class: 't3-tmodes', role: 'group', 'aria-label': 'Transform tool' }, MODES.map(([id, label, ic]) => tb('is-mode', label, ic, () => this.touchTool(id), { tmode: id })));
+    this.axisBtns = ['x', 'y', 'z'].map((ax) => tb('is-axis is-' + ax, `Drag along ${ax.toUpperCase()}`, h('span', { text: ax.toUpperCase() }), () => this.touchAxis(ax), { axis: ax }));
+    this.numBtn = tb('is-num', 'Type an exact value', h('span', { text: '123' }), () => this.touchNumber());
+    const axes = h('div', { class: 't3-taxes', role: 'group', 'aria-label': 'Axis and value' }, this.axisBtns, this.numBtn);
+    this.tbarEl = h('div', { class: 't3-tbar' }, modes, axes);
+    this.multiBtn = tb('is-multi', 'Select several — taps add to the selection', 'multi', () => this.setAddMode(!this.addMode));
+    this.boxBtn = tb('is-box', 'Box select — drag a rectangle', 'marquee', () => this.viewport.armBox(!this.viewport.boxArmed));
+    this.sideEl = h('div', { class: 't3-side', role: 'group', 'aria-label': 'Selection' },
+      tb('is-frame', 'Frame selected', 'frame', () => this.frameSelection()), this.multiBtn, this.boxBtn);
+    this.stage.append(this.tbarEl, this.sideEl);
+  }
+  /** Move / Rotate / Scale buttons: pick the gizmo, and tell first-time users what to do with it. */
+  touchTool(id) {
+    if (this.modal.busy) { const kind = { translate: 'move', rotate: 'rotate', scale: 'scale' }[id]; if (kind) { const ax = this.modal.active.axis; this.modal.cancel(); this.setMode(id); this.modal.start(kind, { axis: ax }); return; } this.modal.cancel(); }
+    this.setMode(id);
+    if (id !== 'select' && !this.selected) toast('Tap an object first, then drag the handles — or tap X, Y or Z and drag anywhere.', { timeout: 2600 });
+  }
+  modalKind() { return { translate: 'move', rotate: 'rotate', scale: 'scale' }[this.mode] || 'move'; }
+  /** X / Y / Z chip: start (or re-aim) a transform locked to that axis — then drag anywhere, lift to confirm. */
+  touchAxis(ax) {
+    if (this.modal.busy) { this.modal.setAxis(ax); return; }
+    if (!this.selected) { toast('Tap an object first.', { timeout: 1600 }); return; }
+    if (this.mode === 'select') this.setMode('translate');
+    this.mouseToCentre();
+    this.modal.start(this.modalKind(), { axis: ax });
+  }
+  touchNumber() {
+    if (!this.modal.busy) {
+      if (!this.selected) { toast('Tap an object first.', { timeout: 1600 }); return; }
+      if (this.mode === 'select') this.setMode('translate');
+      this.mouseToCentre();
+      this.modal.start(this.modalKind(), { axis: this.mode === 'scale' ? null : 'x' });
+    }
+    this.modal.focusValue();
+  }
+  /** A button tap leaves the "pointer" on the button; transforms should start from the object instead. */
+  mouseToCentre() { this.modal.mouse = null; }
+  setAddMode(on) { this.addMode = !!on; this.syncTouch(); if (on) toast('Tap objects to add them to the selection.', { timeout: 1800 }); }
+  onBoxArmed(on) { this.syncTouch(); this.setHint(on ? 'Drag a rectangle over the objects to select · Shift adds · Esc to cancel' : null); }
+  onModalChange() { this.syncTouch(); }
+  syncTouch() {
+    if (!this.tbarEl) return;
+    const a = this.modal?.active;
+    this.tbarEl.querySelectorAll('[data-tmode]').forEach((b) => { const on = b.dataset.tmode === this.mode; b.classList.toggle('is-on', on); b.setAttribute('aria-pressed', String(on)); });
+    for (const b of this.axisBtns) { const on = !!a && a.axis === b.dataset.axis && !a.plane; b.classList.toggle('is-on', on); b.setAttribute('aria-pressed', String(on)); }
+    this.numBtn.classList.toggle('is-on', !!a && document.activeElement === this.modal.num);
+    this.multiBtn.classList.toggle('is-on', !!this.addMode); this.multiBtn.setAttribute('aria-pressed', String(!!this.addMode));
+    this.boxBtn.classList.toggle('is-on', !!this.viewport?.boxArmed); this.boxBtn.setAttribute('aria-pressed', String(!!this.viewport?.boxArmed));
+    this.root.classList.toggle('has-sel', !!this.selected);
+    this.toolbarEl.querySelector('[data-box]')?.classList.toggle('is-active', !!this.viewport?.boxArmed);
+  }
+
   syncHud() {
     if (!this.camViewBtn) return;
     const on = !!this.viewport.viewCam, lock = !!this.settings.lockCamera;
     this.camViewBtn.classList.toggle('is-on', on); this.camViewBtn.setAttribute('aria-pressed', String(on));
     this.camLockBtn.classList.toggle('is-on', lock); this.camLockBtn.setAttribute('aria-pressed', String(lock));
-    this.camLockBtn.replaceChildren(icon(lock ? 'lock' : 'unlock', 15));
+    this.camLockBtn.replaceChildren(icon(lock ? 'lock' : 'unlock', 16));
+    this.camLockBtn.hidden = !on && !lock;
+    const sh = SHADING.find((x) => x[0] === (this.settings.shading || 'rendered')) || SHADING[3];
+    this.shadeBtn.replaceChildren(icon(sh[2], 16));
   }
   firstRunHint() {
     let seen = false;
     try { seen = localStorage.getItem(HINT_KEY) === '1'; } catch (e) { seen = true; }
-    if (seen || this.mobile.matches) return;
+    if (seen || this.mobile.matches || this.touch.matches) return;
     const rows = [['G / R / S', 'Move, rotate, scale — then X / Y / Z, type a number, Enter'], ['Shift+A', 'Add menu at the pointer'], ['0', 'Look through the camera'], ['1 / 3 / 7 · 5', 'Front, right, top · perspective'], ['I', 'Insert a keyframe'], ['Z', 'Shading: wireframe … rendered'], ['X · Shift+D · H', 'Delete · duplicate · hide'], ['F12', 'Render image']];
     const close = () => { card.remove(); try { localStorage.setItem(HINT_KEY, '1'); } catch (e) { /* ignore */ } };
     const card = h('div', { class: 't3-hint', role: 'note' },
@@ -174,6 +287,7 @@ export class App3D {
     const more = h('button', { class: 'img-tool', type: 'button', 'aria-label': 'Add light or more shapes', title: 'Add light or more shapes', onclick: (e) => { const r = e.currentTarget.getBoundingClientRect(); contextMenu(r.right + 4, r.top, this.addMenuItems()); } }, icon('bulb', 19));
     this.toolbarEl.append(more, h('div', { class: 'img-toolbar-sep' }),
       h('button', { class: 'img-tool', type: 'button', 'aria-label': 'Import model', title: 'Import model (Ctrl+I)', onclick: () => io.importDialog(this) }, icon('upload', 19)),
+      h('button', { class: 'img-tool', type: 'button', 'aria-label': 'Box select', title: 'Box select — drag a rectangle (B) · Shift-click adds to the selection', dataset: { box: '1' }, onclick: () => this.viewport.armBox(!this.viewport.boxArmed) }, icon('marquee', 19)),
       h('button', { class: 'img-tool', type: 'button', 'aria-label': 'Frame selection', title: 'Frame selection (F)', onclick: () => this.frameSelection() }, icon('frame', 19)));
   }
 
@@ -191,7 +305,7 @@ export class App3D {
     const renderBtn = h('button', { class: 'studio-btn is-small is-primary', type: 'button', title: 'Render image (F12)', onclick: () => io.renderImageDialog(this) }, icon('render', 14), h('span', { text: 'Render' }));
     const videoBtn = h('button', { class: 'studio-btn is-small', type: 'button', title: 'Render animation (Ctrl+F12)', onclick: () => io.renderVideoDialog(this) }, icon('video', 14), h('span', { class: 't3-hide-s', text: 'Video' }));
     this.optionsBar.append(
-      h('div', { class: 'img-opt-tool' }, icon('cube', 16), h('span', { text: 'Object mode' })),
+      h('button', { class: 'img-opt-tool t3-modechip', type: 'button', title: 'EYAD 3D works on whole objects', onclick: () => this.limitsDialog() }, icon('cube', 16), h('span', { text: 'Object mode' })),
       h('div', { class: 'img-opt-items' },
         h('div', { class: 't3-hmenus' }, menuBtn('View', () => this.viewMenuFull()), menuBtn('Add', () => this.addMenuItems()), menuBtn('Object', () => this.objectOpsItems())),
         h('span', { class: 'img-opt-sep' }), modeSeg, this.spaceBtn, h('div', { class: 't3-pair' }, this.snapBtn, snapMenu),
@@ -215,26 +329,25 @@ export class App3D {
 
   buildDock() {
     clear(this.dockEl);
-    const tools = h('div', { class: 'img-dock-tools' });
-    const t = (ic, label, fn, data) => h('button', { class: 'img-dock-tool', type: 'button', 'aria-label': label, dataset: data || {}, onclick: fn }, icon(ic, 22), h('span', { text: label }));
-    for (const [id, label, ic] of MODES) tools.appendChild(t(ic, label, () => this.setMode(id), { mode: id }));
-    tools.append(
-      t('plus', 'Add', () => menuSheet('Add', [{ label: 'Mesh', items: [...PRIMITIVES.map((p) => ({ label: p.label, action: () => this.addPrimitive(p.id) })), { label: 'Text…', action: () => this.addText() }] }, { label: 'Light', items: LIGHTS.map((l) => ({ label: l.label, action: () => this.addLight(l.id) })) }, { label: 'Other', items: [{ label: 'Camera', action: () => this.addCamera() }, { label: 'Empty', action: () => this.addEmpty() }, { label: 'Import model…', action: () => io.importDialog(this) }] }])),
-      t('camera', 'Cam view', () => this.toggleCameraView()),
-      t('upload', 'Import', () => io.importDialog(this)),
-      t('frame', 'Frame', () => this.frameSelection()),
-      t('render', 'Render', () => io.renderImageDialog(this)),
-      t('video', 'Video', () => io.renderVideoDialog(this)),
-      t('snap', 'Snap', () => this.setSnap(!this.settings.snap.on), { snap: '1' }));
-    const row = h('div', { class: 'img-dock-panels' },
-      [['outliner', 'layers', 'Objects'], ['object', 'move', 'Transform'], ['material', 'palette', 'Material'], ['scene', 'sun', 'Scene'], ['camera', 'camera', 'Camera']].map(([k, ic, label]) =>
-        h('button', { class: 'img-dock-panel', type: 'button', onclick: () => this.openPanel(k) }, icon(ic, 18), h('span', { text: label }))));
-    this.dockEl.append(tools, row);
+    const t = (act, ic, label, fn) => h('button', { class: 't3-dock-btn', type: 'button', 'aria-label': label, dataset: { act }, onclick: fn }, icon(ic, 21), h('span', { text: label }));
+    this.dockEl.append(
+      t('add', 'plus', 'Add', () => this.openPanel('add')),
+      t('outliner', 'layers', 'Outliner', () => this.openPanel('outliner')),
+      t('props', 'sliders', 'Properties', () => this.openPanel('props')),
+      t('render', 'render', 'Render', () => this.openPanel('render')),
+      t('timeline', 'timeline', 'Timeline', () => this.setTimelineOpen(!this.timelineOpen())));
   }
-  openPanel(k) {
-    if ((k === 'object' || k === 'material') && !this.selected) { toast('Select an object first — tap it in the view or in Objects.', { timeout: 2200 }); return; }
-    if (k === 'material' && !isLight(this.selected) && !isCam(this.selected) && !materialsOf(this.selected).length) { toast('This object has no material.', { timeout: 1800 }); return; }
-    this.panels.sheet(k);
+  openPanel(k) { this.panels.sheet(k); }
+  /** What this editor does not do — said plainly instead of pretending. */
+  limitsDialog() {
+    const rows = [
+      ['Object mode only', 'You move, rotate, scale, duplicate, parent, join and animate whole objects. There is no mesh edit mode — vertices, edges and faces cannot be edited here.'],
+      ['Shapes stay parametric', 'Built-in shapes keep a Detail and an Array modifier. Imported models cannot be re-meshed.'],
+      ['Real-time renderer', 'Renders use the same WebGL renderer as the view (with supersampling and multi-sample anti-aliasing). It is not a path tracer: no ray-traced reflections or global illumination.'],
+      ['Lighting environments', 'The built-in environments are generated in the browser. Loading your own .hdr / .exr files is not supported.'],
+      ['Multi-selection', 'Shift-click, box select (B) or the outliner. Moving, rotating and scaling the active object carries the rest of the selection; properties edit the active object.'],
+    ];
+    return dialog({ title: 'What EYAD 3D can and cannot do', width: 560, body: h('div', { class: 't3-shortcuts' }, rows.map(([a, b]) => h('div', { class: 't3-sc-row is-wide' }, h('strong', { text: a }), h('span', { class: 'studio-dim', text: b })))) });
   }
 
   buildStatus() {
@@ -249,7 +362,9 @@ export class App3D {
     const l = all.filter(isLight).length, c = all.filter(isCam).length, n = all.length - l - c;
     this.st.objs.textContent = `${n} object${n === 1 ? '' : 's'} · ${l} light${l === 1 ? '' : 's'}` + (c ? ` · ${c} camera${c === 1 ? '' : 's'}` : '');
     this.st.tris.textContent = `${triangleCount(v.content).toLocaleString()} tris`;
-    this.st.sel.textContent = this.selected ? 'Selected: ' + this.selected.name : '';
+    const ns = this.selection().length;
+    this.st.sel.textContent = ns > 1 ? `${ns} selected · active: ${this.selected.name}` : this.selected ? 'Selected: ' + this.selected.name : '';
+    this.root.classList.toggle('is-empty', !(n > 0 || c > 0));
     this.updateCamLabel();
     this.st.hint.textContent = this.hintOverride || (this.mobile.matches ? '' : this.defaultHint());
     this.emptyEl.hidden = n > 0 || c > 0;
@@ -258,7 +373,10 @@ export class App3D {
     const v = this.viewport; if (!v) return;
     const persp = v.camera.isPerspectiveCamera;
     const lab = v.viewCam ? `Camera · ${v.viewCam.name}` : persp ? `Perspective · ${Math.round(v.persp.fov)}°` : 'Orthographic';
-    this.camBtn.replaceChildren(icon(persp ? 'persp' : 'ortho', 14), h('span', { text: lab }), icon('chevronDown', 12));
+    const short = v.viewCam ? v.viewCam.name : persp ? 'Persp' : 'Ortho';
+    if (this.camLab === lab) return;
+    this.camLab = lab;
+    this.camBtn.replaceChildren(icon(v.viewCam ? 'camera' : persp ? 'persp' : 'ortho', 15), h('span', { class: 't3-hud-long', text: lab }), h('span', { class: 't3-hud-short', text: short }), icon('chevronDown', 12));
     if (this.st) this.st.cam.textContent = lab;
   }
   updateTitle() {
@@ -273,6 +391,7 @@ export class App3D {
     if (m === 'select') this.viewport.attach(null);
     else { this.viewport.gizmo.setMode(m); this.viewport.attach(this.selected); }
     this.syncOptions();
+    this.syncTouch();
   }
   setSpace(s) { this.space = s; this.viewport.gizmo.setSpace(s); this.syncOptions(); }
   setSnap(on, { temp = false } = {}) {
@@ -323,6 +442,7 @@ export class App3D {
   }
   afterChange({ panels = true } = {}) {
     if (this.selected && !this.viewport.inScene(this.selected)) this.select(null, { quiet: true });
+    if (this.multi.length > 1 || (this.multi.length && !this.selected)) this.selection();
     this.syncOptions();
     this.viewport.fitShadows();
     this.viewport.invalidate();
@@ -339,8 +459,23 @@ export class App3D {
   endOps() { if (this.modal?.busy) this.modal.cancel(); if (this.pickMode) this.cancelPick(); }
   findById(id) { return this.allObjects().find((o) => o.userData.eyadId === id) || null; }
 
-  select(obj, { quiet = false } = {}) {
+  /** The whole selection (active object last), without anything that left the scene. */
+  selection() { this.multi = this.multi.filter((o) => this.viewport.inScene(o)); if (this.selected && !this.multi.includes(this.selected)) this.multi.push(this.selected); return this.multi; }
+  isSelected(o) { return o === this.selected || this.multi.includes(o); }
+  /** Selected objects that are not inside another selected object (their children follow them anyway). */
+  selectionRoots() {
+    const all = this.selection();
+    return all.filter((o) => { for (let p = o.parent; p; p = p.parent) if (all.includes(p)) return false; return true; });
+  }
+  select(obj, { quiet = false, add = false } = {}) {
     if (obj && !this.viewport.inScene(obj)) obj = null;
+    if (add) {
+      if (!obj) return; // shift-click on nothing keeps the selection
+      const cur = this.selection();
+      if (cur.includes(obj) && cur.length > 1 && obj === this.selected) { this.multi = cur.filter((o) => o !== obj); obj = this.multi[this.multi.length - 1]; }
+      else if (cur.includes(obj)) { this.multi = [...cur.filter((o) => o !== obj), obj]; }
+      else this.multi = [...cur, obj];
+    } else this.multi = obj ? [obj] : [];
     if (this.modal?.busy && this.modal.active.o !== obj) this.modal.cancel();
     this.selected = obj || null;
     if (this.mode !== 'select') this.viewport.attach(this.selected);
@@ -349,8 +484,49 @@ export class App3D {
     this.panels.refresh();
     this.timeline.update(true);
     this.updateStatus();
+    this.syncTouch();
     if (obj) requestAnimationFrame(() => this.panelsEl.querySelector('.t3-out-row.is-on')?.scrollIntoView({ block: 'nearest' }));
   }
+  selectMany(list, { add = false } = {}) {
+    const objs = list.filter((o) => this.viewport.inScene(o));
+    const next = add ? [...this.selection().filter((o) => !objs.includes(o)), ...objs] : objs;
+    if (!next.length) { if (!add) this.select(null); return; }
+    this.select(next[next.length - 1]);
+    this.multi = next;
+    this.viewport.invalidate(); this.panels.refresh(); this.updateStatus(); this.syncTouch();
+    if (next.length > 1) toast(`${next.length} objects selected`, { timeout: 1200 });
+  }
+  selectAll() { this.selectMany(this.allObjects().filter((o) => o.visible && !o.userData.eyadLocked)); }
+  /** Right-click / long-press: the object menu on an object, the Add menu on empty space. */
+  openContextAt(x, y) {
+    if (this.modal?.busy || this.pickMode) return;
+    const hit = this.viewport.pick(x, y);
+    if (hit) { if (!this.isSelected(hit)) this.select(hit); contextMenu(x + 4, y + 4, this.objectMenuItems(hit)); }
+    else contextMenu(x + 4, y + 4, [{ heading: 'Add' }, ...this.addMenuItems().filter((i) => !i.heading || i.heading !== 'Mesh'), { separator: true }, { label: 'Select all', shortcut: 'Mod+A', action: () => this.selectAll() }, { label: 'Frame all', shortcut: 'Home', action: () => this.viewport.frame(null) }]);
+  }
+
+  // ------------------------------------------------------------ group transforms (multi-selection follows the active object)
+  groupBegin(active) {
+    const anc = new Set(); for (let p = active.parent; p; p = p.parent) anc.add(p);
+    const others = this.selectionRoots().filter((o) => o !== active && !anc.has(o));
+    let inside = false; for (let p = active.parent; p; p = p.parent) if (this.multi.includes(p)) inside = true;
+    if (!others.length || inside) { this.group = null; return; }
+    active.updateWorldMatrix(true, false);
+    this.group = { active, inv: active.matrixWorld.clone().invert(), items: others.map((o) => { o.updateWorldMatrix(true, false); return { o, t: this.trOf(o), w: o.matrixWorld.clone() }; }) };
+  }
+  groupApply() {
+    const g = this.group; if (!g) return;
+    g.active.updateWorldMatrix(true, false);
+    const delta = _gm.multiplyMatrices(g.active.matrixWorld, g.inv);
+    for (const it of g.items) {
+      const o = it.o;
+      o.parent.updateWorldMatrix(true, false);
+      _gm2.copy(o.parent.matrixWorld).invert().multiply(delta).multiply(it.w);
+      _gm2.decompose(o.position, o.quaternion, o.scale);
+      o.updateMatrixWorld(true);
+    }
+  }
+  groupCancel() { const g = this.group; this.group = null; if (g) for (const it of g.items) this.setTr(it.o, it.t); }
 
   addObject(obj, { label = 'Add', clips = [], select = true } = {}) {
     const parent = isLight(obj) ? this.viewport.lights : isCam(obj) ? this.viewport.cams : this.viewport.content;
@@ -447,39 +623,49 @@ export class App3D {
   }
 
   deleteSelected() {
-    const o = this.selected; if (!o) return;
-    const parent = o.parent, idx = parent.children.indexOf(o);
-    const id = o.userData.eyadId;
-    const track = this.anim.tracks[id];
-    const within = (n) => { for (let p = n; p; p = p.parent) if (p === o) return true; return false; };
+    const roots = this.selectionRoots(); if (!roots.length) return;
+    const within = (n) => { for (let p = n; p; p = p.parent) if (roots.includes(p)) return true; return false; };
+    const recs = roots.map((o) => ({ o, parent: o.parent, idx: o.parent.children.indexOf(o) }));
+    const ids = []; for (const o of roots) o.traverse((n) => { if (n.userData?.eyadId) ids.push(n.userData.eyadId); });
+    const tracks = {}; for (const id of ids) if (this.anim.tracks[id]) tracks[id] = this.anim.tracks[id];
     const entries = this.clips.filter((c) => within(c.root));
     if (this.viewport.viewCam && within(this.viewport.viewCam)) this.viewport.exitCameraView();
-    this.exec('Delete ' + o.name, () => {
-      parent.remove(o);
-      delete this.anim.tracks[id];
+    const active = this.selected, prevActive = this.settings.activeCamera;
+    this.exec(roots.length > 1 ? `Delete ${roots.length} objects` : 'Delete ' + roots[0].name, () => {
+      for (const r of recs) r.parent.remove(r.o);
+      for (const id of ids) delete this.anim.tracks[id];
       for (const e of entries) this.unregisterClip(e);
+      if (prevActive && ids.includes(prevActive)) this.settings.activeCamera = null;
       this.select(null, { quiet: true });
     }, () => {
-      parent.add(o);
-      parent.children.splice(parent.children.indexOf(o), 1); parent.children.splice(idx, 0, o);
-      if (track) this.anim.tracks[id] = track;
+      for (const r of [...recs].sort((x, y) => x.idx - y.idx)) { r.parent.add(r.o); r.parent.children.splice(r.parent.children.indexOf(r.o), 1); r.parent.children.splice(Math.min(r.idx, r.parent.children.length), 0, r.o); }
+      Object.assign(this.anim.tracks, tracks);
       for (const e of entries) this.registerClip(e);
-      this.select(o, { quiet: true });
+      this.settings.activeCamera = prevActive;
+      this.select(active && this.viewport.inScene(active) ? active : roots[0], { quiet: true });
+      this.multi = roots.slice(); if (this.selected && !this.multi.includes(this.selected)) this.multi.push(this.selected);
     });
   }
   duplicateSelected({ grab = false } = {}) {
-    const o = this.selected; if (!o) return;
-    const c = duplicateObject(o);
-    if (c.name.endsWith(' copy')) c.name = this.uniqueName(c.name);
-    if (!grab) {
-      if (!c.isLight && !isCam(c) && !isEmpty(c)) { const b = boundsOf(o); c.position.x += Math.max(0.3, (b.max.x - b.min.x) * 1.15); }
-      else c.position.x += 0.6;
-    }
-    const clips = this.clips.filter((e) => e.root === o).map((e) => e.clip);
-    const parent = o.parent, prevSel = this.selected;
-    const entries = clips.map((clip) => ({ clip, root: c, enabled: true }));
-    this.exec('Duplicate', () => { parent.add(c); for (const e of entries) this.registerClip(e); this.select(c, { quiet: true }); },
-      () => { parent.remove(c); for (const e of entries) this.unregisterClip(e); if (this.selected === c) this.select(prevSel && this.viewport.inScene(prevSel) ? prevSel : null, { quiet: true }); });
+    const roots = this.selectionRoots(); if (!roots.length) return;
+    const prevSel = this.selected, prevMulti = this.multi.slice();
+    const made = roots.map((o) => {
+      const c = duplicateObject(o);
+      if (c.name.endsWith(' copy')) c.name = this.uniqueName(c.name);
+      if (!grab) {
+        if (!c.isLight && !isCam(c) && !isEmpty(c)) { const b = boundsOf(o); c.position.x += Math.max(0.3, (b.max.x - b.min.x) * 1.15); }
+        else c.position.x += 0.6;
+      }
+      return { c, parent: o.parent, entries: this.clips.filter((e) => e.root === o).map((e) => ({ clip: e.clip, root: c, enabled: true })) };
+    });
+    const activeCopy = made[Math.max(0, roots.indexOf(prevSel))].c;
+    this.exec(made.length > 1 ? `Duplicate ${made.length} objects` : 'Duplicate', () => {
+      for (const m of made) { m.parent.add(m.c); for (const e of m.entries) this.registerClip(e); }
+      this.select(activeCopy, { quiet: true }); this.multi = made.map((m) => m.c); if (!this.multi.includes(activeCopy)) this.multi.push(activeCopy);
+    }, () => {
+      for (const m of made) { m.parent.remove(m.c); for (const e of m.entries) this.unregisterClip(e); }
+      this.select(prevSel && this.viewport.inScene(prevSel) ? prevSel : null, { quiet: true }); this.multi = prevMulti.filter((o) => this.viewport.inScene(o));
+    });
     if (grab) this.modal.start('move');
   }
   setLocked(o, v) {
@@ -489,7 +675,8 @@ export class App3D {
   deleteMenu() {
     const o = this.selected; if (!o) return;
     const m = this.modal.mouse || { x: innerWidth / 2, y: innerHeight / 2 };
-    contextMenu(m.x - 20, m.y - 10, [{ heading: 'Delete?' }, { label: 'Delete ' + o.name, action: () => this.deleteSelected() }]);
+    const n = this.selectionRoots().length;
+    contextMenu(m.x - 20, m.y - 10, [{ heading: 'Delete?' }, { label: n > 1 ? `Delete ${n} objects` : 'Delete ' + o.name, action: () => this.deleteSelected() }]);
   }
 
   // ------------------------------------------------------------ parenting / joining
@@ -513,6 +700,13 @@ export class App3D {
     toast(`${child.name} now follows ${parent.name}`, { timeout: 1600 });
     return true;
   }
+  setParentMany(list, parent) {
+    const ok = list.filter((c) => !this.canParent(c, parent));
+    if (!ok.length) { toast(this.canParent(list[0], parent), { type: 'warn', timeout: 2600 }); return; }
+    const recs = ok.map((c) => ({ c, par: c.parent, idx: c.parent.children.indexOf(c), t: this.trOf(c) }));
+    this.exec('Set parent', () => { for (const r of recs) parent.attach(r.c); }, () => { for (const r of recs) { r.par.add(r.c); r.par.children.splice(r.par.children.indexOf(r.c), 1); r.par.children.splice(Math.min(r.idx, r.par.children.length), 0, r.c); this.setTr(r.c, r.t); } });
+    toast(`${ok.length} objects now follow ${parent.name}`, { timeout: 1600 });
+  }
   clearParent(o = this.selected) {
     if (!o) return;
     if (!this.hasEditorParent(o)) { toast(`${o.name} has no parent.`, { timeout: 1500 }); return; }
@@ -533,7 +727,7 @@ export class App3D {
     const pm = this.pickMode; if (!pm) return false;
     this.cancelPick();
     if (!hit || !this.viewport.inScene(pm.o)) return true;
-    if (pm.kind === 'parent') this.setParent(pm.o, hit);
+    if (pm.kind === 'parent') { const list = this.selectionRoots().filter((o) => o !== hit); if (list.length > 1 && list.includes(pm.o)) this.setParentMany(list, hit); else this.setParent(pm.o, hit); }
     else this.join(pm.o, hit);
     return true;
   }
@@ -570,7 +764,9 @@ export class App3D {
     this.exec('Rename', () => { o.name = after; }, () => { o.name = before; });
   }
   setVisible(o, v) {
-    this.exec(v ? 'Show' : 'Hide', () => { o.visible = v; }, () => { o.visible = !v; });
+    const list = this.isSelected(o) && this.multi.length > 1 ? this.selection().slice() : [o];
+    const was = list.map((x) => x.visible);
+    this.exec(v ? 'Show' : 'Hide', () => { for (const x of list) x.visible = v; }, () => { list.forEach((x, i) => { x.visible = was[i]; }); });
   }
   setMeshFlag(o, key, v) {
     const meshes = []; o.traverse((n) => { if (n.isMesh) meshes.push([n, n[key]]); });
@@ -587,9 +783,12 @@ export class App3D {
   beginTransform(o) { if (!this.trBefore || this.trBefore.o !== o) this.trBefore = { o, t: this.trOf(o), anim: JSON.stringify(this.anim) }; }
   commitTransform(o, label) {
     const b = this.trBefore; this.trBefore = null;
+    const grp = this.group && this.group.active === o ? this.group.items.map((it) => ({ o: it.o, before: it.t, after: this.trOf(it.o) })) : [];
+    this.group = null;
     if (!b || b.o !== o) return;
     const after = this.trOf(o);
     if (this.sameTr(b.t, after)) return;
+    if (grp.length) label += ` ${grp.length + 1} objects`;
     const id = o.userData.eyadId;
     const keys = this.anim.tracks[id];
     const tol = 0.5 / this.fps;
@@ -599,14 +798,14 @@ export class App3D {
     const animBefore = b.anim, animAfter = JSON.stringify(this.anim);
     const cmd = {
       label: keyed ? label + ' (keyed)' : label,
-      undo: () => { this.setTr(o, b.t); if (keyed) this.anim = JSON.parse(animBefore); this.afterChange(); },
-      redo: () => { this.setTr(o, after); if (keyed) this.anim = JSON.parse(animAfter); this.afterChange(); },
+      undo: () => { this.setTr(o, b.t); for (const g of grp) this.setTr(g.o, g.before); if (keyed) this.anim = JSON.parse(animBefore); this.afterChange(); },
+      redo: () => { this.setTr(o, after); for (const g of grp) this.setTr(g.o, g.after); if (keyed) this.anim = JSON.parse(animAfter); this.afterChange(); },
     };
     this.hist.push(cmd);
     this.afterChange();
   }
-  onGizmoStart() { if (this.selected) this.beginTransform(this.selected); if (this.playing) this.togglePlay(false); }
-  onGizmoChange() { this.panels.syncTransform(); }
+  onGizmoStart() { if (this.selected) { this.beginTransform(this.selected); this.groupBegin(this.selected); } if (this.playing) this.togglePlay(false); }
+  onGizmoChange() { this.groupApply(); this.panels.syncTransform(); }
   onGizmoEnd() { if (this.selected) this.commitTransform(this.selected, { translate: 'Move', rotate: 'Rotate', scale: 'Scale' }[this.mode] || 'Transform'); }
   onCameraMoved() { this.updateCamLabel(); if (this.camViewBtn && this.camViewBtn.classList.contains('is-on') !== !!this.viewport.viewCam) this.syncHud(); }
   onCameraEnd() { /* camera moves are not part of undo */ }
@@ -647,7 +846,11 @@ export class App3D {
     l.lookAt(c);
     this.commitTransform(l, 'Aim light');
   }
-  frameSelection() { this.viewport.frame(this.selected && !this.selected.isLight ? this.selected : null); }
+  frameSelection() {
+    const list = this.selection().filter((o) => !o.isLight);
+    if (list.length > 1) { const b = new THREE.Box3(); for (const o of list) { const bb = boundsOf(o); if (bb.isEmpty()) b.expandByPoint(o.getWorldPosition(new THREE.Vector3())); else b.union(bb); } this.viewport.frameBox(b); return; }
+    this.viewport.frame(this.selected && !this.selected.isLight ? this.selected : null);
+  }
 
   // ------------------------------------------------------------ materials & lights
   selectedMaterial() {
@@ -673,6 +876,36 @@ export class App3D {
     };
     if (coalesce) this.valueCmd(label, get, set, value, 'mat:' + m.uuid + ':' + coalesce);
     else this.exec(label, () => set(value), (() => { const b = get(); return () => set(b); })());
+  }
+  /** Apply a material preset to every material of the selection (one undo step). */
+  applyMaterialPreset(preset) {
+    const objs = this.selection().filter((o) => !isLight(o) && !isCam(o));
+    const pairs = [];
+    for (const o of objs) o.traverse((n) => {
+      if (!n.isMesh) return;
+      const list = Array.isArray(n.material) ? n.material : [n.material];
+      list.forEach((m, i) => { if (m && m.isMeshStandardMaterial) pairs.push({ n, i, from: m }); });
+    });
+    if (!pairs.length) { toast('Select an object with a standard material first.', { type: 'warn', timeout: 2200 }); return; }
+    const made = new Map();
+    for (const p of pairs) {
+      if (!made.has(p.from)) {
+        const m = p.from.isMeshPhysicalMaterial ? p.from.clone() : toPhysical(p.from);
+        const v = preset.values;
+        if (v.color) m.color.set(v.color);
+        m.metalness = v.metalness ?? 0; m.roughness = v.roughness ?? 0.5;
+        m.transmission = v.transmission ?? 0; m.ior = v.ior ?? 1.5; m.thickness = v.thickness ?? 0;
+        m.clearcoat = v.clearcoat ?? 0; m.clearcoatRoughness = v.clearcoatRoughness ?? 0;
+        m.sheen = v.sheen ?? 0;
+        m.emissive.set(v.emissive || '#000000'); m.emissiveIntensity = v.emissiveIntensity ?? 1;
+        m.opacity = v.opacity ?? 1; m.transparent = m.opacity < 1 || !!p.from.userData.eyadBaseTransparent;
+        m.name = preset.label; m.needsUpdate = true;
+        made.set(p.from, m);
+      }
+      p.to = made.get(p.from);
+    }
+    const put = (key) => { for (const p of pairs) { if (Array.isArray(p.n.material)) p.n.material = p.n.material.map((x, i) => (i === p.i ? p[key] : x)); else p.n.material = p[key]; } };
+    this.exec('Material: ' + preset.label, () => put('to'), () => put('from'));
   }
   setMaterialMap(tex) {
     const m = this.selectedMaterial();
@@ -784,6 +1017,7 @@ export class App3D {
       v.camera.position.copy(to.pos); v.orbit.target.copy(to.target); v.persp.fov = to.fov; v.persp.updateProjectionMatrix(); v.camera.zoom = to.zoom; v.camera.updateProjectionMatrix(); v.orbit.update(); v.invalidate(); this.updateCamLabel();
       return;
     }
+    v.invalidate();
     this.tween = { t0: performance.now(), dur: 450, from: { pos: v.camera.position.clone(), target: v.orbit.target.clone(), fov: v.persp.fov, zoom: v.camera.zoom }, to };
   }
   runTween() {
@@ -911,8 +1145,9 @@ export class App3D {
   keySelected() {
     const o = this.selected;
     if (!o) { toast('Select an object to key it.', { timeout: 1600 }); return; }
-    this.animChange('Key ' + o.name, () => setObjectKey(this.anim, o, this.time, 0.5 / this.fps));
-    toast(`Keyed ${o.name} at ${this.time.toFixed(2)} s`, { timeout: 1200 });
+    const list = this.selection();
+    this.animChange('Key ' + o.name, () => { for (const x of list) setObjectKey(this.anim, x, this.time, 0.5 / this.fps); });
+    toast(`Keyed ${list.length > 1 ? list.length + ' objects' : o.name} at ${this.time.toFixed(2)} s`, { timeout: 1200 });
   }
   keyCamera() {
     const cam = this.activeCamera();
@@ -984,9 +1219,11 @@ export class App3D {
     if (on) {
       if (this.time >= this.anim.duration - 1e-6) this.time = 0;
       this.lastTick = performance.now();
+      this.viewport.setMoving(true);
       if (!this.hasAnimation()) toast('Nothing is animated yet — key an object (I), key the camera (Shift+K) or use a turntable.', { timeout: 3200 });
-    } else this.panels.refresh();
+    } else { this.panels.refresh(); this.viewport.setMoving(false); }
     this.timeline.update(true);
+    this.viewport.invalidate();
   }
   setTime(t) {
     this.time = Math.max(0, Math.min(this.anim.duration, t));
@@ -1024,7 +1261,7 @@ export class App3D {
       this.lastTick = now;
       let t = this.time + dt;
       const d = this.anim.duration;
-      if (t >= d) { if (this.anim.loop) t = d > 0 ? t % d : 0; else { t = d; this.playing = false; this.panels.refresh(); } }
+      if (t >= d) { if (this.anim.loop) t = d > 0 ? t % d : 0; else { t = d; this.playing = false; this.panels.refresh(); this.viewport.setMoving(false); } }
       this.time = t;
       this.evaluate(t);
       this.timeline.update(!this.playing);
@@ -1043,7 +1280,7 @@ export class App3D {
     for (const c of [...v.cams.children]) v.cams.remove(c);
     for (const e of [...this.clips]) this.unregisterClip(e);
     this.mixers.clear();
-    this.selected = null;
+    this.selected = null; this.multi = [];
     v.attach(null);
   }
   resetScene({ quiet = false } = {}) {
@@ -1123,6 +1360,8 @@ export class App3D {
         { label: 'Delete', shortcut: 'Delete', action: () => this.deleteSelected(), enabled: has },
         { label: 'Hide / Show', shortcut: 'H', action: () => this.selected && this.setVisible(this.selected, !this.selected.visible), enabled: has },
         { label: 'Show All', shortcut: 'Alt+H', action: () => this.showAll() },
+        { label: 'Select All', shortcut: 'Mod+A', action: () => this.selectAll() },
+        { label: 'Box Select', shortcut: 'B', action: () => this.viewport.armBox(true) },
         { label: 'Deselect', shortcut: 'Esc', action: () => this.select(null), enabled: has },
         { separator: true },
         { label: 'Select Gizmo Off', shortcut: 'Q', action: () => this.setMode('select'), checked: () => this.mode === 'select' },
@@ -1143,6 +1382,8 @@ export class App3D {
         { label: 'Shading', submenu: () => this.shadingMenuItems().filter((x) => !x.heading) },
         { label: 'Overlays', submenu: () => this.overlayMenuItems() },
         { label: 'Panels', shortcut: 'Tab', action: () => this.root.classList.toggle('is-panels-hidden') },
+        { label: 'Timeline', checked: () => this.timelineOpen(), action: () => this.setTimelineOpen(!this.timelineOpen()) },
+        { label: 'Touch Controls', checked: () => this.touchUI(), action: () => this.setTouchUI(!this.touchUI()) },
         { label: 'Full Screen', action: () => { if (document.fullscreenElement) document.exitFullscreen?.(); else document.documentElement.requestFullscreen?.().catch(() => {}); } },
       ] },
       { label: 'Animation', items: this.animMenuItems() },
@@ -1153,11 +1394,13 @@ export class App3D {
         { label: 'Send Still to EYAD IMAGE…', action: () => io.renderImageDialog(this, { dest: 'image' }), icon: 'image' },
         { label: 'Send Video to EYAD VIDEO…', action: () => io.renderVideoDialog(this, { dest: 'video' }), icon: 'video' },
         { separator: true },
+        { label: 'Turntable Video…', action: () => io.renderVideoDialog(this, { motion: 'turntable' }), icon: 'video' },
         { label: 'Export GLB…', action: () => io.exportGLB(this) },
       ] },
       { label: 'Help', items: [
         { label: 'Keyboard Shortcuts', action: () => this.shortcutsDialog() },
         { label: 'Supported 3D Files', action: () => this.filesDialog() },
+        { label: 'What EYAD 3D Can and Cannot Do', action: () => this.limitsDialog() },
         { label: 'Studio Help', action: () => { location.href = ROUTES.help; } },
         ...experienceHelp('3d'),
       ] },
@@ -1185,7 +1428,10 @@ export class App3D {
   shortcutsDialog() {
     const rows = [
       ['Orbit / pan / zoom', 'Drag · right-drag or Shift-drag · scroll (touch: one finger · two fingers · pinch)'],
-      ['Select', 'Click / tap an object'],
+      ['Select / add to the selection', 'Click or tap / Shift-click (touch: the multi-select button)'],
+      ['Box select / select all', 'B then drag / ' + keyLabel('Mod+A')],
+      ['Object or Add menu', 'Right-click (touch: press and hold)'],
+      ['Touch: move, rotate, scale', 'Pick the tool, drag the handles — or tap X / Y / Z and drag anywhere; 123 types a value'],
       ['Move / rotate / scale (follows the pointer)', 'G / R / S'],
       ['…then constrain to an axis / plane', 'X Y Z (again = local) / Shift+X Y Z'],
       ['…type an exact value, snap', '0-9 . - / hold Ctrl'],
@@ -1232,6 +1478,7 @@ export class App3D {
       'Mod+P': () => this.startPick('parent'), 'Alt+P': () => this.clearParent(), 'Mod+J': () => this.startPick('join'),
       Z: () => this.shadingMenu(), 'Alt+Z': () => this.toggleOverlays(),
       F: () => this.frameSelection(), A: () => this.viewport.frame(null),
+      B: () => this.viewport.armBox(!this.viewport.boxArmed), 'Mod+A': () => this.selectAll(),
       H: () => this.selected && this.setVisible(this.selected, !this.selected.visible), 'Alt+H': () => this.showAll(),
       1: () => this.setView('front'), 3: () => this.setView('right'), 7: () => this.setView('top'), 'Mod+1': () => this.setView('back'), 'Mod+3': () => this.setView('left'), 'Mod+7': () => this.setView('bottom'),
       5: () => { this.setProjection(this.viewport.camera.isOrthographicCamera ? 'persp' : 'ortho'); this.syncHud(); },
@@ -1242,7 +1489,7 @@ export class App3D {
       ',': () => this.setTime(this.time - 1 / this.fps), '.': () => this.setTime(this.time + 1 / this.fps),
       K: () => this.keySelected(), I: () => this.keySelected(), 'Shift+K': () => this.keyCamera(),
       F12: () => io.renderImageDialog(this), 'Mod+F12': () => io.renderVideoDialog(this),
-      Escape: () => { if (this.pickMode) this.cancelPick(); else if (this.selected) this.select(null); else return false; },
+      Escape: () => { const sh = this.panels.activeSheet; if (sh && !sh.closed && this.panels.sheetKey) closeSheet(); else if (this.viewport.boxArmed) this.viewport.armBox(false); else if (this.pickMode) this.cancelPick(); else if (this.selected) this.select(null); else return false; },
       Tab: (e) => { if (e.target !== document.body && e.target !== this.viewport.canvas) return false; this.root.classList.toggle('is-panels-hidden'); },
       'Mod+K': () => this.palette.show(),
     };
@@ -1279,4 +1526,5 @@ export class App3D {
     });
   }
 }
+const _gm = new THREE.Matrix4(), _gm2 = new THREE.Matrix4();
 void formatBytes; void kindLabel;

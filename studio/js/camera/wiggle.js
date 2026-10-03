@@ -8,7 +8,12 @@
 //              sideways (real parallax), then aligned on a pivot point.
 //   • Depth  — one frame split into subject / background with the on-device
 //              people model and re-projected to four viewpoints (2.5D).
+//   • Mask   — the older 2.5D cut-out (person mask only), kept as a fallback.
+// "Depth" is the main one now: a real monocular depth model (core/depth.js) measures the
+// whole scene of ONE instant, and four lenses 18 mm apart are re-projected from it — so
+// nothing moves between the views except by parallax.
 // Everything runs on this device.
+import { prepareDepth, renderDepthViews, depthAt, depthCanvas } from '../core/depth.js';
 
 const mk = (w, h) => { const c = document.createElement('canvas'); c.width = Math.max(1, Math.round(w)); c.height = Math.max(1, Math.round(h)); return c; };
 
@@ -63,7 +68,61 @@ export function parallaxOf(frames) {
   return { shift: Math.abs(dx) / w, diff: diff / g[0].length / 255 };
 }
 
-// ------------------------------------------------------------------ 2.5D views (depth)
+/** Which frame of a burst is the sharpest (variance of the Laplacian on a small copy). */
+export function sharpestIndex(frames) {
+  const w = 160, h = Math.max(8, Math.round(160 * frames[0].height / frames[0].width));
+  let best = 0, bv = -1;
+  frames.forEach((f, k) => {
+    const g = gray(f, w, h); let s = 0, s2 = 0, n = 0;
+    for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) { const i = y * w + x, l = 4 * g[i] - g[i - 1] - g[i + 1] - g[i - w] - g[i + w]; s += l; s2 += l * l; n++; }
+    const v = s2 / n - (s / n) * (s / n);
+    if (v > bv * 1.03) { bv = v; best = k; }
+  });
+  return best;
+}
+
+/**
+ * Did the camera really travel sideways during the burst? Looks at the global shift of each
+ * frame against the first: a real sweep moves steadily in one direction, mostly horizontally.
+ * → { spread (share of the width), steady, vertical (share of the height), real }
+ */
+export function burstMotion(frames) {
+  const W = frames[0].width, H = frames[0].height;
+  const w = 160, h = Math.max(8, Math.round(160 * H / W));
+  const g = frames.map((f) => gray(f, w, h));
+  const dx = [0], dy = [0];
+  for (let i = 1; i < frames.length; i++) { const [x, y] = offsetBetween(g[0], g[i], w, h, 0.5, 0.5, 24); dx.push(x / w); dy.push(y / h); }
+  let up = 0, down = 0;
+  for (let i = 1; i < dx.length; i++) { const d = dx[i] - dx[i - 1]; if (d > 0.002) up++; else if (d < -0.002) down++; }
+  const spread = Math.max(...dx) - Math.min(...dx), vertical = Math.max(...dy) - Math.min(...dy);
+  const steady = (up === 0 || down === 0) && up + down >= frames.length - 2;
+  return { spread, vertical, steady, real: spread >= 0.02 && steady && vertical < spread * 0.6 + 0.01 };
+}
+
+// ------------------------------------------------------------------ four lenses from real depth
+/**
+ * Four viewpoints of ONE instant, re-projected from a depth map of the whole scene.
+ * @param frames  the burst (canvases); the sharpest one is used
+ * @param opts.pivot     { x, y } in 0..1 — the tapped point that should stay still (omit = the subject)
+ * @param opts.strength  parallax amount (1 = a four-lens camera at ~1.5 m; 0.3 … 2)
+ * @param opts.flash     0..1 flash fall-off with distance
+ * @param opts.onProgress(fraction | null, message)
+ * → { frames, depth (greyscale canvas, white = near), pivot (depth 0..1), index, renderer, ms }
+ */
+export async function depthQuad(frames, { pivot = null, strength = 1.2, flash = 0, n = 4, onProgress, signal, forceCPU = false } = {}) {
+  const list = Array.isArray(frames) ? frames : [frames];
+  const index = list.length > 1 ? (list._sharpest ?? (list._sharpest = sharpestIndex(list))) : 0;
+  const t0 = performance.now();
+  const prep = await prepareDepth(list[index], { onProgress, signal });
+  onProgress && onProgress(null, 'Building four viewpoints…');
+  await new Promise((r) => setTimeout(r, 0));
+  // the tap arrives in view coordinates; the views are a ~95 % crop of the photo
+  const piv = pivot ? depthAt(prep, 0.025 + pivot.x * 0.95, 0.025 + pivot.y * 0.95) : null;
+  const r = renderDepthViews(prep, { n, strength, pivot: piv, flash, forceCPU });
+  return { frames: r.frames, depth: depthCanvas(prep), pivot: r.pivot, index, renderer: r.renderer, ms: performance.now() - t0, modelMs: prep.ms };
+}
+
+// ------------------------------------------------------------------ 2.5D views (person mask — older fallback)
 /**
  * Four viewpoints from one photo: the subject (mask alpha) moves one way, the
  * background the other, and the gap the subject leaves is filled from the

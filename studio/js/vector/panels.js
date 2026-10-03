@@ -41,13 +41,27 @@ export class Panels {
   sheet(key) {
     const el = this.make(key);
     this.sheetKey = key;
-    this.activeSheet = openSheet({ title: { appearance: 'Appearance', layers: 'Layers', align: 'Align & Transform', pathfinder: 'Shape Builder', artboards: 'Artboards', character: 'Character' }[key] || key, content: h('div', { class: 'vec-sheet' }, el), onClose: () => { this.sheetKey = null; } });
+    this.activeSheet = openSheet({ title: { appearance: 'Appearance', layers: 'Layers', align: 'Align & Transform', pathfinder: 'Shape Builder', artboards: 'Artboards', character: 'Character' }[key] || key, persistent: true, content: h('div', { class: 'vec-sheet is-' + key }, el), onClose: () => { if (this.sheetKey !== key) return; this.sheetKey = null; this.app.root.removeAttribute('data-sheet'); this.app.view.setInset(0, 0); } });
+    this.activeSheet.panel.classList.add('vec-sheet-panel', 'is-' + key);
+    this.app.root.dataset.sheet = key;
+    this.fitAroundSheet();
+  }
+  /** Keep the artboard visible beside / above the open sheet. */
+  fitAroundSheet() {
+    requestAnimationFrame(() => {
+      const sh = this.activeSheet; if (!sh || sh.closed || !this.sheetKey) return;
+      const st = this.app.stage.getBoundingClientRect(), w = sh.panel.offsetWidth, hh = sh.panel.offsetHeight;
+      if (this.app.layout() === 'land') this.app.view.setInset(0, st.right - (innerWidth - w - 6));
+      else this.app.view.setInset(st.bottom - (innerHeight - (parseFloat(getComputedStyle(sh.panel).bottom) || 0) - hh), 0);
+    });
   }
   refresh() {
     if (!this.app.doc) return;
     if (this.app.mobile.matches) {
       clear(this.host);
-      if (this.activeSheet && !this.activeSheet.closed && this.sheetKey) { const body = this.activeSheet.panel.querySelector('.vec-sheet'); if (body) body.replaceChildren(this.make(this.sheetKey)); }
+      if (this.activeSheet && !this.activeSheet.closed && this.sheetKey) { const body = this.activeSheet.panel.querySelector('.vec-sheet'); const act = document.activeElement;
+        // never rebuild under a field that is being typed in (the keyboard would close)
+        if (body && !(act && body.contains(act) && act.matches('input[type="number"], input[type="text"], input:not([type]), textarea'))) { const sb = this.activeSheet.panel.querySelector('.studio-sheet-body'), st = sb ? sb.scrollTop : 0; body.replaceChildren(this.make(this.sheetKey)); if (sb) sb.scrollTop = st; } }
       return;
     }
     const scroll = this.host.scrollTop;

@@ -35,9 +35,10 @@ export function saveWorkspace(w) { try { localStorage.setItem(KEY, JSON.stringif
 /** Apply the panel column width (desktop widths only; narrow screens keep their layout). */
 export function applyWidth(app) {
   const main = app.root.querySelector('.img-main'); if (!main) return;
-  const w = app.ws.width;
-  if (innerWidth > 1180 && !app.mobile.matches && !app.root.classList.contains('is-panels-hidden')) main.style.gridTemplateColumns = `52px minmax(0, 1fr) ${w}px`;
-  else main.style.gridTemplateColumns = '';
+  main.style.gridTemplateColumns = '';
+  // The grid itself lives in image.css; the saved width only applies where there is room for it.
+  if (innerWidth > 1180 && !app.mobile.matches) main.style.setProperty('--img-panels-w', Math.min(app.ws.width, Math.round(innerWidth * 0.34)) + 'px');
+  else main.style.removeProperty('--img-panels-w');
 }
 
 /** Adds drag-to-reorder on panel headers and the resize edge on the panel column. */

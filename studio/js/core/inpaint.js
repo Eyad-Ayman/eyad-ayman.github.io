@@ -96,7 +96,8 @@ async function sha256Hex(bytes) {
 /** Self-hosted copy: split parts (via manifest) or a single file. Returns bytes or null. */
 async function localBytes(s, onProgress, signal) {
   let manifest = null;
-  try { const r = await fetch(LOCAL + s.file + '.parts.json', { signal, cache: 'no-cache' }); if (r.ok) manifest = await r.json(); } catch (e) { manifest = null; }
+  // spec.single = the model ships as one file: do not probe for a parts manifest (avoids a 404 in the console)
+  if (!s.single) try { const r = await fetch(LOCAL + s.file + '.parts.json', { signal, cache: 'no-cache' }); if (r.ok) manifest = await r.json(); } catch (e) { manifest = null; }
   if (manifest && Array.isArray(manifest.parts) && manifest.parts.length) {
     const total = manifest.bytes || s.bytes, bufs = [];
     let done = 0;
@@ -144,8 +145,36 @@ async function modelBytes(onProgress, signal) {
   return bytes;
 }
 
+/**
+ * Generic loader for any self-hosted ONNX model (used by depth.js and promptfx.js):
+ * Cache Storage → studio/models/<file>.parts.json / <file> → optional remote urls.
+ * spec: { file, bytes, label, urls? }. Returns a Uint8Array.
+ */
+export async function fetchModelBytes(s, { onProgress, signal } = {}) {
+  const key = (s.urls && s.urls[0]) || (LOCAL + s.file);
+  const cache = await openCache();
+  if (cache) { const hit = await cache.match(key); if (hit) return new Uint8Array(await hit.arrayBuffer()); }
+  const label = s.label || s.file;
+  let bytes = await localBytes(s, onProgress ? (f) => onProgress(f, `Loading ${label}…`) : null, signal);
+  if (!bytes) {
+    let lastErr = null;
+    for (const url of (s.urls || [])) {
+      try {
+        const r = await fetchOk(url, signal);
+        const total = Number(r.headers.get('content-length')) || s.bytes || 1;
+        bytes = await readAll(r, (n) => onProgress && onProgress(Math.min(1, n / total), `Downloading ${label}…`), signal);
+        break;
+      } catch (e) { if (signal && signal.aborted) throw e; lastErr = e; }
+    }
+    if (!bytes) throw new Error(`the ${label} model is not available` + (lastErr ? ' (' + lastErr.message + ')' : ''));
+  }
+  if (bytes.byteLength < 64) throw new Error(`the ${label} model file is incomplete`);
+  if (cache) { try { await cache.put(key, new Response(bytes, { headers: { 'content-type': 'application/octet-stream' } })); } catch (e) { /* quota — still usable this session */ } }
+  return bytes;
+}
+
 let ortP = null;
-function loadOrt() {
+export function loadOrt() {
   if (!ortP) {
     ortP = import(VENDOR + 'ort.wasm.min.mjs').then((ort) => {
       ort.env.wasm.wasmPaths = VENDOR;

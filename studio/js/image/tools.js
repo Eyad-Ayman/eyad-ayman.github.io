@@ -354,7 +354,10 @@ function paintTool(id, label, ic, key, kind) {
 
 // ================================================================= Move / Free transform
 
-const HANDLE = 9;
+// Fingers need a bigger target (and a bigger, round handle) than a mouse pointer.
+const COARSE = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
+const HANDLE = COARSE ? 20 : 9;
+const HS = COARSE ? 6.5 : 4; // drawn half-size
 function transformHandles(node, view) {
   const pts = nodeCorners(node).map((p) => view.docToScreen(p.x, p.y));
   const mid = (a, b) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
@@ -537,8 +540,11 @@ const moveTool = {
     if (app.isLocked(node)) return;
     ctx.beginPath(); ctx.moveTo(top.x, top.y); ctx.lineTo(rot.x, rot.y); ctx.stroke();
     ctx.fillStyle = '#fff';
-    for (const hd of hs) { ctx.fillRect(hd.p.x - 4, hd.p.y - 4, 8, 8); ctx.strokeRect(hd.p.x - 4 + 0.5, hd.p.y - 4 + 0.5, 7, 7); }
-    ctx.beginPath(); ctx.arc(rot.x, rot.y, 5, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    for (const hd of hs) {
+      if (COARSE) { ctx.beginPath(); ctx.arc(hd.p.x, hd.p.y, HS, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); }
+      else { ctx.fillRect(hd.p.x - 4, hd.p.y - 4, 8, 8); ctx.strokeRect(hd.p.x - 4 + 0.5, hd.p.y - 4 + 0.5, 7, 7); }
+    }
+    ctx.beginPath(); ctx.arc(rot.x, rot.y, COARSE ? 7.5 : 5, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
   },
   onKey(e) {
     const app = this.app, node = app.active;
@@ -725,7 +731,7 @@ const cropTool = {
   hitHandle(pt) {
     const v = this.app.view, r = this.r; if (!r) return null;
     const s = v.docToScreen(pt.x, pt.y), a = v.docToScreen(r.x, r.y), b = v.docToScreen(r.x + r.w, r.y + r.h);
-    const near = (p, q) => Math.abs(p - q) < 10;
+    const near = (p, q) => Math.abs(p - q) < (COARSE ? 20 : 10);
     const hx = near(s.x, a.x) ? -1 : near(s.x, b.x) ? 1 : (s.x > a.x && s.x < b.x ? 0 : null);
     const hy = near(s.y, a.y) ? -1 : near(s.y, b.y) ? 1 : (s.y > a.y && s.y < b.y ? 0 : null);
     if (hx === null || hy === null) return null;

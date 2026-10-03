@@ -68,50 +68,65 @@
   var app = m ? m[1] : 'home';
   var key = 'eyad:splash:' + app;
   try { if (!force && sessionStorage.getItem(key)) return; sessionStorage.setItem(key, '1'); } catch (e) { /* ignore */ }
-  var NAMES = { home: 'Studio', image: 'Image', vector: 'Vector', video: 'Video', '3d': '3D', camera: 'Camera', templates: 'Templates', projects: 'Projects', settings: 'Settings', help: 'Help' };
-  var SUBS = { home: 'Creative suite', image: 'Photo & design', vector: 'Vector design', video: 'Video editing', '3d': '3D scenes', camera: 'Film camera', templates: 'Design templates', projects: 'Your work', settings: 'Preferences', help: 'Guides' };
-  var INFO = ['EYAD', NAMES[app], '#9ec2ff', SUBS[app]];
-  var base = (document.currentScript && document.currentScript.src) ? document.currentScript.src.replace(/js\/file-notice\.js.*$/, '') : '/studio/';
+  var NAMES = { home: 'Studio', image: 'Image', vector: 'Vector', video: 'Video', '3d': '3D', camera: 'Kamera', templates: 'Templates', projects: 'Projects', settings: 'Settings', help: 'Help' };
   var dark = document.documentElement.getAttribute('data-studio-theme') !== 'light';
-  var wall = base + 'img/wall-' + (dark ? 'dark' : 'light') + '.webp';
-  var ink = dark ? '#f5f5f7' : '#1c1c1f', dim = dark ? 'rgba(245,245,247,.6)' : 'rgba(28,28,31,.58)';
-  var LINES = ['Initializing workspace…', 'Reading preferences…', 'Loading tools…', 'Preparing brushes and filters…', 'Warming up the GPU…', 'Opening your projects…', 'Almost ready…'];
-  var css = '#eyad-splash{position:fixed;inset:0;z-index:2147483600;display:grid;place-items:center;overflow:hidden;background:' + (dark ? '#16171b' : '#dcdde1') + ' url("' + wall + '") center/cover;color:' + ink + ';font:500 13px/1.4 "Studio Inter",Inter,system-ui,-apple-system,"Segoe UI",sans-serif;transition:opacity .5s ease,transform .5s ease;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}'
-    + '#eyad-splash.is-out{opacity:0;transform:scale(1.03);pointer-events:none}'
-    + '#eyad-splash .arc{position:absolute;left:50%;top:50%;width:0;height:0}'
-    + '#eyad-splash .arc i{position:absolute;width:86px;height:86px;margin:-43px;border-radius:26px;background:var(--g);box-shadow:0 18px 40px rgba(0,0,0,.28),inset 0 1px 0 rgba(255,255,255,.45);transform:rotate(var(--a)) translateY(-300px) rotate(calc(-1 * var(--a)));opacity:0;animation:eyarc .9s cubic-bezier(.2,.8,.2,1) forwards;animation-delay:var(--d)}'
-    + '#eyad-splash .sp{position:relative;width:min(420px,88vw);padding:30px 30px 22px;border-radius:34px;background:' + (dark ? 'rgba(40,40,46,.42)' : 'rgba(255,255,255,.45)') + ';-webkit-backdrop-filter:blur(40px) saturate(1.8);backdrop-filter:blur(40px) saturate(1.8);box-shadow:0 30px 80px rgba(0,0,0,.28),inset 0 1px 0 rgba(255,255,255,' + (dark ? '.22' : '.8') + '),inset 0 0 0 1px rgba(255,255,255,' + (dark ? '.1' : '.45') + ');text-align:center;animation:eyin .7s cubic-bezier(.2,.8,.2,1)}'
-    + '#eyad-splash .mark{width:58px;height:58px;margin:0 auto;border-radius:19px;display:grid;place-items:center;background:linear-gradient(135deg,#f5f6fa,#9ea4b4 30%,#fdfdff 48%,#6e7382 62%,#d9dce6 80%,#8a90a0);box-shadow:0 10px 24px rgba(0,0,0,.25),inset 0 1px 0 rgba(255,255,255,.8)}'
-    + '#eyad-splash .mark span{font:800 30px/1 "Studio Inter",Inter,system-ui,sans-serif;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.35)}'
-    + '#eyad-splash h1{margin:16px 0 0;font:600 30px/1.1 "Studio Inter",Inter,system-ui,sans-serif;letter-spacing:-.02em}'
-    + '#eyad-splash h1 em{font-style:normal;font-weight:300;opacity:.75}'
-    + '#eyad-splash .sub{margin-top:4px;color:' + dim + ';font-size:13px}'
-    + '#eyad-splash .st{margin-top:22px;color:' + dim + ';font-size:12px;min-height:1.4em}'
-    + '#eyad-splash .bar{height:5px;margin:8px auto 16px;width:70%;border-radius:5px;overflow:hidden;background:' + (dark ? 'rgba(255,255,255,.12)' : 'rgba(0,0,0,.08)') + '}'
-    + '#eyad-splash .bar i{display:block;height:100%;width:8%;border-radius:5px;background:linear-gradient(90deg,#9ae8ff,#e9b8ff,#ffe69a);transition:width .5s ease}'
-    + '#eyad-splash small{display:block;color:' + dim + ';opacity:.8;font-size:10.5px;line-height:1.5}'
-    + '@keyframes eyarc{from{opacity:0;transform:rotate(var(--a)) translateY(-240px) rotate(calc(-1 * var(--a))) scale(.6)}to{opacity:1}}'
-    + '@keyframes eyin{from{opacity:0;transform:translateY(14px) scale(.97)}}'
-    + '@media (max-width:620px){#eyad-splash .arc i{width:58px;height:58px;margin:-29px;border-radius:18px;transform:rotate(var(--a)) translateY(-230px) rotate(calc(-1 * var(--a)))}}'
-    + '@media (prefers-reduced-motion:reduce){#eyad-splash .arc i,#eyad-splash .sp{animation:none;opacity:1}}';
-  var G = ['linear-gradient(135deg,#ff9a8b,#ff6a88)', 'linear-gradient(135deg,#b7f0ff,#e9b8ff,#fff3b0)', 'linear-gradient(135deg,#ffb6d8,#f49ac1)', 'linear-gradient(135deg,#2b2b30,#0a0a0c)', 'linear-gradient(135deg,#e9ebee,#9ea2a8)', 'linear-gradient(135deg,#f6cf3e,#e8402f)', 'linear-gradient(135deg,#eef1f6,#c8d3e6)', 'linear-gradient(135deg,#a4a4a0,#6d6d69)', 'linear-gradient(135deg,#7cb8ff,#3a5bd8)'];
-  var arc = ''; for (var k = 0; k < 9; k++) arc += '<i style="--a:' + (-80 + k * 20) + 'deg;--g:' + G[k] + ';--d:' + (k * 0.06).toFixed(2) + 's"></i>';
+  var ink = dark ? '#f5f5f7' : '#16161a', dim = dark ? 'rgba(245,245,247,.55)' : 'rgba(22,22,26,.55)';
+  // The launch screen is only the brand, briefly — it never waits on fake steps.
+  var css = '#eyad-splash{position:fixed;inset:0;z-index:2147483600;display:grid;place-items:center;background:' + (dark ? '#0b0b10' : '#ececf0') + ';color:' + ink + ';transition:opacity .35s ease;font-family:"Studio Inter",Inter,system-ui,-apple-system,"Segoe UI",sans-serif}'
+    + '#eyad-splash.is-out{opacity:0;pointer-events:none}'
+    + '#eyad-splash .in{display:grid;justify-items:center;gap:18px;animation:eyin .5s cubic-bezier(.2,.8,.2,1) both}'
+    + '#eyad-splash .mark{width:84px;height:84px;border-radius:26px;background:linear-gradient(#fff,#fff) 24px 23px/36px 8px no-repeat,linear-gradient(#fff,#fff) 24px 38px/23px 8px no-repeat,linear-gradient(#fff,#fff) 24px 53px/36px 8px no-repeat,linear-gradient(145deg,#ff6a4d,#e8261f 55%,#b3121a);box-shadow:inset 0 1px 0 rgba(255,255,255,.45),0 18px 40px -10px rgba(232,38,31,.6)}'
+    + '#eyad-splash b{font:700 30px/1 "Studio Oswald",Oswald,Impact,"Arial Narrow",sans-serif;letter-spacing:.06em}'
+    + '#eyad-splash b em{font:500 12px/1 "Studio Inter",Inter,system-ui,sans-serif;letter-spacing:.3em;margin-left:10px;color:' + dim + ';font-style:normal;vertical-align:middle}'
+    + '#eyad-splash i{display:block;width:120px;height:3px;border-radius:3px;overflow:hidden;background:' + (dark ? 'rgba(255,255,255,.12)' : 'rgba(0,0,0,.1)') + '}'
+    + '#eyad-splash i::after{content:"";display:block;width:40%;height:100%;border-radius:3px;background:#ff3b2f;animation:eybar .9s ease-in-out infinite alternate}'
+    + '@keyframes eybar{from{transform:translateX(-20%)}to{transform:translateX(170%)}}'
+    + '@keyframes eyin{from{opacity:0;transform:scale(.94)}}'
+    + '@media (prefers-reduced-motion:reduce){#eyad-splash .in,#eyad-splash i::after{animation:none}}';
   var style = document.createElement('style'); style.textContent = css;
-  var root = document.createElement('div'); root.id = 'eyad-splash'; root.setAttribute('role', 'status'); root.setAttribute('aria-label', 'Loading EYAD ' + INFO[1]);
-  root.style.setProperty('--c', INFO[2]);
-  root.innerHTML = '<div class="arc">' + arc + '</div><div class="sp"><div class="mark"><span>E</span></div><h1>' + INFO[0] + ' <em>' + INFO[1] + '</em></h1><div class="sub">' + INFO[3] + ' · EYAD Studio 4.0</div><div class="st">' + LINES[0] + '</div><div class="bar"><i></i></div><small>© ' + new Date().getFullYear() + ' Eyad Ayman · Runs on this device — your files are never uploaded.</small></div>';
+  var root = document.createElement('div'); root.id = 'eyad-splash'; root.setAttribute('role', 'status'); root.setAttribute('aria-label', 'Opening EYAD ' + NAMES[app]);
+  var inner = document.createElement('div'); inner.className = 'in';
+  var mark = document.createElement('div'); mark.className = 'mark';
+  var word = document.createElement('b'); word.textContent = 'EYAD'; var em = document.createElement('em'); em.textContent = NAMES[app].toUpperCase(); word.appendChild(em);
+  inner.appendChild(mark); inner.appendChild(word); inner.appendChild(document.createElement('i')); root.appendChild(inner);
   document.documentElement.appendChild(style); document.documentElement.appendChild(root);
-  var st2 = root.querySelector('.st'), bar = root.querySelector('.bar i'), n = 0, t0 = Date.now();
-  var iv = setInterval(function () { n = Math.min(LINES.length - 1, n + 1); st2.textContent = LINES[n]; bar.style.width = Math.min(92, 8 + n * 14) + '%'; }, 420);
-  var gone = false;
+  var gone = false, t0 = Date.now();
   function hide() {
     if (gone) return; gone = true;
-    var wait = Math.max(0, 1500 - (Date.now() - t0));
-    setTimeout(function () { clearInterval(iv); bar.style.width = '100%'; st2.textContent = 'Ready'; setTimeout(function () { root.classList.add('is-out'); setTimeout(function () { root.remove(); style.remove(); }, 500); }, 180); }, wait);
+    setTimeout(function () { root.classList.add('is-out'); setTimeout(function () { root.remove(); style.remove(); }, 380); }, Math.max(0, 450 - (Date.now() - t0)));
   }
   window.addEventListener('eyad:ready', hide);
-  window.addEventListener('load', function () { setTimeout(hide, 350); });
-  setTimeout(hide, 7000);
+  document.addEventListener('DOMContentLoaded', function () { setTimeout(hide, 900); });
+  window.addEventListener('load', hide);
+  setTimeout(hide, 2500);
+})();
+
+/* ---- Start-up watchdog: if the app never reports ready (a script failed to load, or an old browser), say so
+ * instead of leaving a dead screen. Shows the first error so it can be reported. */
+(function () {
+  if (location.protocol === 'file:') return;
+  var ready = false, firstErr = '';
+  window.addEventListener('eyad:ready', function () { ready = true; });
+  window.addEventListener('error', function (e) { if (!firstErr) firstErr = (e && e.message) ? e.message + (e.filename ? ' — ' + String(e.filename).split('/').slice(-2).join('/') + ':' + (e.lineno || 0) : '') : (e && e.target && e.target.src ? 'Could not load ' + String(e.target.src).split('/').slice(-2).join('/') : ''); }, true);
+  window.addEventListener('unhandledrejection', function (e) { if (!firstErr && e && e.reason) firstErr = String(e.reason && e.reason.message || e.reason).slice(0, 200); });
+  function show() {
+    if (ready || document.getElementById('eyad-boot-fail')) return;
+    var box = document.createElement('div'); box.id = 'eyad-boot-fail'; box.setAttribute('role', 'alert');
+    box.style.cssText = 'position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px));z-index:2147483000;max-width:520px;margin:0 auto;padding:16px 18px;border-radius:22px;background:#17171c;color:#f5f5f7;font:14px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;box-shadow:0 20px 60px rgba(0,0,0,.5),inset 0 0 0 1px rgba(255,255,255,.12)';
+    var t = document.createElement('b'); t.textContent = 'EYAD Studio is taking too long to start'; t.style.display = 'block';
+    var p = document.createElement('div'); p.style.cssText = 'opacity:.75;margin:4px 0 12px;font-size:13px;word-break:break-word';
+    p.textContent = firstErr ? 'Error: ' + firstErr : (navigator.onLine === false ? 'You are offline and this screen is not saved on the device yet.' : 'The connection may be slow, or this browser is too old (Safari 16+, Chrome 110+).');
+    var r = document.createElement('button'); r.type = 'button'; r.textContent = 'Reload';
+    r.style.cssText = 'height:38px;padding:0 18px;border:0;border-radius:999px;background:#f5f5f7;color:#111;font:600 14px system-ui;margin-right:8px';
+    r.onclick = function () { try { if (navigator.serviceWorker) navigator.serviceWorker.getRegistrations().then(function (l) { l.forEach(function (x) { x.update(); }); }); } catch (e) { /* ignore */ } location.reload(); };
+    var w = document.createElement('button'); w.type = 'button'; w.textContent = 'Keep waiting';
+    w.style.cssText = 'height:38px;padding:0 18px;border:0;border-radius:999px;background:rgba(255,255,255,.12);color:#f5f5f7;font:600 14px system-ui';
+    w.onclick = function () { box.remove(); setTimeout(show, 15000); };
+    box.appendChild(t); box.appendChild(p); box.appendChild(r); box.appendChild(w);
+    (document.body || document.documentElement).appendChild(box);
+    window.addEventListener('eyad:ready', function () { box.remove(); });
+  }
+  setTimeout(show, 12000);
 })();
 
 (function () {

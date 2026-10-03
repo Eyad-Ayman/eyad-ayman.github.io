@@ -10,7 +10,9 @@ import { PRESETS } from './anim.js';
 import { linkMediaDialog, linkLocalFiles, canLinkLocal } from './link.js';
 import { importCaptions, exportCaptions, detectScenes } from './captions.js';
 import { listProjects } from '../core/db.js';
-import { exportVideoDialog, exportWav, exportFrame } from './export.js';
+// export.js is loaded on first use (keeps the first open light)
+const lazyExport = (fn) => (app) => import('./export.js').then((m) => m[fn](app));
+const exportVideoDialog = lazyExport('exportVideoDialog'), exportWav = lazyExport('exportWav'), exportFrame = lazyExport('exportFrame');
 import { supportedFilesDialog, shortcutsDialog, aboutDialog } from '../core/docs.js';
 import { seqDuration } from './model.js';
 

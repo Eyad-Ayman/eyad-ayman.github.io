@@ -16,11 +16,15 @@ import * as io from './io.js';
 
 const OPTS_KEY = 'eyad-studio:vector-tool-options:v1';
 const NS = 'http://www.w3.org/2000/svg';
+// compact = phones, portrait and landscape: panels become sheets, tools move to a dock / rail
+const COMPACT_MQ = '(max-width: 760px) and (orientation: portrait), (max-width: 540px), (orientation: landscape) and (max-height: 540px)';
+const LAND_MQ = '(orientation: landscape) and (max-height: 540px) and (min-width: 541px)';
+const TOUCH_MQ = '(pointer: coarse), (hover: none)';
 
 class View {
   constructor(app, stage) {
     this.app = app; this.stage = stage;
-    this.zoom = 1; this.panX = 0; this.panY = 0;
+    this.zoom = 1; this.panX = 0; this.panY = 0; this.inset = { b: 0, r: 0 };
     this.svg = document.createElementNS(NS, 'svg');
     this.svg.setAttribute('class', 'vec-svg');
     this.svg.innerHTML = '<defs class="vec-defs"></defs><g class="vec-world"><g class="vec-boards"></g><g class="vec-content"></g><g class="vec-grid"></g></g><g class="vec-overlay"></g>';
@@ -31,7 +35,13 @@ class View {
     this.boards = this.svg.querySelector('.vec-boards');
     this.gridG = this.svg.querySelector('.vec-grid');
     this.overlay = this.svg.querySelector('.vec-overlay');
-    new ResizeObserver(() => { const had = this.w; this.measure(); if (!had) this.fitArtboard(); else this.apply(); }).observe(stage);
+    new ResizeObserver(() => {
+      const had = this.w, ow = this.w, oh = this.h; this.measure();
+      if (!this.w || !this.h) return;
+      // still showing the fitted view (nobody zoomed or panned)? fit again — rotation, panels, sheets. Otherwise keep the centre.
+      if (!had || this.isFitted()) this.fitArtboard();
+      else { this.panX += (this.w - ow) / 2; this.panY += (this.h - oh) / 2; this.apply(); }
+    }).observe(stage);
     this.measure();
   }
   measure() { const r = this.stage.getBoundingClientRect(); this.w = r.width; this.h = r.height; this.left = r.left; this.top = r.top; }
@@ -45,10 +55,19 @@ class View {
   }
   fitRect(b, pad = 48) {
     if (!b || !this.w) return;
-    pad = this.w < 600 ? 16 : pad;
-    this.zoom = clamp(Math.min((this.w - pad * 2) / b.w, (this.h - pad * 2) / b.h), 0.02, 64);
-    this.panX = (this.w - b.w * this.zoom) / 2 - b.x * this.zoom; this.panY = (this.h - b.h * this.zoom) / 2 - b.y * this.zoom; this.apply();
+    pad = Math.min(this.w, this.h) < 600 ? 14 : pad;
+    // phones float the tool options over the top of the canvas: keep the artboard (and its label) clear of them
+    const top = this.app.root.dataset.vec && this.app.root.dataset.vec !== 'wide' ? 66 : 10;
+    // an open panel sheet covers part of the canvas (bottom in portrait, right in landscape): fit into what is left
+    const ib = Math.min(this.inset.b, this.h * 0.7), ir = Math.min(this.inset.r, this.w * 0.7);
+    const w = this.w - ir, hh = this.h - top - ib;
+    this.zoom = clamp(Math.min((w - pad * 2) / b.w, (hh - pad * 2) / b.h), 0.02, 64);
+    this.panX = (w - b.w * this.zoom) / 2 - b.x * this.zoom; this.panY = top + (hh - b.h * this.zoom) / 2 - b.y * this.zoom; this.apply();
+    this.fit = [this.zoom, this.panX, this.panY];
   }
+  /** A sheet opened / closed: re-fit only if the user has not zoomed or panned away from the fitted view. */
+  setInset(b, r) { const was = this.isFitted(); this.inset = { b: Math.max(0, b), r: Math.max(0, r) }; if (was) this.fitArtboard(); }
+  isFitted() { const f = this.fit; return !!f && Math.abs(f[0] - this.zoom) < 1e-6 && Math.abs(f[1] - this.panX) < 0.5 && Math.abs(f[2] - this.panY) < 0.5; }
   fitArtboard() { const a = this.app.activeArtboard(); if (a) this.fitRect(a); }
   fitAll() { const a = this.app.doc; if (!a) return; this.fitRect(unionBounds([...a.artboards.map((b) => ({ x: b.x, y: b.y, w: b.w, h: b.h })), ...a.items.map(bounds)])); }
 }
@@ -61,7 +80,10 @@ export class VectorApp {
     this.anchorSel = new Set();
     this.undoStack = []; this.redoStack = [];
     this.savedIndex = 0;
-    this.mobile = matchMedia('(max-width: 760px) and (orientation: portrait), (max-width: 540px)');
+    this.mobile = matchMedia(COMPACT_MQ);
+    this.land = matchMedia(LAND_MQ);
+    this.touch = matchMedia(TOUCH_MQ);
+    this.coarse = this.touch.matches; // the last pointer was a finger: bigger handles and hit areas
     this.toolOpts = this.loadOpts();
     this.tools = createTools();
     for (const t of this.tools) t.app = this;
@@ -91,32 +113,32 @@ export class VectorApp {
     this.titleEl = h('button', { class: 'img-m-title', type: 'button', onclick: () => io.renameDoc(this) });
     this.undoBtn = iconButton('undo', 'Undo', () => this.undo(), { shortcut: 'Mod+Z' });
     this.redoBtn = iconButton('redo', 'Redo', () => this.redo(), { shortcut: 'Mod+Shift+Z' });
-    const top = h('header', { class: 'img-top' },
+    const top = h('header', { class: 'img-top vec-top' },
       h('div', { class: 'img-top-left' },
-        h('a', { class: 'studio-icon-btn img-m-only', href: ROUTES.home, 'aria-label': 'Back to Studio' }, icon('chevronLeft', 20)),
-        h('div', { class: 'img-d-only' }, brandMark({ app: 'VECTOR' })),
-        h('div', { class: 'img-d-only img-menubar-wrap' }, this.menubarEl),
-        h('div', { class: 'img-m-only img-m-titlewrap' }, this.titleEl)),
+        h('a', { class: 'studio-icon-btn vec-m-only', href: ROUTES.home, 'aria-label': 'Back to Studio' }, icon('chevronLeft', 20)),
+        h('div', { class: 'vec-d-only' }, brandMark({ app: 'VECTOR' })),
+        h('div', { class: 'vec-d-only img-menubar-wrap' }, this.menubarEl),
+        h('div', { class: 'vec-m-only img-m-titlewrap' }, this.titleEl)),
       h('div', { class: 'img-top-right' },
-        h('div', { class: 'img-d-only' }, this.saveInd.el),
-        iconButton('layers', 'Show / hide panels', () => { this.root.classList.toggle('is-panels-collapsed'); }, { cls: 'img-land-only' }),
+        h('div', { class: 'vec-d-only' }, this.saveInd.el),
         this.undoBtn, this.redoBtn,
-        iconButton('save', 'Save', () => io.save(this), { shortcut: 'Mod+S', cls: 'img-m-only' }),
-        iconButton('dots', 'Menu', () => menuSheet('EYAD VECTOR', [...this.menus, { label: '← Back to portfolio', action: () => goPortfolio() }]), { cls: 'img-m-only' }),
-        h('div', { class: 'img-d-only img-top-apps' }, appSwitcher('vector')),
-        iconButton('command', 'Command palette', () => this.palette.show(), { shortcut: 'Mod+K', cls: 'img-d-only' }),
-        h('div', { class: 'img-d-only' }, installButton()),
-        h('div', { class: 'img-d-only img-theme-wrap' }, themeToggle()),
-        h('div', { class: 'img-d-only' }, backToPortfolio({ compact: true }))));
-    this.optionsBar = h('div', { class: 'img-options', role: 'toolbar', 'aria-label': 'Tool options' });
-    this.toolbarEl = h('div', { class: 'img-toolbar', role: 'toolbar', 'aria-label': 'Tools', 'aria-orientation': 'vertical' });
+        iconButton('save', 'Save', () => io.save(this), { shortcut: 'Mod+S', cls: 'vec-m-only' }),
+        iconButton('dots', 'Menu', () => menuSheet('EYAD VECTOR', [...this.menus, { label: '← Back to portfolio', action: () => goPortfolio() }]), { cls: 'vec-m-only' }),
+        h('div', { class: 'vec-d-only img-top-apps' }, appSwitcher('vector')),
+        iconButton('command', 'Command palette', () => this.palette.show(), { shortcut: 'Mod+K', cls: 'vec-d-only' }),
+        h('div', { class: 'vec-d-only' }, installButton()),
+        h('div', { class: 'vec-d-only img-theme-wrap' }, themeToggle()),
+        h('div', { class: 'vec-d-only' }, backToPortfolio({ compact: true }))));
+    this.optionsBar = h('div', { class: 'img-options vec-options', role: 'toolbar', 'aria-label': 'Tool options' });
+    this.toolbarEl = h('div', { class: 'img-toolbar vec-toolbar', role: 'toolbar', 'aria-label': 'Tools', 'aria-orientation': 'vertical' });
     this.stage = h('div', { class: 'img-stage vec-stage' });
-    this.statusEl = h('div', { class: 'img-status' });
+    this.statusEl = h('div', { class: 'img-status vec-status' });
     this.panelsEl = h('aside', { class: 'img-panels vec-panels', 'aria-label': 'Panels' });
-    this.dockEl = h('div', { class: 'img-dock img-m-only' });
-    const main = h('div', { class: 'img-main' }, this.toolbarEl, h('div', { class: 'img-center' }, this.stage), this.panelsEl);
+    this.dockEl = h('nav', { class: 'img-dock vec-dock', 'aria-label': 'Tools and panels' });
+    const main = h('div', { class: 'img-main vec-main' }, this.toolbarEl, h('div', { class: 'img-center vec-center' }, this.stage), this.panelsEl);
     clear(r);
     r.append(top, this.optionsBar, main, this.statusEl, this.dockEl);
+    this.applyLayout();
     this.view = new View(this, this.stage);
     this.panels = new Panels(this, this.panelsEl);
     this.buildToolbar();
@@ -129,13 +151,24 @@ export class VectorApp {
     this.bindDrop();
     this.newDoc(createDoc(), { fit: true, quiet: true });
     this.setTool('select');
-    this.mobile.addEventListener?.('change', () => { closeSheet(); this.panels.build(); });
+    const relayout = () => { closeSheet(); this.applyLayout(); this.panels.build(); this.renderOptions(); this.renderOverlay(); };
+    for (const mq of [this.mobile, this.land, this.touch]) mq.addEventListener?.('change', relayout);
     onSettings(() => this.render());
     addEventListener('beforeunload', (e) => { if (getSettings().warnOnLeave && this.dirty) { io.autosaveNow(this); e.preventDefault(); e.returnValue = ''; } });
     document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') io.autosaveNow(this); });
     io.startAutosave(this);
     io.boot(this);
   }
+
+  /** Which layout is live: 'wide' (desktop / tablet), 'port' (phone portrait) or 'land' (phone landscape). */
+  layout() { return this.mobile.matches ? (this.land.matches ? 'land' : 'port') : 'wide'; }
+  applyLayout() {
+    this.root.dataset.vec = this.layout(); this.root.classList.toggle('is-touch', this.touch.matches || this.mobile.matches);
+    // portrait sheets sit on top of the dock (tools and panel buttons stay reachable): tell the CSS how tall it is
+    if (!this.dockRO) { this.dockRO = new ResizeObserver(() => { const hh = this.dockEl.offsetHeight; this.root.style.setProperty('--vec-dock-h', (hh ? Math.round(hh + (parseFloat(getComputedStyle(this.root).paddingBottom) || 0)) : 0) + 'px'); }); this.dockRO.observe(this.dockEl); }
+  }
+  /** Handle / hit-area scale: fingers get bigger targets than a mouse or a pen. */
+  get hk() { return this.coarse ? 1.75 : 1; }
 
   buildToolbar() {
     clear(this.toolbarEl);
@@ -166,13 +199,13 @@ export class VectorApp {
   buildDock() {
     clear(this.dockEl);
     const tools = h('div', { class: 'img-dock-tools' });
-    for (const id of ['select', 'direct', 'pen', 'brush', 'pencil', 'rect', 'ellipse', 'star', 'polygon', 'line', 'text', 'gradient', 'eyedropper', 'artboard', 'hand']) {
+    for (const id of ['select', 'direct', 'pen', 'brush', 'pencil', 'rect', 'ellipse', 'star', 'polygon', 'line', 'arc', 'text', 'gradient', 'eyedropper', 'artboard', 'hand', 'zoom']) {
       const t = this.tools.find((x) => x.id === id);
       tools.appendChild(h('button', { class: 'img-dock-tool', type: 'button', 'aria-label': t.label, dataset: { tool: id }, onclick: () => this.setTool(id) }, icon(t.icon, 22), h('span', { text: t.label.split(' ')[0] })));
     }
     const row = h('div', { class: 'img-dock-panels' },
-      [['appearance', 'palette', 'Style'], ['layers', 'layers', 'Layers'], ['align', 'alignCenter', 'Align'], ['pathfinder', 'union', 'Shapes'], ['artboards', 'artboard', 'Boards']].map(([k, ic, label]) =>
-        h('button', { class: 'img-dock-panel', type: 'button', onclick: () => this.panels.sheet(k) }, icon(ic, 18), h('span', { text: label }))));
+      [['appearance', 'palette', 'Style'], ['character', 'text', 'Font'], ['layers', 'layers', 'Layers'], ['align', 'alignCenter', 'Align'], ['pathfinder', 'union', 'Shapes'], ['artboards', 'artboard', 'Boards']].map(([k, ic, label]) =>
+        h('button', { class: 'img-dock-panel', type: 'button', 'aria-label': label, dataset: { panel: k }, onclick: () => (this.panels.sheetKey === k ? closeSheet() : this.panels.sheet(k)) }, icon(ic, 19), h('span', { text: label }))));
     this.dockEl.append(tools, row);
   }
 
@@ -183,6 +216,7 @@ export class VectorApp {
     this.tool = t;
     this.root.querySelectorAll('.img-tool, .img-dock-tool').forEach((b) => b.classList.toggle('is-active', b.dataset.tool === id));
     this.stage.style.cursor = t.cursor || 'default';
+    if (this.mobile.matches) this.dockEl.querySelector('.img-dock-tool.is-active')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
     if (id !== 'direct') this.anchorSel = new Set();
     this.renderOptions();
     this.renderOverlay();
@@ -191,7 +225,10 @@ export class VectorApp {
   renderOptions() {
     clear(this.optionsBar);
     const t = this.tool;
-    this.optionsBar.append(h('div', { class: 'img-opt-tool' }, icon(t.icon, 16), h('span', { text: t.label })), h('div', { class: 'img-opt-items' }, t.options ? t.options(this) : []));
+    const items = h('div', { class: 'img-opt-items' }, t.options ? t.options(this) : []);
+    this.optionsBar.append(h('div', { class: 'img-opt-tool' }, icon(t.icon, 16), h('span', { text: t.label })), items);
+    // phones float the bar over the canvas and drop the hints: with no real control left it is hidden
+    this.optionsBar.classList.toggle('is-bare', !items.querySelector('button, input, select'));
   }
 
   // ------------------------------------------------------------ document
@@ -313,8 +350,9 @@ export class VectorApp {
     if (b && handles) {
       const a = this.view.toScreen(b.x, b.y), W = b.w * this.view.zoom, H = b.h * this.view.zoom;
       s += `<rect class="vo-bbox" x="${a.x}" y="${a.y}" width="${W}" height="${H}"/>`;
-      s += `<line class="vo-rotline" x1="${a.x + W / 2}" y1="${a.y}" x2="${a.x + W / 2}" y2="${a.y - 26}"/><circle class="vo-rot" cx="${a.x + W / 2}" cy="${a.y - 26}" r="5"/>`;
-      for (const [fx, fy] of [[0, 0], [0.5, 0], [1, 0], [1, 0.5], [1, 1], [0.5, 1], [0, 1], [0, 0.5]]) s += `<rect class="vo-h" x="${a.x + W * fx - 4}" y="${a.y + H * fy - 4}" width="8" height="8"/>`;
+      const k = this.hk, ro = 26 * (k > 1 ? 1.4 : 1), hs = 4 * k;
+      s += `<line class="vo-rotline" x1="${a.x + W / 2}" y1="${a.y}" x2="${a.x + W / 2}" y2="${a.y - ro}"/><circle class="vo-rot" cx="${a.x + W / 2}" cy="${a.y - ro}" r="${5 * k}"/>`;
+      for (const [fx, fy] of [[0, 0], [0.5, 0], [1, 0], [1, 0.5], [1, 1], [0.5, 1], [0, 1], [0, 0.5]]) s += `<rect class="vo-h" x="${a.x + W * fx - hs}" y="${a.y + H * fy - hs}" width="${hs * 2}" height="${hs * 2}" rx="${k > 1 ? 3 : 0}"/>`;
     }
     return s;
   }
@@ -369,6 +407,8 @@ export class VectorApp {
     let pan = null, gesture = null, active = false, stylusSeen = false;
     svg.addEventListener('pointerdown', (e) => {
       if (this.textEditing) this.commitText();
+      const coarse = e.pointerType === 'touch';
+      if (coarse !== this.coarse) { this.coarse = coarse; this.renderOverlay(); }
       svg.setPointerCapture?.(e.pointerId);
       this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY, type: e.pointerType });
       if (e.pointerType === 'pen') stylusSeen = true;
@@ -506,7 +546,7 @@ export class VectorApp {
       if (isTyping(e) || isDialogOpen() || this.textEditing) return;
       if (e.key === ' ' && !e.repeat) { this.spaceDown = true; this.stage.style.cursor = 'grab'; e.preventDefault(); return; }
       if (this.tool && this.tool.onKey && !modKey(e) && this.tool.onKey(e)) { e.preventDefault(); e.stopPropagation(); return; }
-      if (e.key === 'Escape') { if (this.sel.size) { this.sel = new Set(); this.selectionChanged(); } }
+      if (e.key === 'Escape') { if (this.panels.sheetKey) closeSheet(); else if (this.sel.size) { this.sel = new Set(); this.selectionChanged(); } }
     }, true);
     document.addEventListener('keyup', (e) => { if (e.key === ' ') { this.spaceDown = false; this.stage.style.cursor = this.tool.cursor || 'default'; } });
   }

@@ -7,7 +7,7 @@
 
 /* ---------------------------------------------------------------- tokens */
 :root .studio-app:not([data-theme="dark"]):not(.cam-app) {
-  --st-bg: #dcdde1;
+  --st-bg: #ececf0;
   --st-canvas-bg: rgba(206, 207, 212, .55);
   --st-panel: rgba(255, 255, 255, .52);
   --st-panel-2: rgba(255, 255, 255, .34);
@@ -38,9 +38,9 @@
 }
 :root .studio-app[data-theme="dark"], :root .studio-app.cam-app,
 :root[data-studio-theme="dark"] .studio-app:not([data-theme="light"]) {
-  --st-bg: #16171b;
-  --st-canvas-bg: rgba(10, 10, 13, .5);
-  --st-panel: rgba(40, 41, 48, .5);
+  --st-bg: #0b0b10;
+  --st-canvas-bg: rgba(6, 6, 9, .55);
+  --st-panel: rgba(26, 26, 33, .56);
   --st-panel-2: rgba(255, 255, 255, .045);
   --st-raised: rgba(255, 255, 255, .09);
   --st-hover: rgba(255, 255, 255, .09);
@@ -55,9 +55,9 @@
   --st-sel: #7aa2ff;
   --st-shadow: 0 30px 80px rgba(0, 0, 0, .45), 0 2px 10px rgba(0, 0, 0, .3);
   --sp-wall: url('../img/wall-dark.webp');
-  --sp-glass: rgba(46, 47, 55, .46);
-  --sp-glass-strong: rgba(34, 35, 41, .8);
-  --sp-stroke: rgba(255, 255, 255, .14);
+  --sp-glass: rgba(30, 30, 38, .5);
+  --sp-glass-strong: rgba(22, 22, 28, .84);
+  --sp-stroke: rgba(255, 255, 255, .12);
   --sp-edge: rgba(0, 0, 0, .25);
   --sp-hi: rgba(255, 255, 255, .22);
   --sp-chip: rgba(255, 255, 255, .08);
@@ -78,19 +78,23 @@
   --sp-r-pill: 999px;
   --sp-r-card: 24px;
   --sp-r-win: 30px;
+  --sp-bf-bar: blur(22px) saturate(1.7);
+  --brand: #ff3b2f; --brand-2: #c9201c; --brand-grad: linear-gradient(145deg, #ff6a4d, #e8261f 55%, #b3121a);
 }
 /* no live blur (Settings ▸ Look ▸ Live frosted glass off, or slow devices): solid glass */
-:root .studio-app:not(.xp-glass) { --sp-bf: none; --sp-bf-strong: none; }
+:root .studio-app:not(.xp-glass) { --sp-bf: none; --sp-bf-strong: none; --sp-bf-bar: none; }
 :root .studio-app:not(.xp-glass):not([data-theme="dark"]) { --sp-glass: rgba(246, 246, 248, .94); --st-panel: rgba(246, 246, 248, .96); }
-:root .studio-app[data-theme="dark"]:not(.xp-glass) { --sp-glass: rgba(34, 35, 41, .95); --st-panel: rgba(34, 35, 41, .96); }
+:root .studio-app[data-theme="dark"]:not(.xp-glass) { --sp-glass: rgba(26, 26, 32, .95); --st-panel: rgba(26, 26, 32, .96); }
 
 /* the room: every page sits in front of the blurred artwork */
-.studio-root { background: #16171b; }
-.studio-root[data-studio-theme="light"] { background: #dcdde1; }
-:root .studio-app { background: var(--st-bg) var(--sp-wall) center / cover no-repeat fixed; font-family: var(--st-ui); }
-:root .studio-app[data-wall="plain"] { background-image: radial-gradient(1200px 700px at 30% 10%, color-mix(in srgb, var(--st-accent) 16%, transparent), transparent 70%), radial-gradient(900px 600px at 90% 90%, rgba(255, 170, 200, .14), transparent 70%); }
+.studio-root { background: #0b0b10; }
+.studio-root[data-studio-theme="light"] { background: #ececf0; }
+:root .studio-app { background: transparent; font-family: var(--st-ui); }
+.studio-root::before { content: ''; position: fixed; inset: 0; z-index: -1; pointer-events: none; background: #0b0b10 url('../img/wall-dark.webp') center / cover no-repeat; transform: translateZ(0); }
+.studio-root[data-studio-theme="light"]::before { background-color: #ececf0; background-image: url('../img/wall-light.webp'); }
+.studio-root:has(.studio-app[data-wall="plain"])::before { background-image: none; }
 :root .studio-app.is-hub::before, body.xp-home::before { display: none; }
-body.xp-home { background: var(--st-bg) var(--sp-wall) center / cover no-repeat fixed !important; }
+body.xp-home { background: transparent !important; }
 
 /* sentence case everywhere — no shouting labels */
 :root .studio-app *:not(svg):not(svg *) { text-transform: none !important; }
@@ -110,7 +114,7 @@ body.xp-home { background: var(--st-bg) var(--sp-wall) center / cover no-repeat 
 :root .studio-app .studio-menu-item { border-radius: 10px; }
 :root .studio-app .studio-menu-item:hover:not(:disabled), :root .studio-app .studio-menu-item:focus-visible { background: var(--sp-chip-h); color: var(--st-text); }
 :root .studio-app .studio-toast { border-radius: var(--sp-r-pill); }
-:root .studio-app .studio-scrim { background: rgba(10, 10, 14, .28); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+:root .studio-app .studio-scrim { background: rgba(10, 10, 14, .28); -webkit-backdrop-filter: none; backdrop-filter: none; }
 :root .studio-app .studio-card, :root .studio-app .hub-storage, :root .studio-app .hub-settings-card {
   background: var(--sp-glass); -webkit-backdrop-filter: var(--sp-bf); backdrop-filter: var(--sp-bf);
   border: 0; border-radius: var(--sp-r-card); box-shadow: var(--sp-ring), var(--sp-drop);
@@ -139,11 +143,16 @@ body.xp-home { background: var(--st-bg) var(--sp-wall) center / cover no-repeat 
 :root .studio-app .studio-hub-header, :root .studio-app .studio-hub-header.xp-menubar {
   position: sticky; top: calc(10px + env(safe-area-inset-top, 0px)); z-index: 50;
   width: min(1240px, calc(100% - 24px)); margin: calc(10px + env(safe-area-inset-top, 0px)) auto 0; min-height: 52px; padding: 7px 8px 7px 16px;
-  border-radius: var(--sp-r-pill); border: 0; background: var(--sp-glass); -webkit-backdrop-filter: var(--sp-bf); backdrop-filter: var(--sp-bf);
+  border-radius: var(--sp-r-pill); border: 0; background: var(--sp-glass); -webkit-backdrop-filter: var(--sp-bf-bar); backdrop-filter: var(--sp-bf-bar);
   box-shadow: var(--sp-ring), var(--sp-drop);
 }
 :root .studio-app.is-hub .studio-hub-header { padding-top: 7px; padding-left: 16px; padding-right: 8px; }
-:root .studio-app .studio-brand-mark { border-radius: 9px; background: linear-gradient(135deg, #f5f6fa, #9ea4b4 30%, #fdfdff 48%, #6e7382 62%, #d9dce6 80%, #8a90a0); color: #fff; box-shadow: inset 0 1px 0 rgba(255,255,255,.8), 0 2px 6px rgba(0,0,0,.2); }
+:root .studio-app .studio-brand-mark { width: 26px; height: 26px; flex: none; border-radius: 8px; color: #fff;
+  background: linear-gradient(#fff, #fff) 7.5px 7px / 11px 2.6px no-repeat, linear-gradient(#fff, #fff) 7.5px 11.7px / 7px 2.6px no-repeat, linear-gradient(#fff, #fff) 7.5px 16.4px / 11px 2.6px no-repeat, var(--brand-grad);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .45), 0 4px 12px -2px rgba(232, 38, 31, .55); }
+:root .studio-app .studio-brand-mark > * { display: none; }
+:root .studio-app .studio-brand-word { font-family: 'Studio Oswald', 'Oswald', var(--st-ui) !important; font-weight: 700; font-size: 17px; letter-spacing: .04em !important; display: inline-flex; align-items: baseline; gap: 6px; }
+:root .studio-app .studio-brand-word .studio-brand-app { font-family: var(--st-ui) !important; font-weight: 500; font-size: 11px; letter-spacing: .22em !important; color: var(--st-dim); }
 :root .studio-app .studio-brand-mark::after { display: none; }
 :root .studio-app .studio-brand, :root .studio-app .studio-brand-app { font-family: var(--st-ui) !important; letter-spacing: -.01em !important; }
 :root .studio-app .xp-menubar .studio-brand-app, :root .studio-app .studio-brand-app { color: var(--st-dim); font-weight: 400; }
@@ -156,8 +165,8 @@ body.xp-home { background: var(--st-bg) var(--sp-wall) center / cover no-repeat 
 :root .studio-app .studio-hub-footer { border: 0; justify-content: center; color: var(--st-faint); }
 
 /* ---------------------------------------------------------------- dock (glass pill) */
-:root .studio-app .xp-dock-shelf { border-radius: 32px; padding: 8px 10px; gap: 8px; border: 0; background: var(--sp-glass); -webkit-backdrop-filter: var(--sp-bf-strong); backdrop-filter: var(--sp-bf-strong); box-shadow: var(--sp-ring), var(--sp-drop); }
-:root .studio-app .xp-dock-item .xp-appicon { filter: drop-shadow(0 6px 10px rgba(0, 0, 0, .25)); }
+:root .studio-app .xp-dock-shelf { border-radius: 32px; padding: 8px 10px; gap: 8px; border: 0; background: var(--sp-glass); -webkit-backdrop-filter: var(--sp-bf-bar); backdrop-filter: var(--sp-bf-bar); box-shadow: var(--sp-ring), var(--sp-drop); }
+:root .studio-app .xp-dock-item .xp-appicon { filter: none; border-radius: 50%; box-shadow: 0 6px 12px -2px rgba(0, 0, 0, .35); }
 :root .studio-app .xp-dock-item.is-running::after { width: 5px; height: 5px; margin-left: -2.5px; bottom: -6px; background: var(--st-text); }
 :root .studio-app .xp-dock-item::before { border-radius: var(--sp-r-pill); background: var(--sp-glass-strong); -webkit-backdrop-filter: var(--sp-bf); backdrop-filter: var(--sp-bf); color: var(--st-text); box-shadow: var(--sp-ring); font-family: var(--st-ui); }
 :root .studio-app .xp-dock-sep { background: var(--st-line-2); }
@@ -205,7 +214,7 @@ body.xp-home { background: var(--st-bg) var(--sp-wall) center / cover no-repeat 
 :root .studio-app .img-tool.is-active { background: var(--sp-solid); color: var(--sp-on-solid); box-shadow: 0 4px 12px rgba(0, 0, 0, .22); }
 :root .studio-app .img-toolbar-sep { background: var(--st-line-2); }
 :root .studio-app .img-swatch { border-radius: 50%; border-color: transparent; }
-:root .studio-app .img-center { border-radius: var(--sp-r-card); overflow: hidden; box-shadow: var(--sp-ring), var(--sp-drop); background: var(--st-canvas-bg); -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); }
+:root .studio-app .img-center { border-radius: var(--sp-r-card); overflow: hidden; box-shadow: var(--sp-ring), var(--sp-drop); background: var(--st-canvas-bg); }
 :root .studio-app .img-tabs { background: var(--sp-glass); border: 0; -webkit-backdrop-filter: var(--sp-bf); backdrop-filter: var(--sp-bf); padding: 4px 6px 0; gap: 4px; height: 36px; }
 :root .studio-app .img-tab { border-radius: 14px 14px 0 0; border: 0 !important; }
 :root .studio-app .img-stage { background: transparent; }
@@ -274,17 +283,16 @@ body.xp-home .studio-hub-footer, body.xp-home .studio-hub-header .studio-switche
 .hm-hero { grid-area: hero; } .hm-studios { grid-area: studios; } .hm-continue { grid-area: cont; } .hm-create { grid-area: create; } .hm-device { grid-area: device; }
 .hm-card { --d: 8; position: relative; min-width: 0; display: flex; flex-direction: column; gap: 14px; padding: 20px; border-radius: 34px; isolation: isolate;
   background: linear-gradient(155deg, color-mix(in srgb, #fff 9%, transparent), transparent 42%), var(--sp-glass);
-  -webkit-backdrop-filter: blur(38px) saturate(1.9); backdrop-filter: blur(38px) saturate(1.9);
+  -webkit-backdrop-filter: var(--sp-bf); backdrop-filter: var(--sp-bf);
   box-shadow: var(--sp-ring), inset 0 1px 0 rgba(255, 255, 255, .28), 0 30px 70px -18px rgba(0, 0, 0, .45), 0 8px 20px -10px rgba(0, 0, 0, .3);
   translate: calc(var(--px) * var(--d) * -1px) calc(var(--py) * var(--d) * -1px);
   transition: translate .5s cubic-bezier(.2, .8, .2, 1), box-shadow .3s;
-  animation: hm-rise .7s cubic-bezier(.2, .85, .2, 1) both, hm-float 9s ease-in-out var(--fd, 0s) infinite; }
+  animation: hm-rise .6s cubic-bezier(.2, .85, .2, 1) both; }
 /* a soft specular sweep across the top of each pane of glass */
 .hm-card::before { content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: -1;
   background: radial-gradient(120% 60% at 20% -10%, rgba(255, 255, 255, .22), transparent 60%); }
-.hm-card:nth-child(2) { animation-delay: .06s, -2s; } .hm-card:nth-child(3) { animation-delay: .12s, -4s; } .hm-card:nth-child(4) { animation-delay: .18s, -6s; } .hm-card:nth-child(5) { animation-delay: .24s, -7.5s; }
+.hm-card:nth-child(2) { animation-delay: .05s; } .hm-card:nth-child(3) { animation-delay: .1s; } .hm-card:nth-child(4) { animation-delay: .15s; } .hm-card:nth-child(5) { animation-delay: .2s; }
 @keyframes hm-rise { from { opacity: 0; transform: translateY(26px) scale(.97); } }
-@keyframes hm-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
 .hm-card-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 28px; }
 .studio-app .hm-card-head h2 { font-family: var(--st-ui); font-size: 17px; font-weight: 650; letter-spacing: -.02em !important; }
 .hm-card-note { font-size: 12px; color: var(--st-dim); }
@@ -310,12 +318,12 @@ body.xp-home .studio-hub-footer, body.xp-home .studio-hub-header .studio-switche
   background: linear-gradient(165deg, color-mix(in srgb, var(--c1) 26%, transparent), color-mix(in srgb, var(--c2) 10%, transparent) 70%), var(--sp-chip);
   box-shadow: var(--sp-ring), inset 0 1px 0 rgba(255, 255, 255, .22);
   transition: transform .35s cubic-bezier(.2, .9, .2, 1.25), box-shadow .3s, opacity .25s; animation: hm-pop .6s cubic-bezier(.2, .9, .25, 1.15) both; animation-delay: calc(.15s + var(--i) * 45ms); }
-.hm-app::after { content: ''; position: absolute; width: 150px; height: 150px; right: -60px; bottom: -70px; border-radius: 50%; background: var(--c1); opacity: .28; filter: blur(34px); pointer-events: none; transition: opacity .3s; }
+.hm-app::after { content: ''; position: absolute; width: 190px; height: 190px; right: -90px; bottom: -100px; border-radius: 50%; background: radial-gradient(closest-side, var(--c1), transparent); opacity: .4; pointer-events: none; transition: opacity .3s; }
 @keyframes hm-pop { from { opacity: 0; transform: scale(.8) translateY(14px); } }
 .hm-app:hover, .hm-app:focus-visible { transform: translateY(-8px) scale(1.03); box-shadow: var(--sp-ring), inset 0 1px 0 rgba(255, 255, 255, .3), 0 24px 40px -14px color-mix(in srgb, var(--c2) 70%, #000); outline: none; }
 .hm-app:hover::after { opacity: .5; }
 .hm-app:active { transform: scale(.96); transition-duration: .1s; }
-.hm-icon { width: 62px; height: 62px; margin-bottom: 10px; border-radius: 50%; display: grid; place-items: center; filter: drop-shadow(0 10px 14px rgba(0, 0, 0, .3)); transition: transform .35s cubic-bezier(.2, .9, .2, 1.3); }
+.hm-icon { width: 62px; height: 62px; margin-bottom: 10px; border-radius: 50%; display: grid; place-items: center; box-shadow: 0 12px 18px -6px rgba(0, 0, 0, .45); transition: transform .35s cubic-bezier(.2, .9, .2, 1.3); }
 .hm-icon .xp-appicon { width: 100%; height: 100%; }
 .eyad-icon .eyad-icon-front { transition: transform .35s cubic-bezier(.2, .9, .2, 1.3); transform-origin: 50% 50%; }
 .hm-app:hover .hm-icon { transform: scale(1.08) rotate(-4deg); }
@@ -349,7 +357,7 @@ body.xp-home .hm-size-text span { font-size: 10.5px; color: var(--st-dim); white
 .hm-proj:hover { transform: translateY(-5px); }
 .hm-proj-media { position: relative; display: block; aspect-ratio: 4 / 3; border-radius: 18px; overflow: hidden; margin-bottom: 5px; background: var(--sp-chip); box-shadow: var(--sp-ring), 0 12px 24px -10px rgba(0, 0, 0, .45); }
 .hm-proj-media .hub-thumb, .hm-proj-media img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; border-radius: 0; margin: 0; aspect-ratio: auto; }
-.hm-proj-media .xp-appicon { position: absolute; left: 7px; bottom: 7px; width: 26px; height: 26px; filter: drop-shadow(0 3px 6px rgba(0, 0, 0, .4)); }
+.hm-proj-media .xp-appicon { position: absolute; left: 7px; bottom: 7px; width: 26px; height: 26px; }
 .hm-proj b { font-size: 12.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .hm-proj > span:last-child { font-size: 10.5px; color: var(--st-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .hm-proj:nth-child(n+4) { display: none; }
@@ -399,7 +407,7 @@ body.xp-home .xp-recent, body.xp-home .xp-now, body.xp-home .xp-quick { grid-col
 .sp-widget + .sp-widget { margin-top: -18px; }
 :root .studio-app .img-panel-toggle { flex: 1; justify-content: flex-start; }
 /* editors' empty states: a frosted sheet over the room */
-:root .studio-app :is(.vid-empty, .img-empty) { background: color-mix(in srgb, var(--st-bg) 35%, transparent); -webkit-backdrop-filter: blur(34px) saturate(1.5); backdrop-filter: blur(34px) saturate(1.5); }
+:root .studio-app :is(.vid-empty, .img-empty) { background: color-mix(in srgb, var(--st-bg) 82%, transparent); }
 :root .studio-app .vid-empty { inset: 64px 8px 8px 8px; border-radius: var(--sp-r-win); box-shadow: var(--sp-ring); }
 :root .studio-app .img-empty-title { font-family: var(--st-ui); font-weight: 650; letter-spacing: -.04em !important; }
 :root .studio-app .studio-section-title { font-family: var(--st-ui); font-size: 22px; font-weight: 650; letter-spacing: -.02em !important; }
@@ -407,7 +415,68 @@ body.xp-home .xp-recent, body.xp-home .xp-now, body.xp-home .xp-quick { grid-col
 :root .studio-app .cam-mode.is-active { color: #ffd166; }
 :root .studio-app .cam-message-card .studio-icon { color: var(--st-text); }
 body.xp-home .studio-hub-main { padding-top: 22px; }
-.hm-card:hover, .hm-card:focus-within { animation-play-state: running, paused; }
 .hm-app { text-align: left; }
 body.xp-home .hm-size-text b { color: var(--st-text); }
 :root .studio-app:not([data-theme="dark"]) .hm-title em { background-image: linear-gradient(100deg, #e2366b, #f0762e 35%, #1690a8 70%, #5a3fd6); }
+
+/* =====================================================================
+   v5 — performance + devices
+   Touch devices and small screens: no live blur behind big surfaces (it is the
+   main cost on phones); bars keep a light blur. Glass becomes denser instead.
+   ===================================================================== */
+@media (pointer: coarse), (max-width: 900px) {
+  :root .studio-app { --sp-bf: none; --sp-bf-strong: none; --sp-bf-bar: blur(18px) saturate(1.6); }
+  :root .studio-app[data-theme="dark"], :root .studio-app.cam-app, :root[data-studio-theme="dark"] .studio-app:not([data-theme="light"]) { --sp-glass: rgba(27, 27, 34, .8); --sp-glass-strong: rgba(22, 22, 28, .96); --st-panel: rgba(27, 27, 34, .84); }
+  :root .studio-app:not([data-theme="dark"]):not(.cam-app) { --sp-glass: rgba(255, 255, 255, .74); --sp-glass-strong: rgba(250, 250, 252, .97); --st-panel: rgba(255, 255, 255, .8); }
+  .hm-card { translate: none; }
+}
+/* phones: no zoom-on-focus, comfortable tap targets, no rubber-band selection of chrome */
+@media (pointer: coarse) {
+  :root .studio-app :is(input:not([type="range"]):not([type="checkbox"]):not([type="radio"]):not([type="color"]), select, textarea) { font-size: 16px; }
+  :root .studio-app :is(button, a, [role="button"], label) { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+}
+:root .studio-app { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+
+/* phone shell: one compact header, the dock becomes a tab bar that always fits */
+@media (max-width: 760px) {
+  :root .studio-app .studio-hub-header .studio-switcher { display: none; }
+  :root .studio-app .studio-hub-header, :root .studio-app .studio-hub-header.xp-menubar { top: calc(6px + env(safe-area-inset-top, 0px)); margin-top: calc(6px + env(safe-area-inset-top, 0px)); min-height: 48px; }
+  :root .studio-app .xp-dock { left: 8px; right: 8px; bottom: calc(6px + env(safe-area-inset-bottom, 0px)); transform: none; }
+  :root .studio-app .xp-dock-shelf { width: 100%; justify-content: space-between; align-items: center; gap: 0; padding: 7px 10px; border-radius: 26px; overflow: visible; }
+  :root .studio-app .xp-dock-item { width: clamp(30px, 9.4vw, 44px); height: clamp(30px, 9.4vw, 44px); flex: none; transform: none; margin: 0; }
+  :root .studio-app .xp-dock-item:active { transform: scale(.9); }
+  :root .studio-app .xp-dock-sep, :root .studio-app .xp-dock-item[data-app="settings"] { display: none; }
+  :root .studio-app .xp-dock-item.is-running::after { bottom: -5px; }
+  body.xp-has-dock .studio-hub-main { padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px)); }
+}
+/* the dock never sits on top of a dialog, sheet or tour */
+body:has(.studio-scrim, .studio-sheet, .xp-tour) .xp-dock { opacity: 0; pointer-events: none; }
+.xp-dock { transition: opacity .2s; }
+
+/* home brand lockup */
+.hm-brand { display: inline-flex; align-items: center; gap: 9px; }
+:root .studio-app .hm-brand .studio-brand-mark { width: 38px; height: 38px; border-radius: 12px; background: linear-gradient(#fff, #fff) 11px 10.5px / 16px 3.8px no-repeat, linear-gradient(#fff, #fff) 11px 17.1px / 10.2px 3.8px no-repeat, linear-gradient(#fff, #fff) 11px 23.7px / 16px 3.8px no-repeat, var(--brand-grad); }
+.hm-brand b { font: 700 26px/1 'Studio Oswald', 'Oswald', sans-serif; letter-spacing: .05em; }
+.hm-brand span { font: 500 12px/1 var(--st-ui); letter-spacing: .28em; color: var(--st-dim); }
+.hm-brand em { font: 700 11px/1 var(--st-ui); font-style: normal; padding: 4px 7px; border-radius: 999px; background: var(--brand); color: #fff; }
+.hm-greet { align-self: flex-start; background: none; padding: 0; font-size: 13px; font-weight: 500; }
+.hm-title em { background-image: linear-gradient(100deg, #ff6a4d, #ff3b2f 60%, #ff8a3d) !important; }
+:root .studio-app .hm-hero .studio-btn.is-primary { background: var(--brand-grad); color: #fff; box-shadow: 0 8px 20px -6px rgba(232, 38, 31, .6); }
+/* 3D panels: never wider than the window */
+:root .studio-app.t3-app .img-panels.t3-panels { max-width: 100%; box-sizing: border-box; padding-right: 0; }
+.hm-board { align-content: safe center; }
+:root .studio-app .studio-brand-mark { border: 0; outline: 0; }
+@media (pointer: coarse), (max-width: 900px) {
+  :root .studio-app :is(.studio-dialog, .studio-sheet, .studio-menu) { background: #17171d; }
+  :root .studio-app:not([data-theme="dark"]):not(.cam-app) :is(.studio-dialog, .studio-sheet, .studio-menu) { background: #f6f6f8; }
+}
+/* short screens (phone landscape): a slim dock, compact header */
+@media (max-height: 520px) {
+  :root .studio-app .xp-dock { bottom: calc(4px + env(safe-area-inset-bottom, 0px)); }
+  :root .studio-app .xp-dock-shelf { padding: 4px 8px; gap: 6px; border-radius: 20px; align-items: center; }
+  :root .studio-app .xp-dock-item { width: 32px; height: 32px; transform: none; margin: 0; }
+  :root .studio-app .xp-dock-sep { margin: 4px 1px; }
+  :root .studio-app .xp-wcs { display: none; }
+  body.xp-has-dock .studio-hub-main { padding-bottom: calc(58px + env(safe-area-inset-bottom, 0px)); }
+}
+@media (max-width: 1000px) { :root .studio-app .studio-hub-header .studio-switcher { display: none; } }

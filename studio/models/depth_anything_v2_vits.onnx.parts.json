@@ -1,0 +1,10 @@
+{
+ "file": "depth_anything_v2_vits.onnx",
+ "parts": [
+  "depth_anything_v2_vits.onnx.part1",
+  "depth_anything_v2_vits.onnx.part2"
+ ],
+ "bytes": 28513516,
+ "sha256": "3e631d9c223e935c639f00fcf472618b26451324013f140ad5c01a19e8b53b0a",
+ "note": "Depth Anything V2 Small (Apache-2.0), dynamic-shape ONNX from github.com/fabio-sim/Depth-Anything-ONNX v2.0.0; MatMul weights quantised to uint8, other weights stored as float16 (computation stays float32)"
+}

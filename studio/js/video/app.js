@@ -1,8 +1,8 @@
 // EYAD VIDEO — application controller & layout.
 import { h, clear, timecode, isTyping, modKey, uid, formatBytes } from '../core/dom.js';
 import { icon } from '../core/icons.js';
-import { toast, dialog, confirmDialog, createMenubar, menuSheet, openSheet, closeSheet, commandPalette, saveIndicator, bindKeys, iconButton, isDialogOpen, progressDialog, alertDialog } from '../core/ui.js';
-import { getSettings, onSettings } from '../core/settings.js';
+import { toast, dialog, confirmDialog, createMenubar, menuSheet, contextMenu, closeSheet, commandPalette, saveIndicator, bindKeys, iconButton, isDialogOpen, progressDialog, alertDialog } from '../core/ui.js';
+import { getSettings, onSettings, perfLevel } from '../core/settings.js';
 import { bootStudio, brandMark, appSwitcher, backToPortfolio, ROUTES, installButton, themeToggle, goPortfolio } from '../core/shell.js';
 import { History } from '../core/history.js';
 import { pickFiles, ACCEPT, sanitizeFilename } from '../core/files.js';
@@ -15,7 +15,6 @@ import { MediaBin, SourceMonitor, EffectsPanel, AudioMixer, PropertiesPanel } fr
 import { buildMenus } from './menus.js';
 import * as ops from './ops.js';
 import * as io from './io.js';
-import { exportFrame } from './export.js';
 import { linkMediaDialog, linkLocalFiles, canLinkLocal, reconnectLocal } from './link.js';
 import { PROPS, valueAt } from './anim.js';
 import { onGenFontLoad } from './gen.js';
@@ -27,7 +26,12 @@ export class VideoApp {
     this.selection = new Set();
     this.clipboard = null;
     this.sourceMediaId = null;
-    this.mobile = matchMedia('(max-width: 760px) and (orientation: portrait), (max-width: 540px)');
+    // phone portrait / phone landscape: both use the touch layout (dock + sheets); see video.css for the same queries
+    this.mqPhone = matchMedia('(max-width: 760px) and (orientation: portrait), (max-width: 540px)');
+    this.mqLand = matchMedia('(orientation: landscape) and (max-height: 540px) and (min-width: 541px)');
+    const self = this;
+    this.mobile = { get matches() { return self.mqPhone.matches || self.mqLand.matches; } };
+    this.sheetKey = null; this.sheetBig = false;
     this.media = new MediaStore((m) => { this.bin.refresh(); this.timeline.refresh(); this.props.refresh(true); void m; });
     this.history = new History({ limit: 200, onChange: (kind) => this.onHistory(kind) });
     this.media.reconnect = (m) => reconnectLocal(this, m);
@@ -48,6 +52,9 @@ export class VideoApp {
     this.undoBtn = iconButton('undo', 'Undo', () => this.undo(), { shortcut: 'Mod+Z' });
     this.redoBtn = iconButton('redo', 'Redo', () => this.redo(), { shortcut: 'Mod+Shift+Z' });
     this.titleEl = h('button', { class: 'img-m-title', type: 'button', onclick: () => io.renameProject(this) });
+    this.leftToggle = iconButton('film', 'Media and effects pane', () => this.togglePane('left'), { cls: 'vid-pane-toggle' });
+    this.rightToggle = iconButton('sliders', 'Inspector pane', () => this.togglePane('right'), { cls: 'vid-pane-toggle' });
+    this.exportBtn = h('button', { class: 'studio-btn is-small is-primary vid-export', type: 'button', title: 'Export video', 'aria-label': 'Export video', onclick: () => this.exportDialog() }, icon('download', 14), h('span', { text: 'Export' }));
     const top = h('header', { class: 'img-top vid-top' },
       h('div', { class: 'img-top-left' },
         h('a', { class: 'studio-icon-btn img-m-only', href: ROUTES.home, 'aria-label': 'Back to Studio' }, icon('chevronLeft', 20)),
@@ -55,15 +62,14 @@ export class VideoApp {
         h('div', { class: 'img-d-only img-menubar-wrap' }, this.menubarEl),
         h('div', { class: 'img-m-only img-m-titlewrap' }, this.titleEl)),
       h('div', { class: 'img-top-right' },
-        h('div', { class: 'img-d-only' }, this.saveInd.el),
-        iconButton('film', 'Media & effects', () => { this.root.classList.toggle('is-left-open'); this.onLayout && this.onLayout(); }, { cls: 'img-land-only' }),
-        iconButton('sliders', 'Inspector', () => { this.root.classList.toggle('is-right-open'); this.onLayout && this.onLayout(); }, { cls: 'img-land-only' }),
+        h('div', { class: 'img-d-only vid-save-ind' }, this.saveInd.el),
+        this.leftToggle, this.rightToggle,
         this.undoBtn, this.redoBtn,
-        iconButton('save', 'Save', () => io.save(this), { shortcut: 'Mod+S', cls: 'img-m-only' }),
-        iconButton('dots', 'Menu', () => menuSheet('EYAD VIDEO', [...this.menus, { label: '← Back to portfolio', action: () => goPortfolio() }]), { cls: 'img-m-only' }),
+        this.exportBtn,
+        iconButton('dots', 'Menu', () => menuSheet('EYAD Video', [{ label: 'Save', action: () => io.save(this), enabled: () => !!this.project }, ...this.menus, { label: 'Back to portfolio', action: () => goPortfolio() }]), { cls: 'img-m-only' }),
         h('div', { class: 'img-d-only img-top-apps' }, appSwitcher('video')),
-        iconButton('command', 'Command palette', () => this.palette.show(), { shortcut: 'Mod+K', cls: 'img-d-only' }),
-        h('div', { class: 'img-d-only' }, installButton()),
+        iconButton('command', 'Command palette', () => this.palette.show(), { shortcut: 'Mod+K', cls: 'img-d-only vid-palette-btn' }),
+        h('div', { class: 'img-d-only vid-install' }, installButton()),
         h('div', { class: 'img-d-only img-theme-wrap' }, themeToggle()),
         h('div', { class: 'img-d-only' }, backToPortfolio({ compact: true }))));
 
@@ -80,7 +86,8 @@ export class VideoApp {
 
     this.leftTabs = this.tabs([['media', 'Media', this.bin.el], ['effects', 'Effects', this.effects.el], ['audio', 'Audio', this.mixer.el]], 'media', (k) => { if (k === 'audio') this.mixer.refresh(); });
     const left = h('section', { class: 'vid-left vid-panel', 'aria-label': 'Media, effects and audio' }, this.leftTabs.el);
-    const right = h('section', { class: 'vid-right vid-panel', 'aria-label': 'Properties' }, h('div', { class: 'vid-panel-head' }, h('span', { class: 'studio-label', text: 'Properties' })), h('div', { class: 'vid-panel-body' }, this.props.el));
+    this.propsHome = h('div', { class: 'vid-panel-body' }, this.props.el);
+    const right = h('section', { class: 'vid-right vid-panel', 'aria-label': 'Inspector' }, h('div', { class: 'vid-panel-head' }, h('span', { class: 'studio-label', text: 'Inspector' })), this.propsHome);
 
     // program monitor
     this.progCanvas = h('canvas', { class: 'vid-program-canvas', 'aria-label': 'Program monitor' });
@@ -98,13 +105,16 @@ export class VideoApp {
     const tl = h('section', { class: 'vid-timeline vid-panel' }, this.timeline.el);
     this.main = h('div', { class: 'vid-main' }, left, center, right, this.resizer, tl);
     this.dock = this.buildDock();
+    this.sheetEl = this.buildSheet();
     this.emptyEl = this.buildEmpty();
     clear(this.root);
-    this.root.append(top, this.main, this.dock, this.emptyEl);
+    this.root.append(top, this.emptyEl, this.main, this.dock, this.sheetEl);
     this.bindResizer();
     this.bindPanelEdges(left, right);
+    this.restorePanes();
 
-    new ResizeObserver(() => this.layoutMonitor()).observe(this.progScreen);
+    let lraf = 0;
+    new ResizeObserver(() => { if (!lraf) lraf = requestAnimationFrame(() => { lraf = 0; this.layoutMonitor(); this.positionSheet(); }); }).observe(this.progScreen);
     this.engine.on((kind) => this.onEngine(kind));
 
     this.menus = buildMenus(this);
@@ -112,16 +122,19 @@ export class VideoApp {
     this.palette = commandPalette(() => this.commands());
     this.bindKeys();
     this.bindDrop();
+    this.bindViewport();
     addEventListener('beforeunload', (e) => {
       if (this.project && this.history.dirty && getSettings().warnOnLeave) { io.autosaveNow(this); e.preventDefault(); e.returnValue = ''; }
     });
     document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') io.autosaveNow(this); });
-    this.mobile.addEventListener?.('change', () => { closeSheet(); this.applyMobile(); });
-    onSettings(() => { this.timeline.refresh(); this.engine.invalidate(); });
+    for (const mq of [this.mqPhone, this.mqLand]) mq.addEventListener?.('change', () => { closeSheet(); this.closeSheet(true); this.applyMobile(); });
+    onSettings(() => { this.timeline.measure(); this.timeline.refresh(); this.layoutMonitor(); });
     this.applyMobile();
+    this.showStart(!/[?&](project|new|handoff)=/.test(location.search));
     io.startAutosave(this);
     io.boot(this);
   }
+
 
   tabs(list, initial, onSwitch) {
     const bar = h('div', { class: 'vid-tabs', role: 'tablist' });
@@ -154,12 +167,14 @@ export class VideoApp {
     this.volIn = h('input', { class: 'studio-range vid-vol', type: 'range', min: 0, max: 1, step: 0.01, value: 1, 'aria-label': 'Monitor volume' });
     this.volIn.addEventListener('input', () => e.setVolume(Number(this.volIn.value)));
     const b = (ic, label, fn, key) => h('button', { class: 'studio-icon-btn', type: 'button', 'aria-label': label, title: key ? `${label} (${key})` : label, onclick: fn }, icon(ic, 17));
-    this.scrub = h('div', { class: 'vid-scrub' }, this.scrubFill = h('div', { class: 'vid-scrub-fill' }), this.scrubHead = h('div', { class: 'vid-scrub-head' }));
-    let drag = false;
-    const seek = (ev) => { const r = this.scrub.getBoundingClientRect(); e.pause(); e.seek((ev.clientX - r.left) / r.width * seqDuration(this.seq)); };
-    this.scrub.addEventListener('pointerdown', (ev) => { drag = true; this.scrub.setPointerCapture(ev.pointerId); seek(ev); });
+    this.scrub = h('div', { class: 'vid-scrub', role: 'slider', 'aria-label': 'Scrub' }, this.scrubFill = h('div', { class: 'vid-scrub-fill' }), this.scrubHead = h('div', { class: 'vid-scrub-head' }));
+    let drag = null;
+    const seek = (ev) => { if (!this.seq) return; e.seek(Math.max(0, Math.min(1, (ev.clientX - drag.left) / drag.width)) * seqDuration(this.seq)); };
+    this.scrub.addEventListener('pointerdown', (ev) => { if (!this.seq) return; const r = this.scrub.getBoundingClientRect(); drag = { left: r.left, width: Math.max(1, r.width) }; this.scrub.setPointerCapture(ev.pointerId); e.pause(); seek(ev); });
     this.scrub.addEventListener('pointermove', (ev) => { if (drag) seek(ev); });
-    this.scrub.addEventListener('pointerup', () => { drag = false; });
+    const endScrub = () => { drag = null; };
+    this.scrub.addEventListener('pointerup', endScrub); this.scrub.addEventListener('pointercancel', endScrub);
+    this.moreBtn = h('button', { class: 'studio-icon-btn is-small vid-more', type: 'button', 'aria-label': 'More monitor options', title: 'More', onclick: (ev) => this.transportMenu(ev) }, icon('dots', 16));
     return h('div', { class: 'vid-transport' },
       this.scrub,
       h('div', { class: 'vid-transport-row' },
@@ -171,56 +186,243 @@ export class VideoApp {
           b('stepFwd', 'Next frame', () => e.step(1), '→'),
           b('skipEnd', 'Go to end', () => e.seek(seqDuration(this.seq)), 'End')),
         h('div', { class: 'vid-transport-r' },
-          h('button', { class: 'studio-btn is-small is-ghost vid-io', type: 'button', text: 'In', title: 'Mark In (I)', onclick: () => ops.setIn(this) }),
+          h('button', { class: 'studio-btn is-small is-ghost vid-io', type: 'button', text: 'In', title: 'Mark in (I)', onclick: () => ops.setIn(this) }),
           h('button', { class: 'studio-btn is-small is-ghost vid-io', type: 'button', text: 'Out', title: 'Mark Out (O)', onclick: () => ops.setOut(this) }),
           this.zoomSel = this.buildZoomSel(),
           this.safeBtn = h('button', { class: 'studio-icon-btn is-small', type: 'button', 'aria-label': 'Safe margins', title: 'Safe margins (Title/Action)', 'aria-pressed': 'false', onclick: () => this.toggleSafe() }, icon('scope', 15)),
           this.meterEl = h('div', { class: 'vid-meter', title: 'Audio levels (L / R)', 'aria-hidden': 'true' }, h('span', { class: 'vid-meter-l' }), h('span', { class: 'vid-meter-r' })),
           this.loopBtn, this.rateSel, this.muteBtn, this.volIn,
-          b('image', 'Export frame', () => exportFrame(this)),
-          b('fullscreen', 'Fullscreen monitor', () => this.fullscreenMonitor()))));
+          this.frameBtn = b('image', 'Export frame', () => import('./export.js').then((m) => m.exportFrame(this))),
+          b('fullscreen', 'Fullscreen monitor', () => this.fullscreenMonitor()),
+          this.moreBtn)));
+
+  }
+
+  transportMenu(e) {
+    const en = this.engine, r = e.currentTarget.getBoundingClientRect();
+    contextMenu(r.left, r.top - 8, [
+      { label: 'Mark in', shortcut: 'I', action: () => ops.setIn(this) },
+      { label: 'Mark out', shortcut: 'O', action: () => ops.setOut(this) },
+      { label: 'Clear in / out', action: () => ops.clearInOut(this) },
+      { separator: true },
+      { label: 'Loop playback', checked: () => en.loop, action: () => this.loopBtn.click() },
+      { label: 'Mute monitor', checked: () => en.muted, action: () => this.muteBtn.click() },
+      { label: 'Playback speed', submenu: ['0.25', '0.5', '1', '1.5', '2'].map((v) => ({ label: v + '×', checked: () => String(en.rate) === v, action: () => { this.rateSel.value = v; en.rate = Number(v); } })) },
+      { separator: true },
+      { label: 'Monitor zoom', submenu: [['fit', 'Fit'], [0.5, '50%'], [1, '100%'], [2, '200%']].map(([z, l]) => ({ label: l, checked: () => this.monZoom === z, action: () => this.setMonitorZoom(z) })) },
+      { label: 'Safe margins', checked: () => !this.safeEl.hidden, action: () => this.toggleSafe() },
+      { label: 'Export this frame (PNG)', action: () => import('./export.js').then((m) => m.exportFrame(this)) },
+      { label: 'Fullscreen monitor', action: () => this.fullscreenMonitor() },
+    ]);
   }
 
   buildDock() {
-    const act = (ic, label, fn) => h('button', { class: 'img-dock-panel', type: 'button', onclick: fn }, icon(ic, 18), h('span', { text: label }));
-    return h('div', { class: 'vid-dock img-m-only' },
-      act('film', 'Media', () => this.sheet('media')),
-      act('plus', 'Import', () => this.importDialog()),
-      act('split', 'Split', () => ops.splitAtPlayhead(this)),
-      act('trash', 'Delete', () => ops.deleteSelected(this)),
-      act('fx', 'Effects', () => this.sheet('effects')),
-      act('sliders', 'Props', () => this.sheet('props')),
-      act('volume', 'Audio', () => this.sheet('audio')));
+    const act = (id, ic, label, fn) => h('button', { class: 'vid-dock-btn', type: 'button', dataset: { act: id }, 'aria-label': label, onclick: fn }, icon(ic, 20), h('span', { text: label }));
+    const withClip = (fn) => () => { if (!this.project) return; fn(); };
+    this.dockBtns = {};
+    const items = [
+      act('media', 'film', 'Media', () => this.toggleSheet('media')),
+      act('split', 'split', 'Split', withClip(() => ops.splitAtPlayhead(this))),
+      act('delete', 'trash', 'Delete', withClip(() => ops.deleteSelected(this))),
+      act('text', 'title', 'Text', () => this.toggleSheet('effects', 'gen')),
+      act('looks', 'sparkle', 'Looks', () => this.toggleSheet('effects', 'looks')),
+      act('effects', 'fx', 'Effects', () => this.toggleSheet('effects', 'effects')),
+      act('transitions', 'transition', 'Transitions', () => this.toggleSheet('effects', 'transitions')),
+      act('props', 'sliders', 'Props', () => this.toggleSheet('props')),
+      act('audio', 'volume', 'Audio', () => this.toggleSheet('audio')),
+      act('speed', 'clock', 'Speed', withClip(() => ops.speedDialog(this))),
+      act('duplicate', 'duplicate', 'Duplicate', withClip(() => ops.duplicateSelected(this))),
+      act('captions', 'captions', 'Captions', () => import('./captions.js').then((m) => m.importCaptions(this))),
+      act('animate', 'keyframe', 'Animate', () => this.toggleSheet('effects', 'presets')),
+    ];
+    for (const b of items) this.dockBtns[b.dataset.act] = b;
+    return h('nav', { class: 'vid-dock', 'aria-label': 'Editing tools' }, h('div', { class: 'vid-dock-row' }, items));
   }
 
-  sheet(which) {
-    const map = { media: [this.bin.el, 'Media'], effects: [this.effects.el, 'Effects'], props: [this.props.el, 'Properties'], audio: [this.mixer.el, 'Audio mixer'] };
-    const [el, title] = map[which];
-    const home = el.parentElement;
+  // ------------------------------------------------------------ phone sheets
+  /** Phones: panels open as a sheet over the timeline only — the monitor, transport and tool dock stay usable. */
+  buildSheet() {
+    this.sheetTitle = h('div', { class: 'studio-sheet-title' });
+    this.sheetBody = h('div', { class: 'studio-sheet-body vid-sheet-body' });
+    const handle = h('div', { class: 'vid-sheet-grip', role: 'button', 'aria-label': 'Drag to resize or close' }, h('div', { class: 'studio-sheet-handle' }));
+    const head = h('div', { class: 'studio-sheet-head' }, this.sheetTitle,
+      h('button', { class: 'studio-icon-btn vid-sheet-max', type: 'button', 'aria-label': 'Expand', title: 'Expand / shrink', onclick: () => this.expandSheet() }, icon('chevronUp', 16)),
+      h('button', { class: 'studio-icon-btn', type: 'button', 'aria-label': 'Close', onclick: () => this.closeSheet() }, icon('close', 16)));
+    const el = h('section', { class: 'studio-sheet vid-sheet', role: 'dialog', hidden: true }, handle, head, this.sheetBody);
+    // drag the grip / header: down closes (or shrinks), up expands
+    let st = null;
+    const down = (e) => { if (e.target.closest('button')) return; st = { y: e.clientY, dy: 0 }; e.currentTarget.setPointerCapture(e.pointerId); el.style.transition = 'none'; };
+    const move = (e) => { if (!st) return; st.dy = e.clientY - st.y; el.style.transform = `translateY(${Math.max(this.sheetBig ? 0 : -24, st.dy)}px)`; };
+    const up = () => {
+      if (!st) return; const dy = st.dy; st = null; el.style.transition = ''; el.style.transform = '';
+      if (dy > 70) { if (this.sheetBig) this.expandSheet(false); else this.closeSheet(); } else if (dy < -40) this.expandSheet(true);
+    };
+    for (const t of [handle, head]) { t.addEventListener('pointerdown', down); t.addEventListener('pointermove', move); t.addEventListener('pointerup', up); t.addEventListener('pointercancel', up); }
+    return el;
+  }
+  sheetMap() { return { media: [this.bin.el, 'Media'], effects: [this.effects.el, 'Effects and titles'], props: [this.props.el, 'Inspector'], audio: [this.mixer.el, 'Audio mixer'] }; }
+  toggleSheet(which, bin) {
+    if (this.sheetKey === which && (!bin || this.effects.cat === bin)) { this.closeSheet(); return; }
+    this.sheet(which, bin);
+  }
+  sheet(which, bin) {
+    const entry = this.sheetMap()[which]; if (!entry) return;
+    if (!this.mobile.matches) { // desktop / tablet: the same thing lives in a pane
+      if (which === 'props') { this.setPane('right', true); this.props.refresh(true); } else { this.setPane('left', true); this.leftTabs.show(which); }
+      if (which === 'effects' && bin) this.effects.open(bin);
+      return;
+    }
+    if (!this.project && which !== 'media') { toast('Start a project first.', { timeout: 1400 }); return; }
+    const [el, title] = entry;
+    if (this.sheetKey !== which) {
+      this.closeSheet(true);
+      this.sheetHome = el.parentElement;
+      this.sheetBody.appendChild(el);
+      this.sheetKey = which;
+    }
     if (which === 'audio') this.mixer.refresh();
     if (which === 'props') this.props.refresh(true);
-    openSheet({ title, content: el, onClose: () => { if (home) home.appendChild(el); } });
+    if (which === 'effects' && bin) this.effects.open(bin);
+    this.sheetTitle.textContent = which === 'effects' ? ({ gen: 'Text and titles', looks: 'Looks', transitions: 'Transitions', presets: 'Animate', effects: 'Effects' }[this.effects.cat] || title) : title;
+    this.sheetEl.setAttribute('aria-label', title);
+    this.sheetEl.hidden = false;
+    this.positionSheet();
+    this.root.classList.add('is-sheet');
+    requestAnimationFrame(() => this.sheetEl.classList.add('is-in'));
+    this.markDock();
+  }
+  closeSheet(now = false) {
+    if (!this.sheetKey) return;
+    const entry = this.sheetMap()[this.sheetKey];
+    if (this.sheetEl.contains(document.activeElement)) document.activeElement.blur();
+    if (entry && this.sheetHome) this.sheetHome.appendChild(entry[0]);
+    this.sheetKey = null; this.sheetHome = null; this.sheetBig = false;
+    this.sheetEl.classList.remove('is-in', 'is-big');
+    this.root.classList.remove('is-sheet');
+    clearTimeout(this._sheetT);
+    if (now) this.sheetEl.hidden = true; else this._sheetT = setTimeout(() => { if (!this.sheetKey) this.sheetEl.hidden = true; }, 240);
+    this.markDock();
+    this.props.refresh(true);
+  }
+  expandSheet(on = !this.sheetBig) { this.sheetBig = !!on; this.sheetEl.classList.toggle('is-big', this.sheetBig); this.positionSheet(); }
+  markDock() {
+    const cat = this.sheetKey === 'effects' ? ({ gen: 'text', looks: 'looks', film: 'looks', transitions: 'transitions', presets: 'animate', textstyles: 'text' }[this.effects.cat] || 'effects') : this.sheetKey;
+    for (const [k, b] of Object.entries(this.dockBtns)) b.classList.toggle('is-active', k === cat);
+  }
+  /** The sheet sits exactly over the timeline: below the transport (portrait) or beside the monitor (landscape). */
+  positionSheet() {
+    if (!this.sheetKey || !this.mobile.matches) return;
+    const st = this.sheetEl.style, px = (v) => Math.max(0, Math.round(v)) + 'px';
+    const top = this.root.querySelector('.vid-top').getBoundingClientRect();
+    const c = this.main.querySelector('.vid-center').getBoundingClientRect(), d = this.dock.getBoundingClientRect();
+    if (this.mqLand.matches) {
+      st.left = px((this.sheetBig ? c.left : c.right + 6)); st.top = px(top.bottom + 6); st.right = px(innerWidth - d.left + 6); st.bottom = px(innerHeight - d.bottom);
+    } else {
+      st.left = px(c.left); st.right = px(innerWidth - c.right); st.top = px((this.sheetBig ? top.bottom : c.bottom) + 6); st.bottom = px(innerHeight - d.top + 6);
+    }
   }
 
+  /** Phones: keep the focused field above the on-screen keyboard. */
+  bindViewport() {
+    const vv = window.visualViewport; if (!vv) return;
+    let raf = 0;
+    const on = () => {
+      if (raf) return;
+      raf = requestAnimationFrame(() => {
+        raf = 0;
+        const kb = Math.max(0, Math.round(innerHeight - vv.height - vv.offsetTop));
+        const open = kb > 120 && this.mobile.matches;
+        this.root.style.setProperty('--vid-kb', (open ? kb : 0) + 'px');
+        if (open !== this.root.classList.contains('is-kbd')) {
+          this.root.classList.toggle('is-kbd', open);
+          const a = document.activeElement;
+          if (open && a && this.sheetEl.contains(a)) setTimeout(() => a.scrollIntoView({ block: 'center' }), 60);
+        }
+      });
+    };
+    vv.addEventListener('resize', on); vv.addEventListener('scroll', on);
+  }
+
+  // ------------------------------------------------------------ start screen
   buildEmpty() {
-    return h('div', { class: 'vid-empty' },
-      h('div', { class: 'img-empty-inner' },
-        h('p', { class: 'studio-label', text: 'EYAD VIDEO' }),
-        h('h1', { class: 'img-empty-title', text: 'Cut something.' }),
-        h('div', { class: 'img-empty-actions' },
-          h('button', { class: 'studio-btn is-primary', type: 'button', onclick: () => io.newProject(this) }, icon('plus', 16), 'New project'),
-          h('button', { class: 'studio-btn', type: 'button', onclick: () => io.openDialog(this) }, icon('folder', 16), 'Open .eyad / .prproj'),
-          h('button', { class: 'studio-btn', type: 'button', onclick: async () => { await io.newProject(this, { quiet: true }); this.importDialog(); } }, icon('upload', 16), 'Import media'),
-          h('button', { class: 'studio-btn', type: 'button', onclick: () => import('./captions.js').then((m) => m.importCaptions(this)) }, icon('captions', 16), 'Import SRT / VTT'),
-          h('a', { class: 'studio-btn is-ghost', href: ROUTES.projects }, icon('folder', 16), 'Projects')),
-        h('p', { class: 'studio-dim studio-small img-empty-hint', text: 'Drop MP4, WebM, MOV, MP3, WAV, images, an .eyad project or a Premiere .prproj anywhere. Nothing is uploaded.' })));
+    const tile = (cls, ic, title, sub, fn) => h('button', { class: 'vid-start-tile ' + cls, type: 'button', onclick: fn }, h('span', { class: 'vid-start-ic' }, icon(ic, 20)), h('span', { class: 'vid-start-tx' }, h('b', { text: title }), h('small', { text: sub })));
+    this.recentEl = h('div', { class: 'vid-start-recent' });
+    return h('div', { class: 'vid-empty vid-start' },
+      h('div', { class: 'img-empty-inner vid-start-card' },
+        h('div', { class: 'vid-start-head' },
+          h('p', { class: 'studio-label', text: 'EYAD Video' }),
+          h('h1', { class: 'img-empty-title vid-start-title', text: 'Cut something.' }),
+          h('p', { class: 'studio-dim vid-start-sub', text: 'A timeline editor that runs on this device. Nothing is uploaded.' })),
+        h('div', { class: 'img-empty-actions vid-start-actions' },
+          tile('is-primary', 'plus', 'New project', 'Pick a frame size and start', () => io.newProject(this)),
+          tile('', 'upload', 'Import media', 'Video, audio or photos', async () => { await io.newProject(this, { quiet: true }); if (this.project) this.importDialog(); }),
+          tile('', 'folder', 'Open .eyad / .prproj', 'A saved or Premiere project', () => io.openDialog(this)),
+          tile('', 'captions', 'Import SRT / VTT', 'Subtitles become caption clips', () => import('./captions.js').then((m) => m.importCaptions(this)))),
+        h('div', { class: 'vid-start-recent-wrap' },
+          h('div', { class: 'vid-start-recent-head' }, h('span', { class: 'studio-label', text: 'Recent projects' }), h('a', { class: 'studio-btn is-small is-ghost', href: ROUTES.projects }, icon('folder', 14), 'Projects')),
+          this.recentEl),
+        h('p', { class: 'studio-dim studio-small img-empty-hint vid-start-hint', text: 'You can also drop MP4, WebM, MOV, MP3, WAV, images, an .eyad project or a Premiere .prproj anywhere on this page.' })));
+  }
+
+  /** Start screen on / off. While it is on, the editor behind it is not rendered at all. */
+  showStart(on) {
+    this.emptyEl.hidden = !on;
+    this.root.classList.toggle('is-start', !!on);
+    if (on) { this.closeSheet(true); this.loadRecent(); } else if (this._recentUrls) { this._recentUrls.forEach((u) => URL.revokeObjectURL(u)); this._recentUrls = null; }
+    this.exportBtn.disabled = !!on;
+  }
+  async loadRecent() {
+    const el = this.recentEl; if (!el) return;
+    let list = [];
+    try { const { listProjects } = await import('../core/db.js'); list = (await listProjects()).filter((p) => p.kind === 'video').slice(0, 6); } catch (e) { list = []; }
+    if (this.emptyEl.hidden) return;
+    if (this._recentUrls) this._recentUrls.forEach((u) => URL.revokeObjectURL(u));
+    this._recentUrls = [];
+    clear(el);
+    if (!list.length) { el.appendChild(h('p', { class: 'studio-faint studio-small vid-start-none', text: 'Projects you save appear here.' })); return; }
+    const fmt = (d) => { const m = Math.floor((d || 0) / 60), s = Math.round((d || 0) % 60); return m + ':' + String(s).padStart(2, '0'); };
+    for (const p of list) {
+      const th = h('span', { class: 'vid-start-thumb' });
+      if (p.thumb instanceof Blob) { const u = URL.createObjectURL(p.thumb); this._recentUrls.push(u); th.style.backgroundImage = `url("${u}")`; } else th.appendChild(icon('film', 18));
+      el.appendChild(h('button', { class: 'vid-start-proj', type: 'button', title: p.name, onclick: () => io.openProject(this, p.id) }, th,
+        h('span', { class: 'vid-start-tx' }, h('b', { text: p.name }), h('small', { text: [p.width && p.height ? `${p.width} × ${p.height}` : '', fmt(p.duration)].filter(Boolean).join(' · ') }))));
+    }
   }
 
   applyMobile() {
-    this.root.classList.toggle('is-mobile', this.mobile.matches);
-    if (this.mobile.matches) { this.monitorTabs.show('program'); }
+    const phone = this.mqPhone.matches, land = this.mqLand.matches;
+    this.root.classList.toggle('is-mobile', phone || land);
+    this.root.classList.toggle('is-land', land);
+    if (phone || land) { this.monitorTabs.show('program'); }
+    this.timeline.measure();
     this.layoutMonitor();
+    if (this.project) { this.timeline.refresh(); requestAnimationFrame(() => { this.timeline.measure(); this.timeline.refresh(); this.layoutMonitor(); }); }
   }
+
+  // ------------------------------------------------------------ side panes (desktop / tablet)
+  restorePanes() {
+    let st = {};
+    try { st = JSON.parse(localStorage.getItem('eyad-studio:video:panes') || '{}') || {}; } catch (e) { st = {}; }
+    this.panes = { left: st.left !== false, right: st.right !== false };
+    this.applyPanes();
+  }
+  applyPanes() {
+    this.root.dataset.left = this.panes.left ? 'open' : 'closed';
+    this.root.dataset.right = this.panes.right ? 'open' : 'closed';
+    this.leftToggle.setAttribute('aria-pressed', String(this.panes.left));
+    this.rightToggle.setAttribute('aria-pressed', String(this.panes.right));
+  }
+  setPane(side, open) {
+    if (this.panes[side] === open) return;
+    this.panes[side] = open;
+    this.applyPanes();
+    try { localStorage.setItem('eyad-studio:video:panes', JSON.stringify(this.panes)); } catch (e) { /* ignore */ }
+    this.timeline.measure(); this.layoutMonitor(); this.timeline.refresh();
+  }
+  togglePane(side) { this.setPane(side, !this.panes[side]); }
+
+  exportDialog() { if (!this.project) return; import('./export.js').then((m) => m.exportVideoDialog(this)); }
+
 
   /** Drag the inner edges of the side panels to resize them (saved in this browser). */
   bindPanelEdges(left, right) {
@@ -357,13 +559,18 @@ export class VideoApp {
 
   layoutMonitor() {
     const s = this.seq; if (!s) return;
+    const ar = (s.width / s.height).toFixed(4);
+    if (ar !== this._ar) { this._ar = ar; this.root.style.setProperty('--vid-ar', ar); }
     const r = this.progScreen.getBoundingClientRect();
     if (r.width < 2 || r.height < 2) return;
     const k = this.monZoom === 'fit' ? Math.min(r.width / s.width, r.height / s.height) : this.monZoom;
     const w = Math.max(1, Math.floor(s.width * k)), hh = Math.max(1, Math.floor(s.height * k));
     this.progBox.style.width = w + 'px'; this.progBox.style.height = hh + 'px';
-    const dpr = Math.min(2, devicePixelRatio || 1);
-    const pw = Math.min(s.width, Math.round(w * dpr)), ph = Math.round(pw * s.height / s.width);
+    // preview resolution: honour Settings ▸ Performance (phones default to "performance")
+    const perf = perfLevel();
+    const dpr = Math.min(perf === 'performance' ? 1.5 : 2, devicePixelRatio || 1);
+    const cap = perf === 'performance' ? 960 : perf === 'balanced' ? 1920 : 4096;
+    const pw = Math.max(2, Math.min(s.width, cap, Math.round(w * dpr))), ph = Math.max(2, Math.round(pw * s.height / s.width));
     if (this.progCanvas.width !== pw || this.progCanvas.height !== ph) { this.progCanvas.width = pw; this.progCanvas.height = ph; }
     this.engine.invalidate();
   }
@@ -389,11 +596,11 @@ export class VideoApp {
     this.history.clear();
     if (!clean || recovered) this.history.savedSeq = -1;
     this.source.unload();
-    this.emptyEl.hidden = true;
+    this.showStart(false);
     this.engine.seek(0);
     this.layoutMonitor();
     this.timeline.refresh();
-    requestAnimationFrame(() => this.timeline.fit());
+    requestAnimationFrame(() => { this.layoutMonitor(); this.timeline.fit(); });
     this.refreshAll();
     io.updateUrl(this);
   }
@@ -415,7 +622,7 @@ export class VideoApp {
     this.timeline.refresh();
     this.bin.refresh();
     this.props.refresh(force);
-    if (this.leftTabs.current === 'audio') this.mixer.refresh();
+    if (this.leftTabs.current === 'audio' || this.sheetKey === 'audio') this.mixer.refresh();
     this.updateChrome();
     io.markDirty(this);
   }
@@ -425,6 +632,7 @@ export class VideoApp {
   updateChrome() {
     const p = this.project;
     this.undoBtn.disabled = !this.history.canUndo;
+    this.exportBtn.disabled = !p;
     this.redoBtn.disabled = !this.history.canRedo;
     const dirty = p && this.history.dirty;
     this.titleEl.textContent = p ? p.name + (dirty ? ' •' : '') : 'EYAD VIDEO';
@@ -447,7 +655,7 @@ export class VideoApp {
     this.tcEl.textContent = timecode(e.time, s.fps);
     this.durEl.textContent = timecode(d, s.fps);
     const f = d ? e.time / d : 0;
-    this.scrubFill.style.width = (f * 100) + '%';
+    this.scrubFill.style.transform = `scaleX(${f})`;
     this.scrubHead.style.left = (f * 100) + '%';
     if (kind === 'time' && !e.playing) this.props.onTime();
     if (this.meterEl) {
@@ -476,11 +684,14 @@ export class VideoApp {
     this.timeline.refresh();
     this.props.refresh(true);
   }
-  showEffects(bin) {
-    if (this.mobile.matches) this.sheet('effects'); else this.leftTabs.show('effects');
-    if (bin) requestAnimationFrame(() => this.effects.open(bin));
+  showEffects(bin) { this.sheet('effects', bin); }
+  /** After an edit that has settings worth seeing. On phones: open the inspector sheet, unless another sheet is being browsed. */
+  showProperties(force) {
+    if (!this.mobile.matches) { this.props.refresh(true); return; }
+    if (!force && this.sheetKey && this.sheetKey !== 'props') { this.props.refresh(true); return; }
+    this.sheet('props');
+    if (force) requestAnimationFrame(() => { const ta = this.sheetBody && this.sheetBody.querySelector('textarea'); if (ta) { const sec = ta.closest('.vp-section') || ta; this.sheetBody.scrollTop = Math.max(0, sec.offsetTop - 8); } });
   }
-  showProperties() { if (this.mobile.matches) this.sheet('props'); else this.props.refresh(true); }
 
   // ------------------------------------------------------------ media
   async importDialog() {
@@ -598,7 +809,7 @@ export class VideoApp {
   }
 
   openSource(id) { this.sourceMediaId = id; this.source.load(id); this.bin.refresh(); if (!this.mobile.matches && this.monitorTabs.current !== 'source') { /* keep program visible unless asked */ } }
-  revealMedia(id) { this.leftTabs.show('media'); if (this.mobile.matches) this.sheet('media'); const el = this.bin.el.querySelector(`[data-media="${id}"]`); if (el) { el.scrollIntoView({ block: 'nearest' }); el.classList.add('is-flash'); setTimeout(() => el.classList.remove('is-flash'), 900); } }
+  revealMedia(id) { this.sheet('media'); const el = this.bin.el.querySelector(`[data-media="${id}"]`); if (el) { el.scrollIntoView({ block: 'nearest' }); el.classList.add('is-flash'); setTimeout(() => el.classList.remove('is-flash'), 900); } }
 
   // ------------------------------------------------------------ clipboard
   copyClips(cut = false) {

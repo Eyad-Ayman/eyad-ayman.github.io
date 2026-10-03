@@ -9,7 +9,7 @@ import { appIcon, APPS } from './appicons.js';
 
 const ROOT = new URL('../../', import.meta.url);
 const route = (k) => (k === 'home' ? ROOT.href : k === 'portfolio' ? new URL('../', ROOT).href : new URL('./' + k + '/', ROOT).href);
-export const VERSION = '4.0';
+export const VERSION = '5.0';
 const BUG_MAIL = 'eyad.ayman2019@gmail.com';
 
 export const isStandalone = () => matchMedia('(display-mode: standalone), (display-mode: fullscreen), (display-mode: window-controls-overlay), (display-mode: minimal-ui)').matches || navigator.standalone === true;
@@ -49,7 +49,7 @@ const DOCK_APPS = ['image', 'vector', 'video', '3d', 'camera', 'templates'];
 export function dock(current = '') {
   const item = (id) => {
     const a = APPS[id];
-    return h('a', { class: 'xp-dock-item' + (current === id ? ' is-running' : ''), href: route(a.route), 'aria-label': a.name, 'data-tip': a.name }, appIcon(id, 52));
+    return h('a', { class: 'xp-dock-item' + (current === id ? ' is-running' : ''), href: route(a.route), 'aria-label': a.name, 'data-tip': a.name, 'data-app': id }, appIcon(id, 52));
   };
   const el = h('nav', { class: 'xp-dock', 'aria-label': 'Dock' },
     h('div', { class: 'xp-dock-shelf' },
@@ -89,13 +89,23 @@ export async function installGuide() {
   }
   const step = (n, text, ic) => h('li', { class: 'xp-step' }, h('span', { class: 'xp-step-n', text: String(n) }), ic ? icon(ic, 18) : null, h('span', { text }));
   let steps;
-  if (IS_IOS) steps = [step(1, 'Open this page in Safari (installing needs Safari on iPhone and iPad).', 'compass'), step(2, 'Tap the Share button at the bottom of the screen (the square with an arrow).', 'upload'), step(3, 'Scroll and tap “Add to Home Screen”, then “Add”.', 'plus'), step(4, 'Open EYAD from your Home Screen — it runs full screen, like an app, and keeps working offline.', 'star')];
+  const ua = navigator.userAgent;
+  const inApp = /Instagram|FBAN|FBAV|FB_IAB|Line\/|TikTok|Snapchat|Twitter/i.test(ua);
+  const otherIos = /CriOS|FxiOS|EdgiOS|OPiOS/.test(ua);
+  let note = 'Nothing is installed from a store and no account is needed. After installing, open Settings ▸ Offline pack once to keep every tool available without internet.';
+  if (IS_IOS) {
+    note = 'iPhone and iPad do not let a website install itself — Apple only allows it through the Share menu, so these taps are the only way. It takes ten seconds and then EYAD opens full screen from your Home Screen, even offline.';
+    if (inApp) steps = [step(1, 'You are inside another app’s browser. Tap ⋯ (or the compass icon) and choose “Open in Safari” / “Open in browser”.', 'compass'), step(2, 'In Safari, tap the Share button — the square with an arrow pointing up, in the bar at the bottom.', 'upload'), step(3, 'Scroll down the list and tap “Add to Home Screen”, then “Add” at the top right.', 'plus'), step(4, 'Open EYAD from your Home Screen.', 'star')];
+    else if (otherIos) steps = [step(1, 'Tap the Share button — the square with an arrow pointing up, at the right end of the address bar.', 'upload'), step(2, 'Scroll down the list and tap “Add to Home Screen”, then “Add”. (If it is not in the list, open this page in Safari and do the same.)', 'plus'), step(3, 'Open EYAD from your Home Screen — full screen, like an app.', 'star')];
+    else steps = [step(1, 'Tap the Share button — the square with an arrow pointing up, in the middle of the bar at the bottom of Safari (on iPad: top right).', 'upload'), step(2, 'Scroll down the list and tap “Add to Home Screen”. Not there? Scroll to the end, tap “Edit Actions” and add it.', 'plus'), step(3, 'Tap “Add” at the top right.', 'check'), step(4, 'Open EYAD from your Home Screen — full screen, like an app, and it keeps working offline.', 'star')];
+  }
   else if (IS_ANDROID) steps = [step(1, 'Open the browser menu (⋮ in Chrome, ≡ in Samsung Internet).'), step(2, 'Tap “Install app” or “Add to Home screen”.', 'install'), step(3, 'Open EYAD from your apps. PSD, images and videos can be shared straight into it.', 'star')];
   else steps = [step(1, 'In Chrome or Edge, click the install icon at the right end of the address bar — or open the browser menu ▸ “Install EYAD Studio…”.', 'install'), step(2, 'It opens in its own window with no browser bars, gets a Dock/Start-menu icon, and opens PSD / SVG / video files from your computer.', 'star'), step(3, 'Safari on Mac: File ▸ Add to Dock. Firefox can’t install web apps — use Chrome, Edge or Safari.', 'compass')];
   return dialog({ title: 'Install EYAD Studio', width: 480, body: h('div', { class: 'studio-stack' },
     h('div', { class: 'xp-install-hero' }, appIcon('home', 64), h('div', {}, h('b', { text: 'EYAD Studio' }), h('span', { class: 'studio-dim studio-small', text: 'Image · Vector · Video · 3D · Camera · Templates' }))),
     h('ol', { class: 'xp-steps' }, steps),
-    h('p', { class: 'studio-small studio-faint', text: 'Nothing is installed from a store and no account is needed. After installing, open Settings ▸ Offline pack once to keep every tool available without internet.' })) });
+    h('p', { class: 'studio-small studio-dim', text: note }),
+    IS_IOS ? h('button', { class: 'studio-btn', type: 'button', onclick: async () => { try { await navigator.clipboard.writeText(ROOT.href); toast('Link copied — paste it in Safari.', { type: 'ok' }); } catch (e) { toast(ROOT.href, { timeout: 8000 }); } } }, icon('link', 15), 'Copy the link') : null) });
 }
 
 // ------------------------------------------------------------------ diagnostics & bug report
@@ -275,21 +285,37 @@ export async function downloadOfflinePack(onProgress = () => {}) {
 }
 
 /** Quietly fetch the offline pack the first time the installed app runs on Wi-Fi / unmetered data. */
+/** iPhone/iPad, not installed yet: say once how to add EYAD to the Home Screen (it cannot be done automatically). */
+export function installHint() {
+  if (!IS_IOS || isStandalone() || navigator.webdriver) return;
+  try { if (localStorage.getItem('eyad:ios-hint')) return; } catch (e) { return; }
+  setTimeout(() => {
+    if (document.querySelector('.studio-scrim, .xp-tour, .studio-sheet')) return;
+    try { localStorage.setItem('eyad:ios-hint', '1'); } catch (e) { /* ignore */ }
+    toast('Install EYAD on your iPhone: Share ▸ Add to Home Screen.', { timeout: 14000, action: { label: 'Show me', fn: () => installGuide() } });
+  }, 9000);
+}
+
 export function autoOfflinePack() {
   if (!isStandalone()) return;
   try { if (localStorage.getItem('eyad:offline-auto')) return; } catch (e) { return; }
   const conn = navigator.connection;
   if (conn && (conn.saveData || /2g/.test(conn.effectiveType || ''))) return;
+  // Never download the big pack on our own: it made the first launch crawl on phones. Offer it once instead.
   setTimeout(async () => {
     try {
       const st = await offlineStatus(); if (!st.supported || st.done) { localStorage.setItem('eyad:offline-auto', '1'); return; }
-      const t = toast('Preparing EYAD for offline use…', { timeout: 0 });
-      const r = await downloadOfflinePack((d, n) => t.set && t.set(`Preparing EYAD for offline use… ${Math.round(d / n * 100)}%`));
-      t.close && t.close();
       localStorage.setItem('eyad:offline-auto', '1');
-      toast(r.failed ? `Offline pack: ${r.files} parts saved, ${r.failed} will download when needed.` : 'Every tool now works offline.', { type: 'ok', timeout: 5000 });
-    } catch (e) { /* try again next launch */ }
-  }, 6000);
+      toast('Use EYAD without internet? Download the offline pack (AI models and engines).', { timeout: 12000, action: { label: 'Download', fn: async () => {
+        const t = toast('Downloading the offline pack…', { timeout: 0 });
+        try {
+          const r = await downloadOfflinePack((d, n) => t.set && t.set(`Downloading the offline pack… ${Math.round(d / n * 100)}%`));
+          t.close && t.close();
+          toast(r.failed ? `Offline pack: ${r.files} parts saved, ${r.failed} will download when needed.` : 'Every tool now works offline.', { type: 'ok', timeout: 5000 });
+        } catch (e) { t.close && t.close(); toast('The offline pack could not be downloaded. Try again from Settings.', { type: 'error' }); }
+      } } });
+    } catch (e) { /* ask again next launch */ }
+  }, 20000);
 }
 
 export { route as experienceRoute, formatBytes, clear, setSetting };

@@ -204,6 +204,10 @@ const inFloating = (t) => Array.from(floatingSubs()).some((x) => x.contains(t));
 document.addEventListener('pointerdown', (e) => {
   if (openMenu && !openMenu.contains(e.target) && !inFloating(e.target)) closeOpenMenu();
 }, true);
+// Escape closes a menu that was opened with the mouse (focus is not inside the list then).
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && openMenu && !e.defaultPrevented && !(e.target.closest && e.target.closest('.studio-menu'))) { e.preventDefault(); closeOpenMenu(); }
+});
 
 function evalFlag(v) { return typeof v === 'function' ? v() : v; }
 
@@ -391,8 +395,11 @@ export function openSheet({ title, content, onClose, height = 'auto', persistent
   panel.addEventListener('pointerup', end);
   panel.addEventListener('pointercancel', end);
   let closed = false;
+  const onEsc = (e) => { if (e.key === 'Escape' && !document.querySelector('.studio-scrim')) { e.stopPropagation(); close(); } };
+  addEventListener('keydown', onEsc, true);
   function close() {
     if (closed) return; closed = true;
+    removeEventListener('keydown', onEsc, true);
     panel.classList.remove('is-in'); scrim.classList.remove('is-in');
     setTimeout(() => { panel.remove(); scrim.remove(); }, 240);
     if (activeSheet === api) activeSheet = null;

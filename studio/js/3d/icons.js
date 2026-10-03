@@ -4,6 +4,8 @@
 import { icon as coreIcon } from '../core/icons.js';
 
 const P = {
+  multi: 'M4 4h10v10H4zM10 10h10v10H10zM15 13v4M13 15h4',
+  timeline: 'M3 6h18M3 12h18M3 18h18M8 4v4M15 10v4M11 16v4',
   cube: 'M12 3 20 7.5v9L12 21l-8-4.5v-9zM4 7.5l8 4.5 8-4.5M12 12v9',
   sphere: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM3 12c0 2.2 4 4 9 4s9-1.8 9-4M12 3c-2.5 2.4-3.6 5.6-3.6 9s1.1 6.6 3.6 9',
   cylinder: 'M5 6c0-1.7 3.1-3 7-3s7 1.3 7 3-3.1 3-7 3-7-1.3-7-3zM5 6v12c0 1.7 3.1 3 7 3s7-1.3 7-3V6',

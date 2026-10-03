@@ -1,9 +1,11 @@
-// EYAD KAMERA — live camera with Film Lab looks (loaded only on /studio/camera/).
-// Live preview through film.js, full-resolution capture, short video recording,
-// "Open photo" for existing images, .cube LUT import, and hand-off to EYAD IMAGE / VIDEO.
+// EYAD KAMERA — live camera with lenses, Film Lab looks and effects (loaded only on /studio/camera/).
+// Picture chain: camera → lens (WebGL) → film look (film.js) → effect (fx.js).
+// Layout: the viewfinder is the hero; one control cluster (modes + shutter); one looks strip with a
+// category switch (Film · Flash · AI · Y2K · Lenses); Adjust is a bottom sheet on phones and a side
+// panel on wide screens. See css/camera.css for the four layouts.
 import { h, clear, clamp, isTyping } from '../core/dom.js';
 import { icon } from '../core/icons.js';
-import { toast, iconButton, contextMenu } from '../core/ui.js';
+import { toast, iconButton, contextMenu, menuSheet } from '../core/ui.js';
 import { bootStudio, ROUTES } from '../core/shell.js';
 import { pickFiles, downloadBlob, ACCEPT, IS_TOUCH, detectFile, loadImageFile, sanitizeFilename, baseName } from '../core/files.js';
 import { putHandoff } from '../core/db.js';
@@ -12,7 +14,8 @@ import {
   lookThumbnail, looksByGroup, registerLook, todayStamp, sanitizeDateText,
 } from '../core/film.js';
 import { BUILTIN_LUTS, readCubeFile, lutToLook, getBuiltinLut } from '../core/lut.js';
-import { FX, fxById, compose, loadSegmenter, segmenterReady, liveMask, applyFxStill } from './fx.js';
+import { FX, fxById, compose, composeThumb, thumbMask, loadSegmenter, segmenterReady, liveMask, applyFxStill } from './fx.js';
+import { LENSES, lensById, createLens, applyLensStill } from './lenses.js';
 import { proControls, focusAt, drawHistogram, shutterSound, watchLevel } from './pro.js';
 import { alignFrames, parallaxOf, synthViews, lensCharacter, filmStrip, wiggleVideo, wiggleGif, PING } from './wiggle.js';
 import { segment } from '../core/ai.js';
@@ -22,18 +25,22 @@ bootStudio();
 
 const STORE = 'eyad-camera:v1';
 const saved = (() => { try { return JSON.parse(localStorage.getItem(STORE) || '{}') || {}; } catch (e) { return {}; } })();
-const persist = () => { try { localStorage.setItem(STORE, JSON.stringify({ look: state.lookId, aspect: state.aspect, grid: state.grid, timer: state.timer, flash: state.flash, facing: state.facing, fx: state.fx, deviceId: state.deviceId, quadMethod: state.quadMethod, sound: state.sound, hist: state.hist, level: state.level, quality: state.quality })); } catch (e) { /* storage blocked */ } };
+const persist = () => { try { localStorage.setItem(STORE, JSON.stringify({ look: state.lookId, aspect: state.aspect, grid: state.grid, timer: state.timer, flash: state.flash, facing: state.facing, fx: state.fx, deviceId: state.deviceId, quadMethod: state.quadMethod, sound: state.sound, hist: state.hist, level: state.level, quality: state.quality, cat: state.cat, lens: state.lens, lensAmt: state.lensAmt, looksOff: state.looksOff })); } catch (e) { /* storage blocked */ } };
 
 const ASPECTS = [
   { id: '3:4', label: '3:4', r: 3 / 4 }, { id: '4:3', label: '4:3', r: 4 / 3 }, { id: '1:1', label: '1:1', r: 1 },
   { id: '9:16', label: '9:16', r: 9 / 16 }, { id: '16:9', label: '16:9', r: 16 / 9 },
 ];
-const PHOTO_ASPECTS = [{ id: 'orig', label: 'Original', r: 0 }, ...ASPECTS];
+const PHOTO_ASPECTS = [{ id: 'orig', label: 'Full', r: 0 }, ...ASPECTS];
 const TIMERS = [0, 3, 10];
 const MAX_REC = 180;
+const CATS = [
+  { id: 'film', name: 'Film' }, { id: 'flash', name: 'Flash' }, { id: 'ai', name: 'AI' }, { id: 'y2k', name: 'Y2K' }, { id: 'lens', name: 'Lenses' },
+];
+const MODES = [['burst', 'Burst'], ['quad', '3D ×4'], ['photo', 'Photo'], ['portrait', 'Portrait'], ['video', 'Video']];
 
 const state = {
-  mode: 'photo',                 // 'photo' | 'video'
+  mode: 'photo',                 // 'burst' | 'quad' | 'photo' | 'portrait' | 'video'
   source: 'camera',              // 'camera' | 'file'
   facing: saved.facing === 'user' ? 'user' : 'environment',
   lookId: getLook(saved.look) && LOOKS.some((l) => l.id === saved.look) ? saved.look : 'portrait-400',
@@ -44,6 +51,10 @@ const state = {
   timer: TIMERS.includes(saved.timer) ? saved.timer : 0,
   flash: !!saved.flash,
   fx: FX.some((f) => f.id === saved.fx) ? saved.fx : 'none',
+  cat: CATS.some((c) => c.id === saved.cat) ? saved.cat : 'film',
+  lens: LENSES.some((l) => l.id === saved.lens) ? saved.lens : 'none',
+  lensAmt: saved.lensAmt && typeof saved.lensAmt === 'object' ? saved.lensAmt : {},
+  looksOff: !!saved.looksOff,
   deviceId: typeof saved.deviceId === 'string' ? saved.deviceId : '',
   sound: saved.sound !== false, hist: !!saved.hist, level: saved.level !== false,
   quality: ['max', 'high', 'standard'].includes(saved.quality) ? saved.quality : 'max',
@@ -57,6 +68,7 @@ const state = {
 };
 state.params = defaultParams(state.lookId);
 state.params.dateText = state.dateText;
+const lensAmt = () => { const v = state.lensAmt[state.lens]; return typeof v === 'number' && v >= 0 && v <= 1 ? v : (lensById(state.lens).def ?? 0.6); };
 
 // ---------------------------------------------------------------- tiny local icons (not in the shared set)
 const NS = 'http://www.w3.org/2000/svg';
@@ -76,77 +88,88 @@ video.muted = true; video.setAttribute('playsinline', ''); video.setAttribute('w
 const view = h('canvas', { class: 'cam-view', 'aria-label': 'Live preview with the selected look', role: 'img' });
 const gridEl = h('div', { class: 'cam-grid', 'aria-hidden': 'true' }, h('i'), h('i'), h('i'), h('i'));
 const fxView = h('canvas', { class: 'cam-view cam-fxview', hidden: true, 'aria-hidden': 'true' });
-const viewBox = h('div', { class: 'cam-viewbox' }, view, fxView, gridEl);
 const countdown = h('div', { class: 'cam-countdown', 'aria-live': 'assertive' });
 const messageEl = h('div', { class: 'cam-message', hidden: true });
 const zoomRange = h('input', { class: 'studio-range cam-zoom-range', type: 'range', min: 1, max: 1, step: 0.1, value: 1, 'aria-label': 'Zoom' });
-const zoomLabel = h('span', { class: 'cam-zoom-label', text: '1×' });
-const zoomBox = h('div', { class: 'cam-zoom', hidden: true }, zoomLabel, zoomRange);
+const zoomLabel = h('output', { class: 'cam-val', text: '1×' });
 const focusRing = h('div', { class: 'cam-focus', 'aria-hidden': 'true' });
 const histCanvas = h('canvas', { class: 'cam-hist', width: 128, height: 64, hidden: true, 'aria-hidden': 'true' });
 const levelEl = h('div', { class: 'cam-level', hidden: true, 'aria-hidden': 'true' }, h('i'));
-const zoomChips = h('div', { class: 'cam-zoomchips', hidden: true });
+const zoomChips = h('div', { class: 'cam-zoomchips', hidden: true, role: 'group', 'aria-label': 'Zoom' });
 const quadDots = [0, 1, 2, 3].map(() => h('i'));
+const quadHint = h('span', { class: 'cam-quad-hint' });
 const quadMethodBtn = h('button', { class: 'cam-quad-method', type: 'button', title: 'How the four viewpoints are made', onclick: () => { const o = ['auto', 'sweep', 'depth']; state.quadMethod = o[(o.indexOf(state.quadMethod) + 1) % 3]; persist(); syncQuad(); } });
-const quadHud = h('div', { class: 'cam-quad', hidden: true }, h('div', { class: 'cam-quad-lenses', 'aria-hidden': 'true' }, quadDots), quadMethodBtn);
-let quadTipShown = false;
-function syncQuad() { quadMethodBtn.textContent = { auto: 'Auto', sweep: 'Sweep (move sideways)', depth: 'AI depth (hold still)' }[state.quadMethod]; }
-const stage = h('div', { class: 'cam-stage' }, video, viewBox, focusRing, histCanvas, levelEl, quadHud, messageEl, zoomChips, zoomBox, countdown);
-const flashEl = h('div', { class: 'cam-flash', 'aria-hidden': 'true' });
+const quadHud = h('div', { class: 'cam-quad', hidden: true }, h('div', { class: 'cam-quad-row' }, h('div', { class: 'cam-quad-lenses', 'aria-hidden': 'true' }, quadDots), quadMethodBtn), quadHint);
+function syncQuad() {
+  quadMethodBtn.textContent = { auto: 'Auto', sweep: 'Sweep', depth: 'AI depth' }[state.quadMethod];
+  quadMethodBtn.setAttribute('aria-label', '3D method: ' + quadMethodBtn.textContent + ' — tap to change');
+  quadHint.textContent = { auto: 'Hold still for AI depth — or slide sideways as it fires', sweep: 'Slide the camera slowly sideways as the four shots fire', depth: 'Hold still — depth is worked out on this device' }[state.quadMethod];
+}
 const recBadge = h('div', { class: 'cam-rec', hidden: true }, h('span', { class: 'cam-rec-dot' }), h('span', { class: 'cam-rec-time', text: '0:00' }));
+const osd = h('div', { class: 'cam-osd', 'aria-live': 'polite' });
+const lensRange = h('input', { class: 'studio-range', type: 'range', min: 0, max: 100, step: 1, value: 60, 'aria-label': 'Lens strength' });
+const lensLabel = h('span', { class: 'cam-lensbar-label' });
+const lensBar = h('label', { class: 'cam-lensbar', hidden: true }, lensLabel, lensRange);
+const viewBottom = h('div', { class: 'cam-view-bottom' }, osd, zoomChips, lensBar);
+const viewBox = h('div', { class: 'cam-viewbox' }, view, fxView, gridEl, levelEl, histCanvas, quadHud, recBadge, focusRing, viewBottom, countdown);
+const stage = h('div', { class: 'cam-stage' }, video, viewBox, messageEl);
+const flashEl = h('div', { class: 'cam-flash', 'aria-hidden': 'true' });
 
 const btnGrid = iconButton('grid', 'Grid', () => { state.grid = !state.grid; syncTop(); persist(); }, { cls: 'cam-tool' });
 const btnTimer = h('button', { class: 'studio-icon-btn cam-tool cam-timer', type: 'button', 'aria-label': 'Self-timer', title: 'Self-timer', onclick: () => { state.timer = TIMERS[(TIMERS.indexOf(state.timer) + 1) % TIMERS.length]; syncTop(); persist(); } }, icon('clock', 18), h('span', { class: 'cam-tool-badge' }));
 const btnFlash = h('button', { class: 'studio-icon-btn cam-tool', type: 'button', 'aria-label': 'Flash', title: 'Flash', onclick: () => { state.flash = !state.flash; syncTop(); persist(); } });
-const btnAspect = h('button', { class: 'cam-chip cam-aspect', type: 'button', 'aria-label': 'Aspect ratio', title: 'Aspect ratio', onclick: cycleAspect });
+const btnAspect = h('button', { class: 'cam-tool cam-aspect', type: 'button', 'aria-label': 'Aspect ratio', title: 'Aspect ratio', onclick: cycleAspect }, h('span'));
 const btnAdjust = iconButton('sliders', 'Adjust look & camera', () => togglePanel(), { cls: 'cam-tool cam-adjust-btn' });
-const btnHist = iconButton('audioWave', 'Histogram', () => { state.hist = !state.hist; syncTop(); persist(); }, { cls: 'cam-tool' });
-const btnCams = iconButton('camera', 'Choose camera', (e) => pickCamera(e), { cls: 'cam-tool' });
-const btnPhoto = iconButton('image', 'Open a photo', () => openPhoto(), { cls: 'cam-tool' });
-const btnMore = iconButton('dots', 'More', (e) => moreMenu(e), { cls: 'cam-tool' });
-const homeLink = h('a', { class: 'cam-home', href: ROUTES.home, 'aria-label': 'EYAD STUDIO home' }, icon('back', 18));
+const btnHist = iconButton('audioWave', 'Histogram', () => { state.hist = !state.hist; syncTop(); persist(); }, { cls: 'cam-tool cam-wide-only' });
+const btnCams = iconButton('camera', 'Choose camera', () => pickCamera(), { cls: 'cam-tool cam-wide-only' });
+const btnPhoto = iconButton('image', 'Open a photo', () => openPhoto(), { cls: 'cam-tool cam-wide-only' });
+const btnMore = iconButton('dots', 'More', () => moreMenu(), { cls: 'cam-tool cam-more-btn' });
+const homeLink = h('a', { class: 'cam-tool cam-home', href: ROUTES.home, 'aria-label': 'EYAD Studio home', title: 'EYAD Studio home' }, icon('back', 18));
 const brand = h('a', { class: 'studio-brand cam-brand', href: ROUTES.home, 'aria-label': 'EYAD KAMERA — Studio home' },
   h('span', { class: 'studio-brand-mark', 'aria-hidden': 'true' }),
   h('span', { class: 'studio-brand-word' }, 'EYAD', h('span', { class: 'studio-brand-app', text: 'KAMERA' })));
-const top = h('header', { class: 'cam-top' }, homeLink, brand, recBadge, h('div', { class: 'studio-spacer' }), btnAspect, btnFlash, btnTimer, btnGrid, btnHist, btnCams, btnPhoto, btnMore, btnAdjust);
+const top = h('header', { class: 'cam-bar' }, homeLink, brand, h('div', { class: 'cam-bar-gap' }), btnAspect, btnFlash, btnTimer, btnGrid, btnHist, btnCams, btnPhoto, btnMore, btnAdjust);
 
-const lookName = h('div', { class: 'cam-lookname', 'aria-live': 'polite' });
-const chips = h('div', { class: 'cam-groups', role: 'tablist', 'aria-label': 'Look groups' });
+// looks: category switch + one strip
+const catBtns = CATS.map((c) => h('button', { class: 'cam-cat', type: 'button', role: 'tab', dataset: { cat: c.id }, onclick: () => setCat(c.id, true) }, h('span', { text: c.name })));
+const catMenuBtn = h('button', { class: 'cam-cat-menu', type: 'button', 'aria-label': 'Look category', onclick: () => catMenu() }, h('span'), icon('chevronDown', 14));
+const looksToggle = h('button', { class: 'cam-looks-toggle', type: 'button', 'aria-label': 'Show or hide looks', title: 'Show or hide looks', onclick: () => setLooksOff(!state.looksOff) }, icon('chevronDown', 16));
+const cats = h('div', { class: 'cam-cats', role: 'tablist', 'aria-label': 'Look category' }, catBtns);
 const strip = h('div', { class: 'cam-strip', role: 'listbox', 'aria-label': 'Looks' });
-const modePhoto = h('button', { class: 'cam-mode', type: 'button', text: 'Photo', onclick: () => setMode('photo') });
-const modeVideo = h('button', { class: 'cam-mode', type: 'button', text: 'Video', onclick: () => setMode('video') });
-const modePortrait = h('button', { class: 'cam-mode', type: 'button', text: 'Portrait', onclick: () => setMode('portrait') });
-const modeBurst = h('button', { class: 'cam-mode', type: 'button', text: 'Burst', onclick: () => setMode('burst') });
-const modeQuad = h('button', { class: 'cam-mode', type: 'button', text: '3D ×4', title: 'Quad 3D — four-lens stereo camera (N8000 style wigglegram)', onclick: () => setMode('quad') });
-const modes = h('div', { class: 'cam-modes', role: 'group', 'aria-label': 'Capture mode' }, modeBurst, modeQuad, modePhoto, modePortrait, modeVideo);
+const looks = h('section', { class: 'cam-looks', 'aria-label': 'Looks' }, h('div', { class: 'cam-looks-head' }, cats, catMenuBtn, looksToggle), strip);
+
+// control cluster: modes + gallery / shutter / flip
+const modeBtns = Object.fromEntries(MODES.map(([id, label]) => [id, h('button', { class: 'cam-mode', type: 'button', dataset: { mode: id }, title: id === 'quad' ? '3D ×4 — four viewpoints become a moving 3D photo' : label, onclick: () => setMode(id) }, h('span', { text: label }))]));
+const modes = h('div', { class: 'cam-modes', role: 'group', 'aria-label': 'Capture mode' }, MODES.map(([id]) => modeBtns[id]));
 const shutter = h('button', { class: 'cam-shutter', type: 'button', 'aria-label': 'Take photo', onclick: onShutter }, h('span'));
 const btnOpen = h('button', { class: 'cam-round cam-gallery', type: 'button', 'aria-label': 'Open a photo', title: 'Open a photo', onclick: () => (state.shots.length ? openGallery(state.shots.length - 1) : openPhoto()) }, icon('image', 22));
-const btnFlip = h('button', { class: 'cam-round', type: 'button', 'aria-label': 'Switch camera', title: 'Switch camera', onclick: onFlip }, icon('swap', 22));
-const controls = h('div', { class: 'cam-controls' }, btnOpen, h('div', { class: 'cam-shutter-wrap' }, modes, shutter), btnFlip);
-const fxRow = h('div', { class: 'cam-fx', role: 'listbox', 'aria-label': 'Effects' }, FX.map((f) => h('button', { class: 'cam-fx-chip' + (f.ai ? ' is-ai' : f.group === 'flash' ? ' is-flash' : ''), type: 'button', role: 'option', dataset: { fx: f.id }, onclick: () => setFx(f.id) },
-  f.ai ? h('span', { class: 'cam-fx-tag', text: 'AI' }) : f.tag ? h('span', { class: 'cam-fx-tag is-' + f.tag.toLowerCase(), text: f.tag }) : f.group === 'flash' ? glyph(FLASH, 13) : null, h('span', { text: f.name }))));
-const dock = h('div', { class: 'cam-dock' }, lookName, fxRow, chips, strip, controls);
+const btnFlip = h('button', { class: 'cam-round cam-flip', type: 'button', 'aria-label': 'Switch camera', title: 'Switch camera', onclick: onFlip }, icon('swap', 22));
+const controls = h('div', { class: 'cam-ctl' }, modes, h('div', { class: 'cam-shoot' }, btnOpen, shutter, btnFlip));
 
-const panelBody = h('div', { class: 'cam-panel-body' });
-const panel = h('aside', { class: 'cam-panel', 'aria-label': 'Look adjustments' },
-  h('div', { class: 'cam-panel-head' }, h('h2', { class: 'cam-panel-title', text: 'Adjust' }), h('div', { class: 'studio-spacer' }),
-    h('button', { class: 'studio-btn is-small is-ghost', type: 'button', text: 'Reset', onclick: resetLook }),
-    iconButton('close', 'Close adjustments', () => togglePanel(false), { cls: 'cam-panel-close', size: 16 })),
-  panelBody);
+// adjust: bottom sheet on phones, side panel on wide screens
+const panelBody = h('div', { class: 'cam-sheet-body' });
+const panelHead = h('div', { class: 'cam-sheet-head' }, h('h2', { class: 'cam-sheet-title', text: 'Adjust' }), h('div', { class: 'cam-bar-gap' }),
+  h('button', { class: 'studio-btn is-ghost cam-sheet-reset', type: 'button', text: 'Reset', onclick: resetLook }),
+  iconButton('close', 'Close adjustments', () => togglePanel(false), { cls: 'cam-tool cam-sheet-close', size: 16 }));
+const panelHandle = h('div', { class: 'cam-sheet-handle', 'aria-hidden': 'true' });
+const panel = h('aside', { class: 'cam-sheet', 'aria-label': 'Look adjustments' }, panelHandle, panelHead, panelBody);
+const panelScrim = h('div', { class: 'cam-sheet-scrim', 'aria-hidden': 'true' });
+panelScrim.addEventListener('click', () => togglePanel(false));
 
 const review = h('div', { class: 'cam-review', hidden: true, role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Review capture' });
 
-body.append(top, stage, dock, panel, review, flashEl);
+body.append(top, stage, looks, controls, panelScrim, panel, review, flashEl);
 
 // ---------------------------------------------------------------- renderer + loop
 const renderer = createLiveRenderer(view);
+let lens = null;
 let lastLayout = null;
 let needsRender = true;
 let rafId = 0;
 const t0 = performance.now();
 
 function aspectList() { return state.source === 'file' ? PHOTO_ASPECTS : ASPECTS; }
-const QUAD_ASPECT = { id: '4:5', label: '4 lens', r: 4 / 5 };
+const QUAD_ASPECT = { id: '4:5', label: '4:5', r: 4 / 5 };
 function currentAspect() { if (state.mode === 'quad' && state.source === 'camera') return QUAD_ASPECT; const id = state.source === 'file' ? state.photoAspect : state.aspect; return aspectList().find((a) => a.id === id) || aspectList()[0]; }
 
 function cropFor(W, H) {
@@ -167,14 +190,21 @@ const previewMax = () => Math.min(IS_TOUCH ? 1080 : 1280, Math.round(Math.max(st
 function frame() {
   rafId = requestAnimationFrame(frame);
   const src = sourceEl();
-  if (!src) return;
+  if (!src || !review.hidden) return;
   const live = state.source === 'camera';
   if (!live && !needsRender) return;
   needsRender = false;
   const W = live ? video.videoWidth : src.width, H = live ? video.videoHeight : src.height;
   const time = live ? (performance.now() - t0) / 1000 : 0;
-  const r = renderer.render(src, state.lookId, state.params, time, { crop: cropFor(W, H), mirror: mirrored(), maxSize: state.recording ? state.recording.maxSize : previewMax() });
-  if (r) afterFrame(state.fx !== 'none' ? view : view);
+  const maxSize = state.recording ? state.recording.maxSize : previewMax();
+  let input = src, opts = { crop: cropFor(W, H), mirror: mirrored(), maxSize };
+  if (state.lens !== 'none') {
+    lens = lens || createLens();
+    const c = lens.render(src, state.lens, lensAmt(), opts);
+    if (c) { input = c; opts = { maxSize }; }
+  }
+  const r = renderer.render(input, state.lookId, state.params, time, opts);
+  if (r) afterFrame(view);
   if (r && state.fx !== 'none') {
     if (fxView.width !== view.width || fxView.height !== view.height) { fxView.width = view.width; fxView.height = view.height; }
     let mask = null;
@@ -191,10 +221,11 @@ function frame() {
 function fitView() {
   if (!lastLayout) return;
   const sw = stage.clientWidth, sh = stage.clientHeight;
-  const pad = sw < 600 ? 0 : 16;
-  const s = Math.min((sw - pad * 2) / lastLayout.width, (sh - pad * 2) / lastLayout.height);
+  if (!sw || !sh) return;
+  const s = Math.min(sw / lastLayout.width, sh / lastLayout.height);
   const w = Math.max(1, Math.floor(lastLayout.width * s)), hh = Math.max(1, Math.floor(lastLayout.height * s));
   viewBox.style.width = w + 'px'; viewBox.style.height = hh + 'px';
+  viewBox.classList.toggle('is-small', Math.min(w, hh) < 250);
   const R = lastLayout.layout.rect;
   Object.assign(gridEl.style, { left: (R.x * s) + 'px', top: (R.y * s) + 'px', width: (R.w * s) + 'px', height: (R.h * s) + 'px' });
 }
@@ -215,7 +246,7 @@ function stopStream() {
   if (state.stream) state.stream.getTracks().forEach((t) => t.stop());
   state.stream = null; state.track = null; state.caps = null;
   video.srcObject = null;
-  zoomBox.hidden = true; zoomChips.hidden = true;
+  zoomChips.hidden = true;
 }
 
 async function cameraPermission() {
@@ -315,11 +346,10 @@ function setupZoom() {
     state.zoom = st.zoom || caps.zoom.min;
     zoomRange.value = state.zoom;
     zoomLabel.textContent = (+state.zoom).toFixed(1) + '×';
-    zoomBox.hidden = false;
     const stops = [0.5, 1, 2, 3, 5, 10].filter((z) => z >= caps.zoom.min - 0.01 && z <= caps.zoom.max + 0.01);
-    zoomChips.replaceChildren(...stops.map((z) => h('button', { class: 'cam-zchip', type: 'button', text: (z < 1 ? '.5' : z) + '×', onclick: () => setZoom(z) })));
+    zoomChips.replaceChildren(...stops.map((z) => h('button', { class: 'cam-zchip' + (Math.abs(z - state.zoom) < 0.05 ? ' is-on' : ''), type: 'button', text: (z < 1 ? '.5' : z) + '×', 'aria-label': `Zoom ${z}×`, onclick: () => setZoom(z) })));
     zoomChips.hidden = stops.length < 2;
-  } else { zoomBox.hidden = true; zoomChips.hidden = true; }
+  } else zoomChips.hidden = true;
 }
 let zoomPending = null;
 async function setZoom(z) {
@@ -342,12 +372,13 @@ stage.addEventListener('pointermove', (e) => {
   if (pinchStart && pointers.size === 2 && state.caps && state.caps.zoom) { const [a, b] = [...pointers.values()]; setZoom(pinchStart.z * Math.hypot(a[0] - b[0], a[1] - b[1]) / Math.max(1, pinchStart.d)); }
 });
 const endPointer = (e) => { pointers.delete(e.pointerId); if (pointers.size < 2) pinchStart = null; };
-stage.addEventListener('pointerup', endPointer); stage.addEventListener('pointercancel', endPointer);
+stage.addEventListener('pointerup', endPointer); stage.addEventListener('pointercancel', endPointer); stage.addEventListener('pointerleave', endPointer);
 
 async function onFlip() {
   if (state.recording || state.busy) return;
   if (state.source === 'file') { state.photo = null; await startCamera(); return; }
   state.facing = state.facing === 'user' ? 'environment' : 'user';
+  state.deviceId = '';
   persist();
   await startCamera();
 }
@@ -365,10 +396,10 @@ async function openPhoto() {
     stopStream();
     state.photo = c; state.photoName = baseName(f.name) || 'photo';
     state.source = 'file'; state.photoAspect = 'orig';
-    if (state.mode === 'video') setMode('photo');
+    if (state.mode !== 'photo' && state.mode !== 'portrait') setMode('photo');
     hideMessage();
     needsRender = true;
-    syncControls(); syncTop();
+    syncControls(); syncTop(); buildPanel();
     scheduleThumbs(50);
     toast('Photo opened — pick a look, then tap the shutter to render it at full size.', { type: 'ok' });
   } catch (e) {
@@ -376,38 +407,94 @@ async function openPhoto() {
   }
 }
 
-// ---------------------------------------------------------------- looks strip
-const itemById = new Map();
-function buildStrip() {
-  clear(strip); clear(chips); itemById.clear();
-  for (const g of looksByGroup()) {
-    const first = g.looks[0];
-    chips.append(h('button', { class: 'cam-chip', type: 'button', role: 'tab', text: g.name, dataset: { group: g.id }, onclick: () => { const it = itemById.get(first.id); if (it) it.scrollIntoView({ behavior: 'smooth', inline: 'start', block: 'nearest' }); } }));
-    strip.append(h('div', { class: 'cam-strip-label', text: g.name, 'aria-hidden': 'true' }));
-    for (const l of g.looks) {
-      const c = h('canvas', { class: 'cam-thumb', width: 96, height: 96, 'aria-hidden': 'true' });
-      const it = h('button', { class: 'cam-look', type: 'button', role: 'option', 'aria-selected': 'false', title: l.desc ? `${l.name} — ${l.desc}` : l.name, dataset: { id: l.id }, onclick: () => selectLook(l.id, true) }, c, h('span', { text: l.name }));
-      it._canvas = c; it._stamp = -1;
-      itemById.set(l.id, it);
-      strip.append(it);
-      io.observe(it);
-    }
-  }
-  markSelected();
-}
-
+// ---------------------------------------------------------------- looks: categories + strip
+const items = new Set();
 const visible = new Set();
 const io = new IntersectionObserver((entries) => {
   for (const e of entries) { if (e.isIntersecting) visible.add(e.target); else visible.delete(e.target); }
   scheduleThumbs(120);
-}, { root: strip, rootMargin: '0px 200px 0px 200px' });
+}, { root: strip, rootMargin: '200px' });
+
+function chip(kind, id, name, title) {
+  const f = kind === 'fx' ? fxById(id) : null;
+  const c = h('canvas', { class: 'cam-thumb', width: 96, height: 96, 'aria-hidden': 'true' });
+  const data = kind === 'fx' ? { kind, id, fx: id } : kind === 'lens' ? { kind, id, lens: id } : { kind, id };
+  const it = h('button', { class: 'cam-look' + (kind === 'fx' ? ' cam-fx-chip' : ''), type: 'button', role: 'option', 'aria-selected': 'false', title: title || name, dataset: data,
+    onclick: () => { if (kind === 'film') selectLook(id, true); else if (kind === 'fx') setFx(id); else setLens(id); } },
+  h('span', { class: 'cam-thumb-wrap' }, c, f && f.ai ? h('i', { class: 'cam-badge', text: 'AI' }) : null), h('span', { class: 'cam-look-name', text: name }));
+  it._canvas = c; it._stamp = -1; it._kind = kind; it._id = id;
+  items.add(it); io.observe(it);
+  return it;
+}
+function buildStrip() {
+  for (const it of items) io.unobserve(it);
+  items.clear(); visible.clear(); clear(strip);
+  strip.dataset.cat = state.cat;
+  if (state.cat === 'film') {
+    const groups = looksByGroup();
+    strip.append(h('button', { class: 'cam-groupbtn', type: 'button', 'aria-label': 'Jump to a film group', title: 'Jump to a film group', onclick: (e) => groupMenu(e.currentTarget, groups) }, icon('film', 18), h('span', { text: 'Groups' })));
+    for (const g of groups) {
+      strip.append(h('div', { class: 'cam-strip-label', text: g.name, dataset: { group: g.id }, 'aria-hidden': 'true' }));
+      for (const l of g.looks) strip.append(chip('film', l.id, l.name, l.desc ? `${l.name} — ${l.desc}` : l.name));
+    }
+  } else if (state.cat === 'lens') {
+    for (const l of LENSES) strip.append(chip('lens', l.id, l.name, l.desc ? `${l.name} — ${l.desc}` : l.name));
+  } else {
+    strip.append(chip('fx', 'none', 'None', 'No effect'));
+    for (const f of FX) if (f.cat === state.cat) strip.append(chip('fx', f.id, f.name));
+  }
+  markSelected();
+  requestAnimationFrame(() => { const on = strip.querySelector('.cam-look.is-active'); if (on) on.scrollIntoView({ inline: 'center', block: 'nearest' }); else { strip.scrollLeft = 0; strip.scrollTop = 0; } });
+  scheduleThumbs(60);
+}
+function menuFor(btn, title, list) {
+  if (IS_TOUCH || innerWidth < 700) { menuSheet(title, list); return; }
+  const r = btn.getBoundingClientRect();
+  contextMenu(Math.max(8, Math.min(r.left, innerWidth - 260)), r.bottom + 6, list);
+}
+function groupMenu(btn, groups) {
+  menuFor(btn, 'Film groups', groups.map((g) => ({ label: `${g.name} (${g.looks.length})`, action: () => { const el = strip.querySelector(`.cam-strip-label[data-group="${g.id}"]`); if (el) el.scrollIntoView({ behavior: 'smooth', inline: 'start', block: 'start' }); } })));
+}
+function catMenu() {
+  menuFor(catMenuBtn, 'Looks', CATS.map((c) => ({ label: c.name, checked: () => state.cat === c.id && !state.looksOff, action: () => setCat(c.id) })).concat([{ label: 'Hide looks', enabled: () => !state.looksOff, action: () => setLooksOff(true) }]));
+}
+function setLooksOff(off) {
+  state.looksOff = !!off; persist(); syncCats();
+  if (!off) scheduleThumbs(60);
+}
+function setCat(id, toggle) {
+  if (toggle && state.cat === id && !state.looksOff && !wideLayout()) { setLooksOff(true); return; }
+  const changed = state.cat !== id;
+  state.cat = id; state.looksOff = false; persist();
+  if (changed) buildStrip();
+  syncCats();
+}
+function catActive(id) { return id === 'lens' ? state.lens !== 'none' : id === 'film' ? false : fxById(state.fx).cat === id; }
+function syncCats() {
+  body.classList.toggle('cam-looks-off', state.looksOff);
+  for (const b of catBtns) { const on = b.dataset.cat === state.cat; b.classList.toggle('is-active', on && !state.looksOff); b.setAttribute('aria-selected', String(on)); b.classList.toggle('has-dot', catActive(b.dataset.cat)); }
+  catMenuBtn.firstChild.textContent = state.looksOff ? 'Looks' : CATS.find((c) => c.id === state.cat).name;
+  looksToggle.setAttribute('aria-expanded', String(!state.looksOff));
+}
 
 let thumbTimer = 0, thumbSnap = null, thumbStamp = 0, thumbRunning = false;
+const fxThumb = document.createElement('canvas'); fxThumb.width = fxThumb.height = 96;
 function scheduleThumbs(ms = 0) { clearTimeout(thumbTimer); thumbTimer = setTimeout(runThumbs, ms); }
+async function drawThumb(it, mask) {
+  let out = thumbSnap;
+  if (it._kind === 'film') out = await lookThumbnail(thumbSnap, it._id, 96);
+  else if (it._kind === 'lens') { if (it._id !== 'none') out = applyLensStill(thumbSnap, it._id, lensById(it._id).def, { maxSize: 96 }) || thumbSnap; }
+  else if (it._id !== 'none') { composeThumb(fxThumb.getContext('2d'), thumbSnap, fxById(it._id).ai ? mask : null, it._id); out = fxThumb; }
+  const tg = it._canvas.getContext('2d');
+  tg.clearRect(0, 0, 96, 96);
+  const k = Math.min(96 / out.width, 96 / out.height), w = out.width * k, hh = out.height * k;
+  tg.drawImage(out, (96 - w) / 2, (96 - hh) / 2, w, hh);
+}
 async function runThumbs() {
   if (thumbRunning) return;
   const src = sourceEl();
-  if (!src || document.hidden) { scheduleThumbs(1500); return; }
+  if (!src || document.hidden || !review.hidden || state.busy) { scheduleThumbs(1500); return; }
+  if (state.looksOff && !wideLayout()) return;
   thumbRunning = true;
   try {
     const live = state.source === 'camera';
@@ -418,27 +505,34 @@ async function runThumbs() {
     if (mirrored()) { g.translate(144, 0); g.scale(-1, 1); }
     g.drawImage(src, cr.x + (cr.w - s) / 2, cr.y + (cr.h - s) / 2, s, s, 0, 0, 144, 144);
     thumbSnap = snap; thumbStamp++;
-    const items = [...visible].filter((it) => it._stamp !== thumbStamp);
-    for (const it of items) {
-      if (state.recording) break;
-      const out = await lookThumbnail(thumbSnap, it.dataset.id, 96);
-      const tg = it._canvas.getContext('2d');
-      tg.clearRect(0, 0, 96, 96);
-      tg.drawImage(out, (96 - out.width) / 2, (96 - out.height) / 2);
+    const todo = [...visible].filter((it) => it._stamp !== thumbStamp && items.has(it));
+    let mask = null;
+    if (todo.some((it) => it._kind === 'fx' && fxById(it._id).ai) && segmenterReady()) mask = thumbMask(snap);
+    for (const it of todo) {
+      if (state.recording || !items.has(it)) break;
+      await drawThumb(it, mask);
       it._stamp = thumbStamp;
       await new Promise((r) => requestAnimationFrame(r));
     }
   } catch (e) { /* thumbnails are best-effort */ }
   thumbRunning = false;
-  if (state.source === 'camera') scheduleThumbs(state.recording ? 4000 : 2500);
+  if (state.source === 'camera') scheduleThumbs(state.recording ? 4000 : 2600);
 }
 
+let osdTimer = 0;
+function showOsd(text) {
+  osd.textContent = text; osd.classList.add('is-on');
+  clearTimeout(osdTimer); osdTimer = setTimeout(() => osd.classList.remove('is-on'), 1700);
+}
+function lookLabel() {
+  return [getLook(state.lookId).name, state.fx !== 'none' ? fxById(state.fx).name : '', state.lens !== 'none' ? lensById(state.lens).name : ''].filter(Boolean).join(' · ');
+}
 function markSelected() {
-  for (const [id, it] of itemById) { const on = id === state.lookId; it.classList.toggle('is-active', on); it.setAttribute('aria-selected', on ? 'true' : 'false'); }
-  const l = getLook(state.lookId);
-  lookName.textContent = l.name + (state.fx !== 'none' ? ' · ' + fxById(state.fx).name : '');
-  const gi = l.group;
-  for (const c of chips.children) c.classList.toggle('is-active', c.dataset.group === gi);
+  for (const it of items) {
+    const on = it._kind === 'film' ? it._id === state.lookId : it._kind === 'fx' ? it._id === state.fx : it._id === state.lens;
+    it.classList.toggle('is-active', on); it.setAttribute('aria-selected', on ? 'true' : 'false');
+  }
+  syncCats();
 }
 
 function selectLook(id, scroll) {
@@ -451,12 +545,31 @@ function selectLook(id, scroll) {
   else state.lutChoice = '';
   markSelected(); buildPanel(); persist();
   needsRender = true;
-  if (scroll) { const it = itemById.get(id); if (it) it.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' }); }
+  showOsd(lookLabel());
+  if (scroll) { const it = [...items].find((x) => x._kind === 'film' && x._id === id); if (it) it.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' }); }
 }
 function stepLook(d) {
   const i = LOOKS.findIndex((l) => l.id === state.lookId);
   selectLook(LOOKS[(i + d + LOOKS.length) % LOOKS.length].id, true);
 }
+
+// ---------------------------------------------------------------- lenses
+function syncLens() {
+  const L = lensById(state.lens), on = state.lens !== 'none';
+  lensBar.hidden = !on;
+  if (on) { lensLabel.textContent = `${L.name} · ${L.label}`; lensRange.value = Math.round(lensAmt() * 100); lensRange.setAttribute('aria-label', `${L.name} ${L.label}`); }
+}
+function setLens(id) {
+  state.lens = lensById(id).id; persist();
+  syncLens(); markSelected(); needsRender = true;
+  showOsd(lookLabel());
+  if (state.lens !== 'none') {
+    lens = lens || createLens();
+    if (!lens.ok) { toast('Lenses need WebGL, which this browser or device is not giving the page.', { type: 'warn' }); state.lens = 'none'; persist(); syncLens(); markSelected(); }
+  }
+}
+lensRange.addEventListener('input', () => { state.lensAmt[state.lens] = +lensRange.value / 100; needsRender = true; });
+lensRange.addEventListener('change', persist);
 
 // ---------------------------------------------------------------- adjust panel
 function lutFromChoice(v) {
@@ -469,14 +582,16 @@ function lutFromChoice(v) {
 function buildPanel() {
   clear(panelBody);
   const P = state.params;
+  const section = (title) => h('h3', { class: 'cam-sheet-h', text: title });
   if (state.source === 'camera' && state.track) {
-    panelBody.append(h('h3', { class: 'cam-panel-h', text: 'Camera (pro)' }), proControls(state.track));
-    const q = h('select', { class: 'studio-input', 'aria-label': 'Photo quality', onchange: () => { state.quality = q.value; persist(); startCamera(); } },
+    panelBody.append(section('Camera'));
+    if (state.caps && state.caps.zoom && state.caps.zoom.max > state.caps.zoom.min) panelBody.append(h('div', { class: 'cam-slider' }, h('span', { class: 'cam-slider-label', text: 'Zoom' }), zoomLabel, zoomRange));
+    panelBody.append(proControls(state.track));
+    const q = h('select', { class: 'studio-input', 'aria-label': 'Photo quality', onchange: () => setQuality(q.value) },
       [['max', 'Maximum (full sensor)'], ['high', 'High (1440p stream)'], ['standard', 'Standard (720p, fastest)']].map(([v, t]) => h('option', { value: v, text: t, selected: state.quality === v })));
     panelBody.append(h('label', { class: 'cam-field' }, h('span', { text: 'Quality' }), q));
   }
   const change = () => { needsRender = true; };
-  const section = (title) => h('h3', { class: 'cam-panel-h', text: title });
   // frame / date / LUT
   const frameSel = h('select', { class: 'studio-input', 'aria-label': 'Frame', onchange: () => { P.frame = frameSel.value; change(); } }, FRAMES.map((f) => h('option', { value: f.id, text: f.name, selected: P.frame === f.id })));
   const dateChk = h('input', { type: 'checkbox', checked: !!P.dateStamp, 'aria-label': 'Date stamp', onchange: () => { P.dateStamp = dateChk.checked; dateTxt.disabled = !dateChk.checked; change(); } });
@@ -491,7 +606,7 @@ function buildPanel() {
     h('label', { class: 'cam-field is-check' }, h('span', { text: 'Date stamp' }), h('span', { class: 'cam-field-row' }, dateChk, dateTxt)),
     section('LUT'),
     h('label', { class: 'cam-field' }, h('span', { text: 'Grade' }), lutSel),
-    h('button', { class: 'studio-btn is-small is-block', type: 'button', onclick: importLut }, icon('upload', 14), h('span', { text: 'Import .cube LUT…' })),
+    h('button', { class: 'studio-btn is-block cam-sheet-btn', type: 'button', onclick: importLut }, icon('upload', 14), h('span', { text: 'Import .cube LUT…' })),
   );
   const groups = [['basic', 'Basic'], ['colour', 'Colour'], ['texture', 'Texture'], ['optics', 'Optics'], ['effects', 'Light leak']];
   for (const [gid, gname] of groups) {
@@ -505,12 +620,24 @@ function buildPanel() {
     }
   }
 }
+function setQuality(v) { state.quality = v; persist(); if (state.source === 'camera') startCamera(); }
 
+const wideLayout = () => matchMedia('(min-width: 1000px) and (min-height: 600px)').matches;
 function togglePanel(force) {
   const open = force === undefined ? !body.classList.contains('cam-panel-open') : force;
   body.classList.toggle('cam-panel-open', open);
   btnAdjust.setAttribute('aria-pressed', open ? 'true' : 'false');
+  panel.style.transform = '';
   requestAnimationFrame(() => { fitView(); needsRender = true; });
+}
+// drag the sheet down (phones) to close it
+{
+  let startY = null, dy = 0;
+  const begin = (e) => { if (wideLayout() || e.target.closest('button')) return; startY = e.clientY; dy = 0; panel.style.transition = 'none'; try { panel.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ } };
+  panelHandle.addEventListener('pointerdown', begin); panelHead.addEventListener('pointerdown', begin);
+  panel.addEventListener('pointermove', (e) => { if (startY === null) return; dy = Math.max(0, e.clientY - startY); panel.style.transform = `translateY(${dy}px)`; });
+  const end = () => { if (startY === null) return; startY = null; panel.style.transition = ''; panel.style.transform = ''; if (dy > 70) togglePanel(false); };
+  panel.addEventListener('pointerup', end); panel.addEventListener('pointercancel', end);
 }
 
 function resetLook() { state.lutChoice = ''; selectLook(state.lookId, false); toast('Look reset to its preset values.'); }
@@ -525,31 +652,33 @@ async function importLut() {
     registerLook(look);
     const key = 'i:' + look.id;
     state.importedLuts.push({ key, lut });
+    state.cat = 'film'; state.looksOff = false;
     buildStrip();
     state.lutChoice = '';
     selectLook(look.id, true);
-    toast(`LUT “${lut.title}” imported (${lut.kind.toUpperCase()}${lut.size ? ', ' + lut.size + '³' : ''}).`, { type: 'ok', detail: 'It is in the look strip under Imported LUTs and in Adjust → LUT.' });
+    toast(`LUT “${lut.title}” imported (${lut.kind.toUpperCase()}${lut.size ? ', ' + lut.size + '³' : ''}).`, { type: 'ok', detail: 'It is in Film ▸ Imported LUTs and in Adjust ▸ LUT.' });
     scheduleThumbs(50);
   } catch (e) {
     toast('This LUT could not be used.', { type: 'error', detail: e.message, timeout: 7000 });
   }
 }
 
-// ---------------------------------------------------------------- effects (flash looks + on-device AI)
+// ---------------------------------------------------------------- effects (flash looks, Y2K, on-device AI)
 function syncFx() {
   const on = state.fx !== 'none';
   fxView.hidden = !on; view.style.visibility = on ? 'hidden' : '';
-  for (const b of fxRow.children) { const a = b.dataset.fx === state.fx; b.classList.toggle('is-active', a); b.setAttribute('aria-selected', String(a)); }
-  lookName.textContent = getLook(state.lookId).name + (on ? ' · ' + fxById(state.fx).name : '');
+  markSelected();
 }
 async function setFx(id) {
-  if (state.recording) return;
+  if (state.recording) { toast('Stop recording to change the effect.', { type: 'warn' }); return; }
   const f = fxById(id);
   state.fx = f.id; persist(); syncFx(); needsRender = true;
+  showOsd(lookLabel());
+  if (state.mode === 'portrait' && f.id !== 'portrait') { state.mode = 'photo'; syncControls(); }
   if (f.ai && !segmenterReady()) {
     const t = toast('Loading EYAD AI (on this device)…', { timeout: 0 });
-    try { await loadSegmenter((m) => { try { t.set && t.set(m); } catch (e) { /* ignore */ } }); toast(f.name + ' is on — the person is found on this device, nothing is uploaded.', { type: 'ok', timeout: 2600 }); }
-    catch (e) { toast('EYAD AI could not start: ' + (e.message || e), { type: 'error', timeout: 7000 }); state.fx = 'none'; persist(); syncFx(); }
+    try { await loadSegmenter((m) => { try { t.set && t.set(m); } catch (e) { /* ignore */ } }); toast(f.name + ' is on — the person is found on this device, nothing is uploaded.', { type: 'ok', timeout: 2600 }); scheduleThumbs(100); }
+    catch (e) { toast('EYAD AI could not start: ' + (e.message || e), { type: 'error', timeout: 7000 }); state.fx = 'none'; persist(); syncFx(); if (state.mode === 'portrait') { state.mode = 'photo'; syncControls(); } }
     finally { t && t.close && t.close(); needsRender = true; }
   }
 }
@@ -568,8 +697,8 @@ function syncTop() {
   clear(btnFlash).append(glyph(state.flash ? FLASH : FLASH_OFF));
   btnFlash.setAttribute('aria-pressed', state.flash ? 'true' : 'false');
   btnFlash.title = state.facing === 'user' ? (state.flash ? 'Screen flash: on' : 'Screen flash: off') : (state.flash ? 'Torch flash: on' : 'Torch flash: off');
-  btnAspect.textContent = currentAspect().label;
-  btnAspect.disabled = !!state.recording;
+  btnAspect.firstChild.textContent = currentAspect().label;
+  btnAspect.disabled = !!state.recording || (state.mode === 'quad' && state.source === 'camera');
   btnHist.setAttribute('aria-pressed', String(state.hist)); histCanvas.hidden = !state.hist;
   btnCams.hidden = !(state.source === 'camera' && (state.cameras || 0) > 1);
   levelEl.hidden = !(state.grid && state.level && levelSeen);
@@ -582,33 +711,46 @@ function cycleAspect() {
   if (state.source === 'file') state.photoAspect = next; else state.aspect = next;
   syncTop(); persist(); needsRender = true; scheduleThumbs(100);
 }
+// turning the phone turns the frame with it (3:4 ↔ 4:3, 9:16 ↔ 16:9)
+const portraitMq = matchMedia('(orientation: portrait)');
+const onTurn = () => {
+  const p = portraitMq.matches, swap = { '3:4': '4:3', '4:3': '3:4', '9:16': '16:9', '16:9': '9:16' };
+  const tall = state.aspect === '3:4' || state.aspect === '9:16', wide = state.aspect === '4:3' || state.aspect === '16:9';
+  if (IS_TOUCH && !state.recording && ((p && wide) || (!p && tall))) { state.aspect = swap[state.aspect]; persist(); syncTop(); needsRender = true; scheduleThumbs(200); }
+  togglePanel(body.classList.contains('cam-panel-open'));
+};
+if (portraitMq.addEventListener) portraitMq.addEventListener('change', onTurn); else if (portraitMq.addListener) portraitMq.addListener(onTurn);
 
 const canRecord = () => typeof MediaRecorder !== 'undefined' && typeof view.captureStream === 'function';
 function setMode(m) {
-  if (state.recording || state.busy) return;
-  if (m === 'portrait') { if (state.fx !== 'portrait') { state.preFx = state.fx; setFx('portrait'); } }
-  else if (state.mode === 'portrait' && state.fx === 'portrait') { setFx(state.preFx && state.preFx !== 'portrait' ? state.preFx : 'none'); }
-  if (m === 'video' && state.source !== 'camera') { toast('Video recording uses the live camera.', { type: 'warn' }); return; }
+  if (state.recording || state.busy || m === state.mode) return;
+  if ((m === 'video' || m === 'burst' || m === 'quad') && state.source !== 'camera') { toast(`${MODES.find((x) => x[0] === m)[1]} uses the live camera.`, { type: 'warn' }); return; }
   if (m === 'video' && !canRecord()) { toast('This browser cannot record video from a canvas.', { type: 'warn' }); return; }
+  const was = state.mode;
   state.mode = m;
-  quadHud.hidden = m !== 'quad';
+  if (m === 'portrait') { if (state.fx !== 'portrait') { state.preFx = state.fx; setFx('portrait'); } }
+  else if (was === 'portrait' && state.fx === 'portrait') { setFx(state.preFx && state.preFx !== 'portrait' ? state.preFx : 'none'); }
+  state.mode = m;
   needsRender = true;
   syncControls();
-  if (m === 'quad' && !quadTipShown) { quadTipShown = true; toast('Quad 3D: four shots in half a second. Slide the phone a little sideways while it fires for real depth — or hold still and the person is lifted off the background.', { timeout: 7000 }); }
+  scheduleThumbs(200);
+  if (m === 'quad') import('./tutorial.js').then((t) => t.quadGuide()).catch(() => {});
+}
+function stepMode(d) {
+  const ids = MODES.map((x) => x[0]);
+  let i = ids.indexOf(state.mode);
+  for (let n = 0; n < ids.length; n++) { i += d; if (i < 0 || i >= ids.length) return; if (!modeBtns[ids[i]].disabled) { setMode(ids[i]); return; } }
 }
 function syncControls() {
   const cam = state.source === 'camera' && !!state.stream;
-  modePhoto.classList.toggle('is-active', state.mode === 'photo');
-  modeVideo.classList.toggle('is-active', state.mode === 'video');
-  modePortrait.classList.toggle('is-active', state.mode === 'portrait');
-  modeQuad.classList.toggle('is-active', state.mode === 'quad'); modeQuad.disabled = !cam;
-  modeBurst.classList.toggle('is-active', state.mode === 'burst');
-  modeBurst.disabled = !cam;
-  modeVideo.disabled = !cam || !canRecord();
+  for (const [id] of MODES) { const on = state.mode === id; modeBtns[id].classList.toggle('is-active', on); modeBtns[id].setAttribute('aria-pressed', String(on)); }
+  modeBtns.quad.disabled = !cam; modeBtns.burst.disabled = !cam;
+  modeBtns.video.disabled = !cam || !canRecord();
+  quadHud.hidden = !(state.mode === 'quad' && state.source === 'camera');
   shutter.classList.toggle('is-video', state.mode === 'video');
   shutter.classList.toggle('is-recording', !!state.recording);
   shutter.classList.toggle('is-apply', state.source === 'file');
-  shutter.disabled = !sourceEl() && !cam && state.source !== 'file';
+  shutter.disabled = state.busy || (!sourceEl() && !cam && state.source !== 'file');
   shutter.setAttribute('aria-label', state.source === 'file' ? 'Render photo with this look' : state.mode === 'video' ? (state.recording ? 'Stop recording' : 'Start recording') : 'Take photo');
   clear(btnFlip).append(icon(state.source === 'file' ? 'camera' : 'swap', 22));
   btnFlip.setAttribute('aria-label', state.source === 'file' ? 'Back to camera' : 'Switch camera');
@@ -617,7 +759,23 @@ function syncControls() {
   btnFlip.style.visibility = state.source === 'camera' && (!cam || state.cameras < 2) ? 'hidden' : '';
   btnOpen.disabled = !!state.recording;
   body.classList.toggle('cam-is-file', state.source === 'file');
+  body.classList.toggle('cam-recording', !!state.recording);
+  const act = modeBtns[state.mode];
+  if (act && modes.scrollWidth > modes.clientWidth + 2) modes.scrollTo({ left: act.offsetLeft - (modes.clientWidth - act.offsetWidth) / 2, behavior: 'smooth' });
   syncTop();
+}
+// swipe the control cluster sideways to change mode (touch)
+{
+  let sx = null, sy = 0;
+  controls.addEventListener('pointerdown', (e) => { sx = e.pointerType === 'mouse' ? null : e.clientX; sy = e.clientY; }, { passive: true });
+  controls.addEventListener('pointerup', (e) => {
+    if (sx === null) return;
+    const dx = e.clientX - sx, dy = e.clientY - sy; sx = null;
+    const land = matchMedia('(orientation: landscape) and (max-height: 520px)').matches;
+    const d = land ? dy : dx, o = land ? dx : dy;
+    if (Math.abs(d) > 44 && Math.abs(d) > Math.abs(o) * 1.4) stepMode(d < 0 ? 1 : -1);
+  }, { passive: true });
+  controls.addEventListener('pointercancel', () => { sx = null; }, { passive: true });
 }
 
 // ---------------------------------------------------------------- capture
@@ -679,10 +837,25 @@ async function grabFullFrame() {
       if (bmp.width && bmp.height) return bmp;
     } catch (e) { /* fall back to the video frame */ }
   }
+  return grabVideoFrame();
+}
+function grabVideoFrame() {
   const c = document.createElement('canvas');
   c.width = video.videoWidth; c.height = video.videoHeight;
   c.getContext('2d').drawImage(video, 0, 0);
   return c;
+}
+
+/** Full-resolution chain for a still: crop + mirror → lens → film look. (Effects are added by the caller.) */
+async function develop(src, { mirror = mirrored(), onProgress } = {}) {
+  const W = src.width, H = src.height;
+  let input = src, opts = { crop: cropFor(W, H), mirror };
+  if (state.lens !== 'none') {
+    let c = null;
+    try { c = applyLensStill(src, state.lens, lensAmt(), opts); } catch (e) { c = null; }
+    if (c) { input = c; opts = {}; }
+  }
+  return applyLook(input, state.lookId, state.params, { ...opts, onProgress });
 }
 
 async function withFlash(fn) {
@@ -705,7 +878,7 @@ function busy(on, text = '') {
   state.busy = on;
   body.classList.toggle('cam-busy', on);
   shutter.disabled = on;
-  if (on) { countdown.textContent = text; countdown.classList.add('is-busy'); } else { countdown.textContent = ''; countdown.classList.remove('is-busy'); }
+  if (on) { countdown.textContent = text; countdown.classList.add('is-busy'); } else { countdown.textContent = ''; countdown.classList.remove('is-busy'); syncControls(); }
 }
 
 async function capturePhoto() {
@@ -713,11 +886,10 @@ async function capturePhoto() {
   try {
     if (state.sound) shutterSound();
     const src = state.fx === 'night' ? await nightStack() : await withFlash(() => { flashEl.classList.add('is-shot'); setTimeout(() => flashEl.classList.remove('is-shot'), 120); return grabFullFrame(); });
-    const W = src.width, H = src.height;
-    let out = await applyLook(src, state.lookId, state.params, { crop: cropFor(W, H), mirror: mirrored(), onProgress: (f) => { countdown.textContent = `Developing… ${Math.round(f * 100)}%`; } });
+    let out = await develop(src, { onProgress: (f) => { countdown.textContent = `Developing… ${Math.round(f * 100)}%`; } });
     if (src.close) src.close();
     out = await applyFxStill(out, state.fx, (m) => { countdown.textContent = m; });
-    showReviewPhoto(out, `eyad-camera-${stampName()}-${state.lookId}`);
+    showReviewPhoto(out, `eyad-kamera-${stampName()}-${state.lookId}`);
   } catch (e) {
     toast('The photo could not be captured.', { type: 'error', detail: e.message });
   } finally { busy(false); }
@@ -727,7 +899,7 @@ async function renderPhoto() {
   if (!state.photo) return;
   busy(true, 'Rendering…');
   try {
-    let out = await applyLook(state.photo, state.lookId, state.params, { crop: cropFor(state.photo.width, state.photo.height), onProgress: (f) => { countdown.textContent = `Rendering… ${Math.round(f * 100)}%`; } });
+    let out = await develop(state.photo, { mirror: false, onProgress: (f) => { countdown.textContent = `Rendering… ${Math.round(f * 100)}%`; } });
     out = await applyFxStill(out, state.fx, (m) => { countdown.textContent = m; });
     showReviewPhoto(out, `${state.photoName}-${state.lookId}`);
   } catch (e) {
@@ -765,57 +937,86 @@ async function startRecording() {
   rec.ondataavailable = (e) => { if (e.data && e.data.size) chunks.push(e.data); };
   const started = performance.now();
   state.recording = { rec, maxSize, started, timer: 0 };
-  rec.onstop = () => {
+  const finish = () => {
+    if (!state.recording || state.recording.rec !== rec) return;
     const type = (rec.mimeType || mime || 'video/webm').split(';')[0];
     const blob = new Blob(chunks, { type });
-    clearInterval(state.recording && state.recording.timer);
+    clearInterval(state.recording.timer);
     state.recording = null;
     recBadge.hidden = true;
     stream.getVideoTracks().forEach((t) => t.stop());
     syncControls();
     if (!blob.size) { toast('Nothing was recorded.', { type: 'warn' }); return; }
-    showReviewVideo(blob, `eyad-camera-${stampName()}-${state.lookId}.${type.includes('mp4') ? 'mp4' : 'webm'}`);
+    showReviewVideo(blob, `eyad-kamera-${stampName()}-${state.lookId}.${type.includes('mp4') ? 'mp4' : 'webm'}`);
   };
+  rec.onstop = finish;
+  rec.onerror = () => { toast('Recording stopped — the recorder reported an error.', { type: 'error' }); finish(); };
   rec.start(500);
   recBadge.hidden = false;
   const timeEl = recBadge.querySelector('.cam-rec-time');
+  timeEl.textContent = '0:00';
   state.recording.timer = setInterval(() => {
     const s = Math.floor((performance.now() - started) / 1000);
     timeEl.textContent = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
     if (s >= MAX_REC) stopRecording();
   }, 250);
+  togglePanel(false);
   syncControls();
 }
 function stopRecording() { if (state.recording && state.recording.rec.state !== 'inactive') state.recording.rec.stop(); }
 
 // ---------------------------------------------------------------- review
-let reviewUrl = null;
+let reviewUrl = null, reviewCleanup = null;
 function closeReview() {
+  if (reviewCleanup) { try { reviewCleanup(); } catch (e) { /* ignore */ } reviewCleanup = null; }
   review.hidden = true; clear(review);
   if (reviewUrl) { URL.revokeObjectURL(reviewUrl); reviewUrl = null; }
   body.classList.remove('cam-reviewing');
   needsRender = true;
+  scheduleThumbs(300);
 }
-function reviewShell(media, info, actions) {
+const act = (ic, label, fn, primary) => h('button', { class: 'cam-act' + (primary ? ' is-primary' : ''), type: 'button', onclick: fn }, typeof ic === 'string' ? icon(ic, 18) : ic, h('span', { text: label }));
+function reviewShell(media, info, actions, { extra = null, back } = {}) {
+  if (reviewCleanup) { try { reviewCleanup(); } catch (e) { /* ignore */ } reviewCleanup = null; }
   clear(review);
   review.append(
     h('div', { class: 'cam-review-top' },
-      h('button', { class: 'studio-btn is-ghost cam-review-back', type: 'button', onclick: closeReview }, icon('back', 16), h('span', { text: state.source === 'file' ? 'Back' : 'Retake' })),
+      h('button', { class: 'studio-btn is-ghost cam-review-back', type: 'button', onclick: closeReview }, icon('back', 16), h('span', { text: back || (state.source === 'file' ? 'Back' : 'Retake') })),
       h('div', { class: 'cam-review-info', text: info })),
     h('div', { class: 'cam-review-media' }, media),
-    h('div', { class: 'cam-review-actions' }, actions));
+    h('div', { class: 'cam-review-side' }, extra, h('div', { class: 'cam-review-actions' }, actions)));
   review.hidden = false;
   body.classList.add('cam-reviewing');
-  const first = review.querySelector('.studio-btn.is-primary'); if (first) first.focus();
+  togglePanel(false);
+  const first = review.querySelector('.cam-act.is-primary'); if (first) first.focus({ preventScroll: true });
 }
 const toBlob = (c, type, q) => new Promise((res, rej) => c.toBlob((b) => (b ? res(b) : rej(new Error('The image is too large to encode in this browser.'))), type, q));
+/** Where an object-fit: contain element really draws its picture. */
+function containRect(el, iw, ih) {
+  const r = el.getBoundingClientRect(), s = Math.min(r.width / iw, r.height / ih), w = iw * s, hh = ih * s;
+  return { left: r.left + (r.width - w) / 2, top: r.top + (r.height - hh) / 2, width: w, height: hh };
+}
 
-function showReviewPhoto(canvas, base, { fromGallery = false } = {}) {
+async function aiPrompt(canvas, base) {
+  try {
+    const m = await import('./promptfx.js');
+    const out = await m.openPromptFx({ source: canvas, title: 'Describe a look' });
+    if (!out) return;
+    const name = sanitizeFilename(`${base}-ai`);
+    addShot(out, name, 'AI prompt look');
+    openGallery(state.shots.length - 1);
+    toast('AI look added to this session — the original is still in the gallery.', { type: 'ok' });
+  } catch (e) {
+    toast('AI prompt looks could not be loaded.', { type: 'warn' });
+  }
+}
+
+function showReviewPhoto(canvas, base, { fromGallery = false, label = '' } = {}) {
   base = sanitizeFilename(base);
   if (!fromGallery) addShot(canvas, base);
   canvas.classList.add('cam-review-canvas');
   canvas.setAttribute('role', 'img');
-  canvas.setAttribute('aria-label', 'Captured photo with ' + getLook(state.lookId).name);
+  canvas.setAttribute('aria-label', 'Captured photo');
   const save = async (type) => {
     try { const b = await toBlob(canvas, type, 0.92); downloadBlob(b, `${base}.${type === 'image/png' ? 'png' : 'jpg'}`); toast('Saved.', { type: 'ok' }); }
     catch (e) { toast('Could not save the photo.', { type: 'error', detail: e.message }); }
@@ -834,12 +1035,14 @@ function showReviewPhoto(canvas, base, { fromGallery = false } = {}) {
       await navigator.share({ files: [f] });
     } catch (e) { if (e && e.name !== 'AbortError') toast('Sharing failed.', { type: 'error', detail: e.message }); }
   };
-  const canShare = !!(navigator.canShare && navigator.share && navigator.canShare({ files: [new File([new Blob(['x'])], 'x.jpg', { type: 'image/jpeg' })] }));
-  reviewShell(canvas, `${getLook(state.lookId).name} · ${canvas.width} × ${canvas.height}`, [
-    h('button', { class: 'studio-btn is-primary', type: 'button', onclick: () => save('image/jpeg') }, icon('download', 15), h('span', { text: 'Save JPEG' })),
-    h('button', { class: 'studio-btn', type: 'button', onclick: () => save('image/png') }, icon('download', 15), h('span', { text: 'Save PNG' })),
-    canShare ? h('button', { class: 'studio-btn', type: 'button', onclick: share }, icon('arrowUpRight', 15), h('span', { text: 'Share' })) : null,
-    h('button', { class: 'studio-btn', type: 'button', onclick: edit }, icon('image', 15), h('span', { text: 'Edit in EYAD IMAGE' })),
+  let canShare = false;
+  try { canShare = !!(navigator.canShare && navigator.share && navigator.canShare({ files: [new File([new Blob(['x'])], 'x.jpg', { type: 'image/jpeg' })] })); } catch (e) { canShare = false; }
+  reviewShell(canvas, `${label || lookLabel()} · ${canvas.width} × ${canvas.height}`, [
+    act('download', 'Save JPEG', () => save('image/jpeg'), true),
+    act('download', 'Save PNG', () => save('image/png')),
+    canShare ? act('arrowUpRight', 'Share', share) : null,
+    h('button', { class: 'cam-act cam-act-ai', type: 'button', title: 'Describe a look in words and apply it to this photo', onclick: () => aiPrompt(canvas, base) }, icon('sparkle', 18), h('span', { text: 'AI prompt' })),
+    act('image', 'Edit in IMAGE', edit),
   ]);
 }
 
@@ -849,17 +1052,21 @@ function showReviewVideo(blob, name) {
   const v = h('video', { class: 'cam-review-video', src: reviewUrl, controls: true, playsinline: true, loop: true });
   v.setAttribute('playsinline', '');
   const mb = (blob.size / 1048576).toFixed(1);
-  reviewShell(v, `${getLook(state.lookId).name} · ${mb} MB`, [
-    h('button', { class: 'studio-btn is-primary', type: 'button', onclick: () => { downloadBlob(blob, name); toast('Saved.', { type: 'ok' }); } }, icon('download', 15), h('span', { text: 'Download video' })),
-    h('button', { class: 'studio-btn', type: 'button', onclick: async () => {
-      try { const id = await putHandoff([new File([blob], name, { type: blob.type })]); location.href = ROUTES.video + '?handoff=' + encodeURIComponent(id); }
+  let canShare = false;
+  const file = () => new File([blob], name, { type: blob.type });
+  try { canShare = !!(navigator.canShare && navigator.share && navigator.canShare({ files: [file()] })); } catch (e) { canShare = false; }
+  reviewShell(v, `${lookLabel()} · ${mb} MB`, [
+    act('download', 'Download video', () => { downloadBlob(blob, name); toast('Saved.', { type: 'ok' }); }, true),
+    canShare ? act('arrowUpRight', 'Share', async () => { try { await navigator.share({ files: [file()] }); } catch (e) { if (e && e.name !== 'AbortError') toast('Sharing failed.', { type: 'error', detail: e.message }); } }) : null,
+    act('video', 'Edit in VIDEO', async () => {
+      try { const id = await putHandoff([file()]); location.href = ROUTES.video + '?handoff=' + encodeURIComponent(id); }
       catch (e) { toast('Could not open the clip in EYAD VIDEO.', { type: 'error', detail: e.message }); }
-    } }, icon('video', 15), h('span', { text: 'Edit in EYAD VIDEO' })),
+    }),
   ]);
   v.play().catch(() => {});
 }
 
-// ---------------------------------------------------------------- Quad 3D (four-lens stereo, N8000 style)
+// ---------------------------------------------------------------- 3D ×4 (four viewpoints → a moving 3D photo)
 async function blinkFlash(fn) {
   // a fast strobe per lens: screen flash (front / no torch) or the torch (back camera)
   const torch = state.facing !== 'user' && state.caps && state.caps.torch;
@@ -876,57 +1083,116 @@ async function captureQuad() {
   try {
     const raw = [];
     for (let i = 0; i < 4; i++) {
-      quadDots.forEach((d, k) => d.classList.toggle('is-on', k === i));
+      quadDots.forEach((d, k) => { d.classList.toggle('is-on', k === i); if (k < i) d.classList.add('is-done'); });
+      countdown.textContent = `Lens ${i + 1} of 4`;
       if (state.sound) shutterSound();
-      raw.push(await blinkFlash(async () => { const c = document.createElement('canvas'); c.width = video.videoWidth; c.height = video.videoHeight; c.getContext('2d').drawImage(video, 0, 0); return c; }));
+      raw.push(await blinkFlash(async () => grabVideoFrame()));
       await sleep(95);
     }
-    quadDots.forEach((d) => d.classList.remove('is-on'));
+    quadDots.forEach((d) => d.classList.remove('is-on', 'is-done'));
     const dev = [];
     for (let i = 0; i < raw.length; i++) {
       countdown.textContent = `Developing ${i + 1}/4…`;
-      let c = await applyLook(raw[i], state.lookId, state.params, { crop: cropFor(raw[i].width, raw[i].height), mirror: mirrored() });
+      let c = await develop(raw[i]);
       if (state.fx !== 'none' && !fxById(state.fx).ai) c = await applyFxStill(c, state.fx);
       dev.push(c);
     }
     await showQuad(dev);
   } catch (e) { toast('The 3D shot could not be captured.', { type: 'error', detail: e.message }); }
-  finally { quadDots.forEach((d) => d.classList.remove('is-on')); busy(false); }
+  finally { quadDots.forEach((d) => d.classList.remove('is-on', 'is-done')); busy(false); }
 }
 /** Build the four viewpoints from developed frames (sweep) or from one frame + AI depth. */
-async function buildQuad(dev, pivot, method) {
-  const par = parallaxOf(dev);
-  let how = method;
-  if (how === 'auto') how = par.shift >= 0.012 ? 'sweep' : 'depth';
+async function buildQuad(dev, pivot, method, opts = {}) {
+  // Method keys: 'auto' | 'sweep' (four real shots) | 'depth' (real depth model, one instant) | 'mask' (older person cut-out).
+  const W = await import('./wiggle.js');
+  const say = (m) => { if (m) countdown.textContent = m; };
+  const motion = W.burstMotion(dev);
+  let how = ['sweep', 'depth', 'mask'].includes(method) ? method : 'auto';
+  if (how === 'auto') how = motion.real ? 'sweep' : 'depth';
   if (how === 'depth') {
     try {
-      countdown.textContent = 'Finding depth…';
-      const res = await segment(dev[1], 'person');
+      say('Finding depth…');
+      const auto = !pivot || (pivot.x === 0.5 && pivot.y === 0.5);
+      const r = await W.depthQuad(dev, {
+        pivot: auto ? null : pivot, strength: opts.strength == null ? 1.2 : opts.strength, flash: state.flash ? 0.5 : 0,
+        onProgress: (f, m) => say(m ? (typeof f === 'number' ? `${m} ${Math.round(f * 100)}%` : m) : ''),
+      });
+      return { frames: r.frames.map((f, i) => lensCharacter(f, i)), how: 'depth', depth: r.depth, pivotDepth: r.pivot, note: 'AI depth — four lenses rebuilt from one instant. Tap the picture to choose what stays still' };
+    } catch (e) {
+      toast('The depth model could not run here — using a simpler 3D instead.', { type: 'warn', detail: String(e && e.message || e).slice(0, 160) });
+      how = 'mask';
+    }
+  }
+  if (how === 'mask') {
+    try {
+      say('Finding the subject…');
+      const src = dev[W.sharpestIndex(dev)];
+      const res = await segment(src, 'person');
       let cover = 0; for (let i = 0; i < res.mask.length; i += 7) cover += res.mask[i] > 0.5 ? 1 : 0; cover /= res.mask.length / 7;
-      if (cover > 0.02 && cover < 0.9) return { frames: synthViews(dev[1], maskCanvas(res, 'quadmask'), 4).map((f, i) => lensCharacter(f, i)), how: 'depth', note: 'AI depth — the person is lifted off the background' };
-      if (method === 'depth') toast('No person found for AI depth — using the four real shots instead.', { type: 'warn' });
-    } catch (e) { if (method === 'depth') toast('AI depth could not start — using the four real shots.', { type: 'warn' }); }
-    how = 'sweep';
+      if (cover > 0.02 && cover < 0.9) return { frames: synthViews(src, maskCanvas(res, 'quadmask'), 4).map((f, i) => lensCharacter(f, i)), how: 'mask', note: 'Subject cut-out — the person is lifted off the background' };
+      if (method === 'mask') toast('No person found — using the four real shots instead.', { type: 'warn' });
+    } catch (e) { if (method === 'mask') toast('The subject could not be found — using the four real shots.', { type: 'warn' }); }
   }
   const al = alignFrames(dev, pivot);
   return { frames: al.frames.map((f, i) => lensCharacter(f, i)), how: 'sweep', note: al.spread < 0.01 ? 'Almost no movement between shots — slide the phone sideways while shooting for stronger 3D' : 'Four real viewpoints — tap the picture to choose what stays still' };
 }
 async function showQuad(dev) {
-  let pivot = { x: 0.5, y: 0.5 }, method = state.quadMethod, fps = 8;
-  let built = await buildQuad(dev, pivot, method);
+  let pivot = { x: 0.5, y: 0.5 }, method = state.quadMethod, fps = 8, playing = true, strength = 1.2;
+  let built = await buildQuad(dev, pivot, method, { strength });
   const base = sanitizeFilename(`eyad-kamera-${stampName()}-3d`);
   const cv = document.createElement('canvas'); cv.className = 'cam-review-canvas cam-quad-view';
+  cv.setAttribute('role', 'img'); cv.setAttribute('aria-label', '3D photo preview');
   let timer = 0, step = 0;
-  const play = () => { clearInterval(timer); timer = setInterval(() => { const f = built.frames[PING[step++ % PING.length]]; if (cv.width !== f.width || cv.height !== f.height) { cv.width = f.width; cv.height = f.height; } cv.getContext('2d').drawImage(f, 0, 0); if (review.hidden) clearInterval(timer); }, 1000 / fps); };
+  const frameBtns = [0, 1, 2, 3].map((i) => h('button', { class: 'cam-quad-frame', type: 'button', 'aria-label': `Lens ${i + 1}`, onclick: () => { playing = false; sync(); show(i); } }, h('canvas', { width: 72, height: 72 }), h('i', { text: String(i + 1) })));
+  const drawFrames = () => frameBtns.forEach((b, i) => { const f = built.frames[i], c = b.firstChild.getContext('2d'); if (!f) { b.hidden = true; return; } b.hidden = false; const m = Math.min(f.width, f.height); c.drawImage(f, (f.width - m) / 2, (f.height - m) / 2, m, m, 0, 0, 72, 72); });
+  const show = (i) => { const f = built.frames[i]; if (!f) return; if (cv.width !== f.width || cv.height !== f.height) { cv.width = f.width; cv.height = f.height; } cv.getContext('2d').drawImage(f, 0, 0); frameBtns.forEach((b, k) => b.classList.toggle('is-on', k === i)); };
+  const play = () => { clearInterval(timer); if (!playing) return; timer = setInterval(() => { show(PING[step++ % PING.length] % built.frames.length); }, 1000 / fps); };
+  const playBtn = h('button', { class: 'cam-quad-play', type: 'button', onclick: () => { playing = !playing; sync(); } });
+  const sync = () => { clear(playBtn).append(icon(playing ? 'pause' : 'play', 16)); playBtn.setAttribute('aria-label', playing ? 'Pause' : 'Play'); play(); };
   const note = h('span', { class: 'cam-quad-note', text: built.note });
   const speed = h('input', { class: 'studio-range', type: 'range', min: 3, max: 16, step: 1, value: fps, 'aria-label': 'Wiggle speed', oninput: () => { fps = +speed.value; play(); } });
-  const sel = h('select', { class: 'studio-input', 'aria-label': '3D method', onchange: async () => { method = sel.value; busy(true, 'Rebuilding…'); try { built = await buildQuad(dev, pivot, method); note.textContent = built.note; } finally { busy(false); } } },
-    [['auto', 'Auto'], ['sweep', 'Sweep — real shots'], ['depth', 'AI depth']].map(([v, t]) => h('option', { value: v, text: t, selected: method === v })));
-  cv.addEventListener('click', async (e) => {
-    if (built.how !== 'sweep') return;
-    const r = cv.getBoundingClientRect(); pivot = { x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height };
-    built = await buildQuad(dev, pivot, 'sweep'); note.textContent = 'Pivot moved — that point now stays still';
+  // progress (model download, depth, rebuild) is written to `countdown`; mirror it over the 3D picture
+  const prog = h('div', { class: 'cam-quad-busy', hidden: true, role: 'status', 'aria-live': 'polite' }, h('span', { class: 'cam-quad-spin', 'aria-hidden': 'true' }), h('span', { class: 'cam-quad-busy-text' }));
+  const progText = prog.lastChild;
+  const mo = new MutationObserver(() => { if (countdown.textContent) progText.textContent = countdown.textContent; });
+  mo.observe(countdown, { childList: true, characterData: true, subtree: true });
+  const HOW = { sweep: 'Sweep', depth: 'AI depth', mask: 'Subject cut-out' };
+  const madeBy = h('span', { class: 'cam-quad-how' });
+  const strengthOut = h('output', { class: 'cam-val', text: strength.toFixed(1) + '×' });
+  const strengthRange = h('input', { class: 'studio-range', type: 'range', min: 0.3, max: 2, step: 0.1, value: strength, 'aria-label': 'Depth strength' });
+  const strengthCtl = h('label', { class: 'cam-quad-ctl cam-quad-strength' }, h('span', { text: 'Depth' }), strengthRange, strengthOut);
+  const syncBuilt = () => {
+    madeBy.textContent = HOW[built.how] || '';
+    strengthCtl.hidden = built.how !== 'depth';
+    cv.classList.toggle('is-pivot', built.how === 'sweep' || built.how === 'depth');
+  };
+  let rebuilding = false, again = null;
+  const rebuild = async (m, piv, msg) => {
+    if (rebuilding) { again = [m, piv, msg]; return; }
+    rebuilding = true; prog.hidden = false; progText.textContent = 'Rebuilding…';
+    busy(true, 'Rebuilding…');
+    try {
+      const b = await buildQuad(dev, piv, m, { strength });
+      if (review.contains(cv)) { built = b; videoBlob = null; note.textContent = msg && b.how === m ? msg : b.note; drawFrames(); show(0); syncBuilt(); }
+    } catch (e) { toast('The 3D photo could not be rebuilt.', { type: 'error', detail: e.message }); }
+    finally { busy(false); rebuilding = false; prog.hidden = true; if (again && review.contains(cv)) { const a = again; again = null; rebuild(...a); } else again = null; }
+  };
+  strengthRange.addEventListener('input', () => { strength = +strengthRange.value; strengthOut.textContent = strength.toFixed(1) + '×'; });
+  strengthRange.addEventListener('change', () => rebuild(built.how, pivot));
+  const sel = h('select', { class: 'studio-input', 'aria-label': '3D method', onchange: () => { method = sel.value; if (method !== 'mask') { state.quadMethod = method; persist(); syncQuad(); } rebuild(method, pivot); } },
+    [['auto', 'Auto'], ['depth', 'AI depth (one shot)'], ['sweep', 'Sweep (move sideways)'], ['mask', 'Subject cut-out (simple)']].map(([v, t]) => h('option', { value: v, text: t, selected: method === v })));
+  cv.addEventListener('click', (e) => {
+    if (state.busy || (built.how !== 'sweep' && built.how !== 'depth')) return;
+    const r = containRect(cv, cv.width, cv.height);
+    const x = (e.clientX - r.left) / r.width, y = (e.clientY - r.top) / r.height;
+    if (x < 0 || x > 1 || y < 0 || y > 1) return;
+    pivot = { x, y };
+    pin.style.left = (x * 100) + '%'; pin.style.top = (y * 100) + '%'; pin.hidden = false;
+    pinBox.style.aspectRatio = `${cv.width} / ${cv.height}`;
+    rebuild(built.how, pivot, 'Pivot moved — that point now stays still');
   });
+  const pin = h('i', { class: 'cam-quad-pin', hidden: true, 'aria-hidden': 'true' });
+  const pinBox = h('div', { class: 'cam-quad-pinbox', 'aria-hidden': 'true' }, pin);
   const saving = async (label, fn) => { busy(true, label); try { await fn(); toast('Saved.', { type: 'ok' }); } catch (e) { toast('Could not save.', { type: 'error', detail: e.message }); } finally { busy(false); } };
   const zipPhotos = () => saving('Saving photos…', async () => {
     const { zipSync } = await import('../../vendor/fflate/fflate.js');
@@ -937,15 +1203,19 @@ async function showQuad(dev) {
   });
   let videoBlob = null;
   const getVideo = async () => (videoBlob = videoBlob && videoBlob._fps === fps && videoBlob._f === built.frames ? videoBlob : Object.assign(await wiggleVideo(built.frames, { fps, seconds: 4 }), { _fps: fps, _f: built.frames }));
-  reviewShell(h('div', { class: 'cam-quad-stage' }, cv), `Quad 3D · ${getLook(state.lookId).name}`, [
-    h('div', { class: 'cam-quad-bar' }, note, h('label', { class: 'cam-quad-ctl' }, h('span', { text: 'Speed' }), speed), h('label', { class: 'cam-quad-ctl' }, h('span', { text: 'Method' }), sel)),
-    h('button', { class: 'studio-btn is-primary', type: 'button', onclick: () => saving('Rendering video…', async () => { const b = await getVideo(); downloadBlob(b, `${base}.${b.type.includes('mp4') ? 'mp4' : 'webm'}`); }) }, icon('download', 15), h('span', { text: 'Save 3D video' })),
-    h('button', { class: 'studio-btn', type: 'button', onclick: () => saving('Making GIF…', async () => { downloadBlob(wiggleGif(built.frames, { fps }), `${base}.gif`); }) }, icon('download', 15), h('span', { text: 'Save GIF' })),
-    h('button', { class: 'studio-btn', type: 'button', onclick: zipPhotos }, icon('download', 15), h('span', { text: 'Save the 4 photos' })),
-    h('button', { class: 'studio-btn', type: 'button', onclick: () => saving('Saving strip…', async () => { downloadBlob(await toBlob(filmStrip(built.frames), 'image/jpeg', 0.93), `${base}-strip.jpg`); }) }, icon('film', 15), h('span', { text: 'Film strip' })),
-    h('button', { class: 'studio-btn', type: 'button', onclick: async () => { busy(true, 'Rendering video…'); try { const b = await getVideo(); const id = await putHandoff([new File([b], `${base}.${b.type.includes('mp4') ? 'mp4' : 'webm'}`, { type: b.type })]); location.href = ROUTES.video + '?handoff=' + encodeURIComponent(id); } catch (e) { toast('Could not open in EYAD VIDEO.', { type: 'error', detail: e.message }); } finally { busy(false); } } }, icon('video', 15), h('span', { text: 'Edit in EYAD VIDEO' })),
-  ]);
-  play();
+  const extra = h('div', { class: 'cam-quad-bar' },
+    h('div', { class: 'cam-quad-frames' }, playBtn, frameBtns),
+    h('div', { class: 'cam-quad-notes' }, madeBy, note),
+    h('div', { class: 'cam-quad-ctls' }, h('label', { class: 'cam-quad-ctl' }, h('span', { text: 'Speed' }), speed), strengthCtl, h('label', { class: 'cam-quad-ctl' }, h('span', { text: 'Method' }), sel)));
+  reviewShell(h('div', { class: 'cam-quad-stage' }, cv, pinBox, prog), `3D ×4 · ${lookLabel()}`, [
+    act('download', 'Save 3D video', () => saving('Rendering video…', async () => { const b = await getVideo(); downloadBlob(b, `${base}.${b.type.includes('mp4') ? 'mp4' : 'webm'}`); }), true),
+    act('download', 'Save GIF', () => saving('Making GIF…', async () => { downloadBlob(wiggleGif(built.frames, { fps }), `${base}.gif`); })),
+    act('download', 'Save the 4 photos', zipPhotos),
+    act('film', 'Film strip', () => saving('Saving strip…', async () => { downloadBlob(await toBlob(filmStrip(built.frames), 'image/jpeg', 0.93), `${base}-strip.jpg`); })),
+    act('video', 'Edit in VIDEO', async () => { busy(true, 'Rendering video…'); try { const b = await getVideo(); const id = await putHandoff([new File([b], `${base}.${b.type.includes('mp4') ? 'mp4' : 'webm'}`, { type: b.type })]); location.href = ROUTES.video + '?handoff=' + encodeURIComponent(id); } catch (e) { toast('Could not open in EYAD VIDEO.', { type: 'error', detail: e.message }); } finally { busy(false); } }),
+  ], { extra });
+  reviewCleanup = () => { clearInterval(timer); mo.disconnect(); };
+  drawFrames(); show(0); sync(); syncBuilt();
 }
 
 // ---------------------------------------------------------------- burst
@@ -956,28 +1226,27 @@ async function captureBurst() {
     for (let i = 0; i < 8; i++) {
       if (state.sound) shutterSound();
       flashEl.classList.add('is-shot'); setTimeout(() => flashEl.classList.remove('is-shot'), 60);
-      const c = document.createElement('canvas'); c.width = video.videoWidth; c.height = video.videoHeight;
-      c.getContext('2d').drawImage(video, 0, 0); frames.push(c);
+      frames.push(grabVideoFrame());
       countdown.textContent = `Burst ${i + 1}/8`;
       await sleep(140);
     }
     const out = [];
     for (let i = 0; i < frames.length; i++) {
       countdown.textContent = `Developing ${i + 1}/${frames.length}…`;
-      let c = await applyLook(frames[i], state.lookId, state.params, { crop: cropFor(frames[i].width, frames[i].height), mirror: mirrored() });
+      let c = await develop(frames[i]);
       c = await applyFxStill(c, state.fx);
       out.push(c);
     }
     const stamp = stampName();
-    out.forEach((c, i) => addShot(c, `eyad-camera-${stamp}-burst-${i + 1}`));
+    out.forEach((c, i) => addShot(c, `eyad-kamera-${stamp}-burst-${i + 1}`));
     openGallery(state.shots.length - out.length, { burst: out.length });
   } catch (e) { toast('The burst could not be captured.', { type: 'error', detail: e.message }); }
   finally { busy(false); }
 }
 
 // ---------------------------------------------------------------- session gallery
-function addShot(canvas, base) {
-  state.shots.push({ canvas, base, look: getLook(state.lookId).name, fx: state.fx });
+function addShot(canvas, base, label) {
+  state.shots.push({ canvas, base, label: label || lookLabel() });
   if (state.shots.length > 40) state.shots.shift();
   const t = document.createElement('canvas'); t.width = t.height = 96;
   const s = Math.min(canvas.width, canvas.height);
@@ -986,79 +1255,97 @@ function addShot(canvas, base) {
   btnOpen.classList.add('has-shot');
   btnOpen.setAttribute('aria-label', 'Photos from this session'); btnOpen.title = 'Photos from this session';
 }
-function openGallery(i, { burst = 0 } = {}) {
+function openGallery(i) {
   const shot = state.shots[i]; if (!shot) return;
-  showReviewPhoto(shot.canvas, shot.base, { fromGallery: true });
-  const top = review.querySelector('.cam-review-top');
-  const nav = h('div', { class: 'cam-gal-nav' },
-    h('button', { class: 'studio-icon-btn', type: 'button', 'aria-label': 'Previous photo', disabled: i === 0, onclick: () => openGallery(i - 1) }, icon('chevronLeft', 18)),
-    h('span', { class: 'cam-gal-count', text: `${i + 1} / ${state.shots.length}` }),
-    h('button', { class: 'studio-icon-btn', type: 'button', 'aria-label': 'Next photo', disabled: i === state.shots.length - 1, onclick: () => openGallery(i + 1) }, icon('chevronRight', 18)));
-  top.insertBefore(nav, top.querySelector('.cam-review-info'));
-  if (burst || state.shots.length > 1) {
-    const strip = h('div', { class: 'cam-gal-strip' }, state.shots.map((sh, k) => {
+  showReviewPhoto(shot.canvas, shot.base, { fromGallery: true, label: shot.label });
+  const topEl = review.querySelector('.cam-review-top');
+  topEl.querySelector('.cam-review-back span').textContent = 'Camera';
+  const n = state.shots.length;
+  if (n > 1) {
+    topEl.append(h('div', { class: 'cam-gal-nav' },
+      h('button', { class: 'studio-icon-btn cam-tool', type: 'button', 'aria-label': 'Previous photo', disabled: i === 0, onclick: () => openGallery(i - 1) }, icon('chevronLeft', 18)),
+      h('span', { class: 'cam-gal-count', text: `${i + 1} / ${n}` }),
+      h('button', { class: 'studio-icon-btn cam-tool', type: 'button', 'aria-label': 'Next photo', disabled: i === n - 1, onclick: () => openGallery(i + 1) }, icon('chevronRight', 18))));
+    const gal = h('div', { class: 'cam-gal-strip' }, state.shots.map((sh, k) => {
       const t = document.createElement('canvas'); t.width = t.height = 64;
       const m = Math.min(sh.canvas.width, sh.canvas.height);
       t.getContext('2d').drawImage(sh.canvas, (sh.canvas.width - m) / 2, (sh.canvas.height - m) / 2, m, m, 0, 0, 64, 64);
       return h('button', { class: 'cam-gal-thumb' + (k === i ? ' is-on' : ''), type: 'button', 'aria-label': 'Photo ' + (k + 1), onclick: () => openGallery(k) }, t);
     }));
-    review.querySelector('.cam-review-actions').before(strip);
-    requestAnimationFrame(() => strip.querySelector('.is-on')?.scrollIntoView({ inline: 'center', block: 'nearest' }));
-    const acts = review.querySelector('.cam-review-actions');
-    acts.append(h('button', { class: 'studio-btn', type: 'button', onclick: saveAllShots }, icon('download', 15), h('span', { text: `Save all (${state.shots.length})` })));
-  }
+    review.querySelector('.cam-review-side').prepend(gal);
+    requestAnimationFrame(() => { const on = gal.querySelector('.is-on'); if (on) gal.scrollLeft = on.offsetLeft - (gal.clientWidth - on.offsetWidth) / 2; });
+    review.querySelector('.cam-review-actions').append(act('download', `Save all (${n})`, saveAllShots));
+  } else topEl.append(h('span', { class: 'cam-gal-count', hidden: true, text: '1 / 1' }));
   let sx = null;
   const media = review.querySelector('.cam-review-media');
   media.addEventListener('pointerdown', (e) => { sx = e.clientX; });
   media.addEventListener('pointerup', (e) => { if (sx == null) return; const d = e.clientX - sx; sx = null; if (Math.abs(d) > 50) openGallery(Math.max(0, Math.min(state.shots.length - 1, i + (d < 0 ? 1 : -1)))); });
+  media.addEventListener('pointercancel', () => { sx = null; });
 }
 async function saveAllShots() {
   try {
     const { zipSync } = await import('../../vendor/fflate/fflate.js');
     const files = {};
-    for (const sh of state.shots) { const b = await toBlob(sh.canvas, 'image/jpeg', 0.94); files[sh.base + '.jpg'] = [new Uint8Array(await b.arrayBuffer()), { level: 0 }]; }
-    downloadBlob(new Blob([zipSync(files)], { type: 'application/zip' }), `eyad-camera-${stampName()}.zip`);
+    for (const sh of state.shots) { const b = await toBlob(sh.canvas, 'image/jpeg', 0.94); let name = sh.base + '.jpg', k = 2; while (files[name]) name = `${sh.base}-${k++}.jpg`; files[name] = [new Uint8Array(await b.arrayBuffer()), { level: 0 }]; }
+    downloadBlob(new Blob([zipSync(files)], { type: 'application/zip' }), `eyad-kamera-${stampName()}.zip`);
     toast(`Saved ${state.shots.length} photos (.zip).`, { type: 'ok' });
   } catch (e) { toast('Could not save the photos.', { type: 'error', detail: e.message }); }
 }
 
 // ---------------------------------------------------------------- camera picker & more menu
-function menuAt(btn, items) { const r = btn.getBoundingClientRect(); contextMenu(Math.max(8, r.right - 240), r.bottom + 6, items); }
-function pickCamera() {
+function cameraItems() {
   const list = state.devices || [];
-  if (!list.length) return;
   const cur = state.track && state.track.getSettings ? state.track.getSettings().deviceId : '';
-  menuAt(btnCams, list.map((d, i) => ({ label: d.label || `Camera ${i + 1}`, checked: () => d.deviceId === cur, action: () => { state.deviceId = d.deviceId; persist(); startCamera(); } })));
+  return list.map((d, i) => ({ label: (d.label || `Camera ${i + 1}`).replace(/\s*\([0-9a-f]{4}:[0-9a-f]{4}\)/i, ''), checked: () => d.deviceId === cur, action: () => { state.deviceId = d.deviceId; persist(); startCamera(); } }));
 }
+function pickCamera() {
+  const list = cameraItems();
+  if (list.length) menuFor(btnCams, 'Choose camera', list);
+}
+function startTour(force) { import('./tutorial.js').then((t) => t.startTour({ force, api: tourApi })).catch(() => { if (force) toast('The guide could not be loaded.', { type: 'warn' }); }); }
+const tourApi = {
+  setCat: (id) => setCat(id), closePanel: () => togglePanel(false),
+  get cat() { return state.cat; },
+};
 function moreMenu() {
-  menuAt(btnMore, [
+  const cams = state.source === 'camera' ? cameraItems() : [];
+  const q = [['max', 'Maximum (full sensor)'], ['high', 'High (1440p)'], ['standard', 'Standard (720p, fastest)']].map(([v, t]) => ({ label: t, checked: () => state.quality === v, action: () => { setQuality(v); buildPanel(); } }));
+  const view = [
     { label: 'Shutter sound', checked: () => state.sound, action: () => { state.sound = !state.sound; persist(); } },
     { label: 'Live histogram', checked: () => state.hist, action: () => { state.hist = !state.hist; persist(); syncTop(); } },
     { label: 'Horizon level (with grid)', checked: () => state.level, action: () => { state.level = !state.level; if (state.level) state.grid = true; persist(); syncTop(); } },
-    { separator: true },
+  ];
+  const files = [
     { label: 'Open a photo…', action: openPhoto },
     { label: 'Import .cube LUT…', action: importLut },
     { label: 'Photos from this session', enabled: () => state.shots.length > 0, action: () => openGallery(state.shots.length - 1) },
-    { separator: true },
+  ];
+  const help = { label: 'How to use Kamera', action: () => startTour(true) };
+  const go = [
     { label: 'Restart camera', action: () => startCamera() },
     { label: 'EYAD IMAGE', action: () => { location.href = ROUTES.image; } },
     { label: 'Studio home', action: () => { location.href = ROUTES.home; } },
-  ]);
+  ];
+  if (IS_TOUCH || innerWidth < 700) {
+    menuSheet('More', [help, ...view, { label: 'Photo quality', items: q }, cams.length > 1 ? { label: 'Choose camera', items: cams } : null, ...files, ...go].filter(Boolean));
+    return;
+  }
+  const r = btnMore.getBoundingClientRect();
+  contextMenu(Math.max(8, r.right - 260), r.bottom + 6, [help, { separator: true }, ...view, { separator: true }, { label: 'Photo quality', submenu: q }, cams.length > 1 ? { label: 'Choose camera', submenu: cams } : null, { separator: true }, ...files, { separator: true }, ...go].filter(Boolean));
 }
 
 // ---------------------------------------------------------------- tap to focus
 let tapStart = null;
-stage.addEventListener('pointerdown', (e) => { if (e.target.closest('button, input, .cam-message')) return; tapStart = { x: e.clientX, y: e.clientY, t: performance.now() }; });
+stage.addEventListener('pointerdown', (e) => { if (e.target.closest('button, input, label, .cam-message')) return; tapStart = { x: e.clientX, y: e.clientY, t: performance.now() }; });
 stage.addEventListener('pointerup', async (e) => {
   if (!tapStart || pointers.size > 0) { tapStart = null; return; }
   const moved = Math.hypot(e.clientX - tapStart.x, e.clientY - tapStart.y), dt = performance.now() - tapStart.t; tapStart = null;
-  if (moved > 10 || dt > 600 || state.source !== 'camera' || !state.track) return;
+  if (moved > 10 || dt > 600 || state.source !== 'camera' || !state.track || viewBox.hidden) return;
   const r = viewBox.getBoundingClientRect();
   if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) return;
   let nx = (e.clientX - r.left) / r.width, ny = (e.clientY - r.top) / r.height;
+  focusRing.style.left = (e.clientX - r.left) + 'px'; focusRing.style.top = (e.clientY - r.top) + 'px';
   if (mirrored()) nx = 1 - nx;
-  const sr = stage.getBoundingClientRect();
-  focusRing.style.left = (e.clientX - sr.left) + 'px'; focusRing.style.top = (e.clientY - sr.top) + 'px';
   focusRing.classList.remove('is-on', 'is-ok'); void focusRing.offsetWidth; focusRing.classList.add('is-on');
   const ok = await focusAt(state.track, nx, ny);
   if (ok) focusRing.classList.add('is-ok');
@@ -1082,11 +1369,11 @@ watchLevel((roll) => {
 // ---------------------------------------------------------------- keyboard
 addEventListener('keydown', (e) => {
   if (isTyping(e) || e.ctrlKey || e.metaKey || e.altKey) return;
+  if (document.querySelector('.studio-scrim, .kt-root, .studio-sheet')) return;
   if (!review.hidden) { if (e.key === 'Escape') { e.preventDefault(); closeReview(); } return; }
-  if (document.querySelector('.studio-scrim')) return;
   if (e.key === ' ' || e.key === 'Enter') { if (e.target === document.body || e.target === shutter) { e.preventDefault(); onShutter(); } }
-  else if (e.key === 'ArrowRight' && !e.target.closest('.cam-panel')) { e.preventDefault(); stepLook(1); }
-  else if (e.key === 'ArrowLeft' && !e.target.closest('.cam-panel')) { e.preventDefault(); stepLook(-1); }
+  else if (e.key === 'ArrowRight' && !e.target.closest('.cam-sheet')) { e.preventDefault(); stepLook(1); }
+  else if (e.key === 'ArrowLeft' && !e.target.closest('.cam-sheet')) { e.preventDefault(); stepLook(-1); }
   else if (e.key === 'g') { state.grid = !state.grid; syncTop(); persist(); }
   else if (e.key === 'f') { state.flash = !state.flash; syncTop(); persist(); }
   else if (e.key === 't') { state.timer = TIMERS[(TIMERS.indexOf(state.timer) + 1) % TIMERS.length]; syncTop(); persist(); }
@@ -1094,6 +1381,7 @@ addEventListener('keydown', (e) => {
   else if (e.key === 'p') setMode(state.mode === 'portrait' ? 'photo' : 'portrait');
   else if (e.key === 'b') setMode('burst');
   else if (e.key === 'v') setMode('video');
+  else if (e.key === 'a') togglePanel();
   else if ((e.key === '+' || e.key === '=') && state.caps && state.caps.zoom) setZoom(state.zoom + 0.5);
   else if (e.key === '-' && state.caps && state.caps.zoom) setZoom(state.zoom - 0.5);
   else if (e.key === 'Escape' && body.classList.contains('cam-panel-open')) togglePanel(false);
@@ -1107,7 +1395,7 @@ document.addEventListener('visibilitychange', () => {
   }
   if (state.source === 'camera' && (state.pausedByHide || (state.track && state.track.readyState === 'ended'))) { state.pausedByHide = false; startCamera(); }
 });
-addEventListener('pagehide', () => { stopStream(); if (micStream) micStream.getTracks().forEach((t) => t.stop()); renderer.dispose(); });
+addEventListener('pagehide', () => { stopStream(); if (micStream) micStream.getTracks().forEach((t) => t.stop()); renderer.dispose(); if (lens) lens.dispose(); });
 
 // ---------------------------------------------------------------- boot
 buildStrip();
@@ -1115,8 +1403,8 @@ buildPanel();
 syncQuad();
 syncControls();
 syncFx();
+syncLens();
+syncCats();
 if (fxById(state.fx).ai) setFx(state.fx);
-if (matchMedia('(min-width: 1100px) and (min-height: 600px)').matches) togglePanel(true);
-requestAnimationFrame(() => { const it = itemById.get(state.lookId); if (it) it.scrollIntoView({ inline: 'center', block: 'nearest' }); });
 rafId = requestAnimationFrame(frame);
-startCamera();
+startCamera().then(() => setTimeout(() => startTour(false), 900));

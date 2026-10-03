@@ -42,7 +42,8 @@ const tick = () => { const n = new Date(); clock.textContent = n.toLocaleTimeStr
 tick(); setInterval(tick, 20000);
 const search = h('input', { class: 'hm-search-input', type: 'search', placeholder: 'Search apps, sizes, projects', 'aria-label': 'Search', autocomplete: 'off' });
 const hero = card('hm-hero', 6,
-  h('div', { class: 'hm-hero-top' }, h('span', { class: 'hm-greet', text: greet }), h('span', { class: 'hm-time' }, clock, day)),
+  h('div', { class: 'hm-hero-top' }, h('span', { class: 'hm-brand' }, h('i', { class: 'studio-brand-mark', 'aria-hidden': 'true' }), h('b', { text: 'EYAD' }), h('span', { text: 'STUDIO' }), h('em', { text: '5' })), h('span', { class: 'hm-time' }, clock, day)),
+  h('span', { class: 'hm-greet', text: greet + ' — everything runs on this device.' }),
   h('h1', { class: 'hm-title' }, 'What are we ', h('em', { text: 'making' }), ' today?'),
   h('label', { class: 'hm-search' }, icon('search', 16), search, h('kbd', { text: '/' })),
   h('div', { class: 'hm-quick' },

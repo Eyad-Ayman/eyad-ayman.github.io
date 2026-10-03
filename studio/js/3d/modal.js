@@ -18,20 +18,32 @@ export class ModalTransform {
     this.text = h('span', { class: 't3-modal-text studio-mono' });
     this.okBtn = h('button', { class: 'studio-btn is-small is-primary', type: 'button', text: 'Confirm', onclick: (e) => { e.stopPropagation(); this.confirm(); } });
     this.noBtn = h('button', { class: 'studio-btn is-small is-ghost', type: 'button', text: 'Cancel', onclick: (e) => { e.stopPropagation(); this.cancel(); } });
-    this.el.append(this.text, this.okBtn, this.noBtn);
+    // a real number field for touch (and anyone who prefers typing into a box)
+    this.num = h('input', { class: 'studio-input t3-modal-num', type: 'text', inputMode: 'decimal', autocomplete: 'off', 'aria-label': 'Exact value', placeholder: 'Value' });
+    this.num.addEventListener('input', () => { const a = this.active; if (!a) return; a.typed = this.num.value.replace(',', '.').replace(/[^0-9.\-]/g, '').slice(0, 12); this.apply(); });
+    this.num.addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Enter') { e.preventDefault(); this.confirm(); } else if (e.key === 'Escape') { e.preventDefault(); this.cancel(); } });
+    this.el.append(this.text, this.num, this.okBtn, this.noBtn);
     app.stage.appendChild(this.el);
     addEventListener('pointermove', (e) => { this.mouse = { x: e.clientX, y: e.clientY }; if (this.active) this.onMove(e); }, true);
     addEventListener('pointerdown', (e) => this.onDown(e), true);
     addEventListener('pointerup', (e) => this.onUp(e), true);
     addEventListener('contextmenu', (e) => { if (this.active) { e.preventDefault(); e.stopPropagation(); } }, true);
-    addEventListener('keydown', (e) => this.onKey(e), true);
+    addEventListener('keydown', (e) => { if (e.target === this.num) return; this.onKey(e); }, true);
     addEventListener('keyup', (e) => { if (this.active && e.key === 'Control') { this.active.snap = false; this.apply(); } }, true);
     addEventListener('blur', () => { if (this.active) this.cancel(); });
   }
 
   get busy() { return !!this.active; }
 
-  start(kind) {
+  /** Constrain the running transform to an axis (same axis again switches it off). */
+  setAxis(letter) {
+    const a = this.active; if (!a) return;
+    if (a.axis === letter && !a.plane) { a.axis = null; a.local = false; } else { a.axis = letter; a.plane = false; a.local = false; }
+    this.apply();
+  }
+  focusValue() { if (this.active) { this.num.focus(); this.num.select(); } }
+
+  start(kind, { axis = null } = {}) {
     const app = this.app, o = app.selected, v = app.viewport;
     if (this.active) this.cancel();
     if (!o) return false;
@@ -46,13 +58,16 @@ export class ModalTransform {
     let m = this.mouse;
     if (!m || m.x < r.left || m.x > r.right || m.y < r.top || m.y > r.bottom) m = { x: center.x + 90, y: center.y - 40 };
     app.beginTransform(o);
+    app.groupBegin(o);
+    this.num.value = '';
     this.active = {
-      kind, o, pivot, center, start: { ...m }, cur: { ...m }, axis: null, plane: false, local: false, typed: '', snap: false, value: 0,
+      kind, o, pivot, center, start: { ...m }, cur: { ...m }, axis, plane: false, local: false, typed: '', snap: false, value: 0,
       t0: app.trOf(o), wq0: o.getWorldQuaternion(new THREE.Quaternion()), lastAngle: Math.atan2(m.y - center.y, m.x - center.x), angle: 0,
     };
     v.gizmo.enabled = false;
     this.el.hidden = false;
     app.root.classList.add('is-modal');
+    v.setMoving?.(true); v.setMoving?.(false);
     this.apply();
     return true;
   }
@@ -60,7 +75,8 @@ export class ModalTransform {
   // ---------------------------------------------------------------- events
   onDown(e) {
     const a = this.active; if (!a) return;
-    if (this.el.contains(e.target)) return;
+    if (this.el.contains(e.target) || e.target.closest?.('.t3-tbar')) return;
+    if (document.activeElement === this.num) this.num.blur();
     e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
     if (e.pointerType === 'touch' || e.pointerType === 'pen') {
       // touch: drag to transform, lift to confirm
@@ -72,7 +88,7 @@ export class ModalTransform {
   }
   onUp(e) {
     const a = this.active; if (!a) return;
-    if (a.touch !== undefined && e.pointerId === a.touch) { e.stopPropagation(); this.confirm(); }
+    if (a.touch !== undefined && e.pointerId === a.touch) { e.stopPropagation(); if (a.moved) this.confirm(); else a.touch = undefined; }
   }
   /** Start measuring from here while keeping what has been applied so far. */
   rebase(e) {
@@ -85,7 +101,8 @@ export class ModalTransform {
     const a = this.active;
     if (a.touch !== undefined && e.pointerId !== a.touch) return;
     a.cur = { x: e.clientX, y: e.clientY };
-    a.snap = !!e.ctrlKey;
+    if (a.touch !== undefined) a.moved = true;
+    a.snap = !!e.ctrlKey || (a.touch !== undefined && !!this.app.settings.snap.on);
     if (a.kind === 'rotate') {
       const ang = Math.atan2(a.cur.y - a.center.y, a.cur.x - a.center.x);
       let d = ang - a.lastAngle;
@@ -226,7 +243,10 @@ export class ModalTransform {
     if (a.snap && typed == null) read += '   snap';
     this.text.textContent = read;
     this.readout = read;
+    if (document.activeElement !== this.num && this.num.value !== a.typed) this.num.value = a.typed;
     o.updateMatrixWorld(true);
+    app.groupApply();
+    app.onModalChange?.();
     v.invalidate();
     app.panels.syncTransform();
     app.setHint(HINT);
@@ -238,7 +258,9 @@ export class ModalTransform {
     this.el.hidden = true;
     app.root.classList.remove('is-modal');
     app.viewport.gizmo.enabled = true;
+    if (document.activeElement === this.num) this.num.blur();
     app.setHint(null);
+    app.onModalChange?.();
   }
   confirm() {
     const a = this.active; if (!a) return;
@@ -248,6 +270,7 @@ export class ModalTransform {
   cancel() {
     const a = this.active; if (!a) return;
     this.app.setTr(a.o, a.t0);
+    this.app.groupCancel();
     this.app.trBefore = null;
     this.finish();
     this.app.viewport.invalidate();

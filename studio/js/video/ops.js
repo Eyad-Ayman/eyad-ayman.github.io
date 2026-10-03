@@ -365,7 +365,7 @@ export function addGenerated(app, tpl, { time = null, dur = 5 } = {}) {
     seq.clips.push(c);
   });
   app.select([c.id]);
-  app.showProperties();
+  app.showProperties(c.gen && (c.gen.type === 'text' || c.gen.type === 'caption'));
   return c.id;
 }
 

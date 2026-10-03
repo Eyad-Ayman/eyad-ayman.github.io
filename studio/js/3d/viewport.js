@@ -9,6 +9,16 @@ import { boundsOf, editorObjects, isCam, isEmpty, camOf, camLens } from './objec
 
 export const TONE = { aces: THREE.ACESFilmicToneMapping, agx: THREE.AgXToneMapping, neutral: THREE.NeutralToneMapping, none: THREE.NoToneMapping };
 
+/** Lighting environments. All are built in the browser (no image files): a room model or a painted sky dome with light panels. */
+export const ENVS = [['studio', 'Studio room'], ['softbox', 'Softbox'], ['day', 'Daylight sky'], ['sunset', 'Sunset'], ['night', 'Night'], ['none', 'None — lights only']];
+const SKY = {
+  // [zenith, horizon, ground], panels: [colour, intensity, azimuth°, elevation°, size]
+  softbox: { c: ['#1b1b1e', '#2a2a2e', '#0c0c0d'], panels: [['#ffffff', 14, 35, 40, 7], ['#dfe8ff', 6, -120, 25, 9], ['#ffffff', 3, 180, 75, 10]] },
+  day: { c: ['#2f6fd6', '#cfe4ff', '#6f6a60'], panels: [['#fff4dc', 60, 40, 50, 2.6]] },
+  sunset: { c: ['#27306b', '#ff9a5a', '#2a1c1a'], panels: [['#ffb46a', 45, 60, 8, 3.2], ['#ff6a3a', 4, 60, 3, 14]] },
+  night: { c: ['#03040a', '#141c36', '#020203'], panels: [['#9fb6ff', 5, -40, 55, 2.2]] },
+};
+
 export function defaultSettings() {
   return {
     env: { lighting: 'studio', intensity: 1, background: 'gradient', color: '#202022', top: '#3b3b40', bottom: '#111113', blur: 0.35, toneMapping: 'aces', exposure: 1 },
@@ -31,8 +41,22 @@ export class Viewport {
     this.app = app;
     this.host = host;
     this.needs = true;
-    this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
-    this.renderer.setPixelRatio(Math.min(2, devicePixelRatio || 1));
+    this.loop = this.loop.bind(this);
+    this.raf = 0;
+    this.frames = 0;
+    // device profile: phones / tablets / weak laptops get a lighter renderer
+    const coarse = matchMedia('(pointer: coarse)').matches;
+    const small = Math.min(screen.width || 9999, screen.height || 9999) < 700;
+    const weak = (navigator.hardwareConcurrency || 8) <= 4 || (navigator.deviceMemory || 8) <= 4;
+    const dpr = devicePixelRatio || 1;
+    this.lite = coarse || small || weak;
+    this.quality = {
+      ratio: Math.min(this.lite ? (small ? 1.75 : 2) : 2, dpr), // resting pixel ratio
+      moving: Math.min(this.lite ? 1.25 : 2, dpr), // while orbiting / dragging / playing
+      shadow: small ? 1024 : this.lite ? 1536 : 2048,
+    };
+    this.renderer = new THREE.WebGLRenderer({ antialias: !(this.lite && dpr >= 2), alpha: true, powerPreference: 'high-performance' });
+    this.renderer.setPixelRatio(this.quality.ratio);
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFShadowMap;
@@ -87,6 +111,7 @@ export class Viewport {
     this.selBox.material.depthTest = false; this.selBox.material.transparent = true; this.selBox.material.opacity = 0.9;
     this.selBox.renderOrder = 999;
     this.helpers.add(this.selBox);
+    this.selBoxes = []; // the rest of a multi-selection
 
     // cameras
     this.persp = new THREE.PerspectiveCamera(40, 1, 0.05, 2000);
@@ -101,17 +126,19 @@ export class Viewport {
     this.orbit.target.set(0, 0.6, 0);
     this.orbit.addEventListener('change', () => { this.invalidate(); if (this.viewCam && this.orbiting && this.camLocked()) this.writeCamFromView(); app.onCameraMoved?.(); });
     this.orbit.addEventListener('start', () => {
+      this.setMoving(true);
       if (this.viewCam) { if (this.camLocked()) app.beginTransform?.(this.viewCam); else this.exitCameraView({ keep: true }); }
       this.orbiting = true;
     });
-    this.orbit.addEventListener('end', () => { this.orbiting = false; if (this.viewCam && this.camLocked()) app.commitTransform?.(this.viewCam, 'Move camera'); app.onCameraEnd?.(); });
+    this.orbit.addEventListener('end', () => { this.orbiting = false; this.setMoving(false); if (this.viewCam && this.camLocked()) app.commitTransform?.(this.viewCam, 'Move camera'); app.onCameraEnd?.(); });
 
     this.gizmo = new TransformControls(this.camera, this.canvas);
-    this.gizmo.setSize(matchMedia('(pointer: coarse)').matches ? 1.35 : 1);
+    this.gizmo.setSize(coarse ? 1.6 : 1);
     this.gizmoHelper = this.gizmo.getHelper();
     s.add(this.gizmoHelper);
     this.gizmo.addEventListener('dragging-changed', (e) => {
       this.orbit.enabled = !e.value;
+      this.setMoving(e.value);
       if (e.value) { this.gizmoUsed = true; app.onGizmoStart?.(); } else app.onGizmoEnd?.();
     });
     this.gizmo.addEventListener('objectChange', () => { this.invalidate(); app.onGizmoChange?.(); });
@@ -125,11 +152,21 @@ export class Viewport {
 
     new ResizeObserver(() => this.resize()).observe(host);
     this.resize();
-    this.loop = this.loop.bind(this);
-    requestAnimationFrame(this.loop);
+    this.kick();
   }
 
-  invalidate() { this.needs = true; }
+  /** Ask for a redraw. Frames are only drawn on demand — nothing runs while the scene is idle. */
+  invalidate() { this.needs = true; this.kick(); }
+  kick() { if (!this.raf) this.raf = requestAnimationFrame(this.loop); }
+  /** Lower the pixel ratio while the view is moving on lighter devices, and sharpen again when it rests. */
+  setMoving(on) {
+    const q = this.quality;
+    if (q.moving >= q.ratio) return;
+    clearTimeout(this.sharpenT);
+    const set = (r) => { if (this.busy || this.renderer.getPixelRatio() === r) return; this.renderer.setPixelRatio(r); this.renderer.setSize(this.w, this.h, false); this.invalidate(); };
+    if (on) set(q.moving);
+    else this.sharpenT = setTimeout(() => { if (!this.orbiting && !this.gizmo.dragging && !this.app.playing) set(q.ratio); else this.setMoving(false); }, 220);
+  }
 
   resize() {
     const r = this.host.getBoundingClientRect();
@@ -190,9 +227,10 @@ export class Viewport {
     this.invalidate();
   }
 
-  frame(obj) {
+  frameBox(box) { this.frame(null, box); }
+  frame(obj, given = null) {
     if (this.viewCam) this.exitCameraView({ keep: true });
-    const box = obj ? boundsOf(obj) : this.contentBounds();
+    const box = given || (obj ? boundsOf(obj) : this.contentBounds());
     if (!box || box.isEmpty()) return;
     const sphere = box.getBoundingSphere(new THREE.Sphere());
     const r = Math.max(0.05, sphere.radius);
@@ -322,16 +360,17 @@ export class Viewport {
     r.toneMappingExposure = env.exposure;
     r.shadowMap.enabled = !!st.shadows;
     // lighting environment
-    if (env.lighting === 'studio') {
-      this.scene.environment = this.studioEnv();
-    } else this.scene.environment = null;
+    this.envTex = env.lighting && env.lighting !== 'none' ? this.envFor(env.lighting) : null;
+    this.scene.environment = this.envTex;
     this.scene.environmentIntensity = env.intensity;
     // background
     this.scene.backgroundBlurriness = 0;
     this.scene.backgroundIntensity = 1;
     if (env.background === 'solid') this.scene.background = new THREE.Color(env.color);
     else if (env.background === 'gradient') this.scene.background = this.gradientTexture(env.top, env.bottom);
-    else if (env.background === 'environment' && this.envTex) { this.scene.background = this.envTex; this.scene.backgroundBlurriness = env.blur; this.scene.backgroundIntensity = env.intensity; }
+    else if (env.background === 'environment') {
+      if (!this.envTex) this.envTex = this.envFor('studio'); this.scene.background = this.envTex; this.scene.backgroundBlurriness = env.blur; this.scene.backgroundIntensity = env.intensity;
+    }
     else this.scene.background = null;
     this.host.classList.toggle('is-transparent', !this.scene.background);
     // ground
@@ -373,7 +412,9 @@ export class Viewport {
     const b = this.contentBounds();
     const sphere = b ? b.getBoundingSphere(new THREE.Sphere()) : new THREE.Sphere(new THREE.Vector3(), 3);
     const r = Math.max(2, sphere.radius * 1.4);
+    const ms = this.quality.shadow;
     for (const l of this.allLights()) {
+      if (l.shadow && l.shadow.mapSize.x !== ms) { l.shadow.mapSize.set(ms, ms); l.shadow.map?.dispose(); l.shadow.map = null; }
       if (!l.isDirectionalLight || !l.shadow) continue;
       const c = l.shadow.camera;
       c.left = -r; c.right = r; c.top = r; c.bottom = -r; c.near = 0.05; c.far = Math.max(50, l.getWorldPosition(_v).distanceTo(sphere.center) + r * 3);
@@ -468,8 +509,8 @@ export class Viewport {
           lines.geometry.dispose(); lines.geometry = new THREE.BufferGeometry().setFromPoints(pts);
           pick.scale.set(Math.max(0.3, hw * 2), Math.max(0.3, hh * 2), dz); pick.position.set(0, 0, -dz / 2);
         }
-        lines.material.color.set(this.app.selected === o ? 0xff7a45 : o.userData.eyadId === activeId ? 0xffd76a : 0xd8d8d8);
-      } else lines.material.color.set(this.app.selected === o ? 0xff7a45 : 0xd8d8d8);
+        lines.material.color.set(this.app.isSelected(o) ? 0xff7a45 : o.userData.eyadId === activeId ? 0xffd76a : 0xd8d8d8);
+      } else lines.material.color.set(this.app.isSelected(o) ? 0xff7a45 : 0xd8d8d8);
       // a camera sitting right at the viewpoint (just added from the view) would draw its frustum across the screen
       hp.visible = this.shownInScene(o) && this.viewCam !== o && !(cam && this.camera.position.distanceTo(_v) < 0.35);
     }
@@ -484,34 +525,103 @@ export class Viewport {
   }
   updateSelBox() {
     const o = this.app.selected;
-    if (!o || o.isLight || isCam(o) || isEmpty(o) || !this.shownInScene(o) || !this.inScene(o)) { this.selBox.visible = false; return; }
-    this.selBox.box.copy(boundsOf(o));
-    this.selBox.visible = true;
+    const boxable = (x) => x && !x.isLight && !isCam(x) && !isEmpty(x) && this.inScene(x) && this.shownInScene(x);
+    if (!boxable(o)) this.selBox.visible = false;
+    else { this.selBox.box.copy(boundsOf(o)); this.selBox.visible = true; }
+    const rest = (this.app.multi || []).filter((x) => x !== o && boxable(x));
+    while (this.selBoxes.length < rest.length) {
+      const b = new THREE.Box3Helper(new THREE.Box3(), 0xffb38a);
+      b.material.depthTest = false; b.material.transparent = true; b.material.opacity = 0.75; b.renderOrder = 998;
+      this.helpers.add(b); this.selBoxes.push(b);
+    }
+    this.selBoxes.forEach((b, i) => { b.visible = i < rest.length; if (b.visible) b.box.copy(boundsOf(rest[i])); });
   }
 
   // ---------------------------------------------------------------- picking
   bindPicking() {
-    let down = null;
-    this.canvas.addEventListener('pointerdown', (e) => {
+    let down = null, lp = 0;
+    const cv = this.canvas, app = this.app;
+    const clearLP = () => { clearTimeout(lp); lp = 0; };
+    cv.addEventListener('pointerdown', (e) => {
       this.gizmoUsed = false;
       if (this.pointerCount === undefined) this.pointerCount = 0;
       this.pointerCount++;
-      down = this.pointerCount === 1 ? { x: e.clientX, y: e.clientY, t: performance.now(), button: e.button } : null;
-      this.canvas.focus({ preventScroll: true });
+      clearLP();
+      down = this.pointerCount === 1 ? { x: e.clientX, y: e.clientY, t: performance.now(), button: e.button, type: e.pointerType } : null;
+      if (e.pointerType !== 'touch') cv.focus({ preventScroll: true });
+      if (down && this.boxArmed && e.button === 0) { this.startBox(e); down = null; return; }
+      // touch: hold still to open the object / add menu
+      if (down && e.pointerType === 'touch') {
+        const d = down;
+        lp = setTimeout(() => {
+          lp = 0;
+          if (down !== d || this.gizmo.dragging || this.gizmoUsed || app.modal?.busy) return;
+          down = null;
+          app.openContextAt(d.x, d.y);
+        }, 520);
+      }
     });
-    const end = () => { this.pointerCount = Math.max(0, (this.pointerCount || 1) - 1); };
-    this.canvas.addEventListener('pointercancel', () => { end(); down = null; });
-    this.canvas.addEventListener('pointerup', (e) => {
+    cv.addEventListener('pointermove', (e) => { if (lp && down && Math.hypot(e.clientX - down.x, e.clientY - down.y) > 9) clearLP(); }, { passive: true });
+    const end = () => { this.pointerCount = Math.max(0, (this.pointerCount || 1) - 1); clearLP(); };
+    cv.addEventListener('pointercancel', () => { end(); down = null; });
+    cv.addEventListener('pointerup', (e) => {
       end();
       const d = down; down = null;
-      if (!d || d.button !== 0 || this.gizmoUsed) return;
+      if (!d || this.gizmoUsed) return;
       if (Math.hypot(e.clientX - d.x, e.clientY - d.y) > 6 || performance.now() - d.t > 600) return;
+      if (d.button === 2) { app.openContextAt(e.clientX, e.clientY); return; }
+      if (d.button !== 0) return;
       const hit = this.pick(e.clientX, e.clientY);
-      if (this.app.onViewportPick?.(hit) === true) return;
-      this.app.select(hit, { fromViewport: true });
+      if (app.onViewportPick?.(hit) === true) return;
+      app.select(hit, { fromViewport: true, add: e.shiftKey || e.ctrlKey || e.metaKey || !!app.addMode });
     });
-    this.canvas.addEventListener('dblclick', (e) => { const hit = this.pick(e.clientX, e.clientY); if (hit) this.frame(hit.isLight ? null : hit); });
-    this.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+    cv.addEventListener('dblclick', (e) => { const hit = this.pick(e.clientX, e.clientY); if (hit) this.frame(hit.isLight ? null : hit); });
+    cv.addEventListener('contextmenu', (e) => e.preventDefault());
+  }
+
+  /** Box select: the next drag on the canvas draws a rectangle instead of orbiting. */
+  armBox(on = true) {
+    this.boxArmed = !!on;
+    this.orbit.enabled = !on && !this.gizmo.dragging;
+    this.gizmo.enabled = !on;
+    this.host.classList.toggle('is-boxing', !!on);
+    this.app.onBoxArmed?.(!!on);
+  }
+  startBox(e) {
+    const cv = this.canvas, r = this.host.getBoundingClientRect();
+    const el = document.createElement('div'); el.className = 't3-box';
+    this.host.appendChild(el);
+    const x0 = e.clientX, y0 = e.clientY, id = e.pointerId, add = e.shiftKey || !!this.app.addMode;
+    try { cv.setPointerCapture(id); } catch (err) { /* ignore */ }
+    let rect = null;
+    const move = (ev) => {
+      if (ev.pointerId !== id) return;
+      const x1 = Math.min(x0, ev.clientX), y1 = Math.min(y0, ev.clientY), w = Math.abs(ev.clientX - x0), hh = Math.abs(ev.clientY - y0);
+      rect = { x: x1, y: y1, w, h: hh };
+      el.style.cssText = `left:${x1 - r.left}px;top:${y1 - r.top}px;width:${w}px;height:${hh}px`;
+    };
+    const up = (ev) => {
+      if (ev.pointerId !== id) return;
+      cv.removeEventListener('pointermove', move); cv.removeEventListener('pointerup', up); cv.removeEventListener('pointercancel', up);
+      el.remove();
+      this.armBox(false);
+      if (ev.type === 'pointerup' && rect && rect.w > 4 && rect.h > 4) this.app.selectMany(this.objectsInRect(rect), { add });
+    };
+    cv.addEventListener('pointermove', move); cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
+  }
+  /** Editor objects whose centre projects inside a client-space rectangle. */
+  objectsInRect(rect) {
+    const r = this.canvas.getBoundingClientRect(), out = [];
+    this.camera.updateMatrixWorld(true);
+    for (const o of this.allObjects()) {
+      if (o.userData.eyadLocked || !this.shownInScene(o)) continue;
+      if (o.isLight || isCam(o) || isEmpty(o)) o.getWorldPosition(_v); else { const b = boundsOf(o); if (b.isEmpty()) o.getWorldPosition(_v); else b.getCenter(_v); }
+      _v.project(this.camera);
+      if (_v.z < -1 || _v.z > 1) continue;
+      const x = r.left + (_v.x * 0.5 + 0.5) * r.width, y = r.top + (-_v.y * 0.5 + 0.5) * r.height;
+      if (x >= rect.x && x <= rect.x + rect.w && y >= rect.y && y <= rect.y + rect.h) out.push(o);
+    }
+    return out;
   }
 
   pick(cx, cy) {
@@ -540,7 +650,7 @@ export class Viewport {
 
   // ---------------------------------------------------------------- loop
   loop() {
-    requestAnimationFrame(this.loop);
+    this.raf = 0;
     if (this.busy || this.lost) return;
     if (this.hold) return;
     // in a camera view the orbit only runs while it is being dragged (it would level a rolled camera otherwise)
@@ -553,12 +663,46 @@ export class Viewport {
     this.syncObjHelpers();
     this.updateSelBox();
     this.renderView();
+    this.frames++;
     this.app.onRendered?.();
+    // keep going only while something is still moving (damping, playback, a camera tween)
+    if (damp || tick || this.needs) this.kick();
   }
 
-  studioEnv() {
-    if (!this.envTex) { const room = new RoomEnvironment(); this.envTex = this.pmrem.fromScene(room, 0.04).texture; room.traverse?.((n) => { n.geometry?.dispose?.(); n.material?.dispose?.(); }); }
-    return this.envTex;
+  studioEnv() { return this.envFor('studio'); }
+  /** A prefiltered lighting environment, built once per kind and cached. */
+  envFor(kind) {
+    this.envs = this.envs || {};
+    if (this.envs[kind]) return this.envs[kind];
+    const dispose = (root) => root.traverse?.((n) => { n.geometry?.dispose?.(); n.material?.dispose?.(); });
+    let scene;
+    const def = SKY[kind];
+    if (!def) scene = new RoomEnvironment();
+    else {
+      scene = new THREE.Scene();
+      const g = new THREE.SphereGeometry(50, 32, 24);
+      const pos = g.attributes.position, col = new Float32Array(pos.count * 3);
+      const [zen, hor, gnd] = def.c.map((c) => new THREE.Color(c));
+      const tmp = new THREE.Color();
+      for (let i = 0; i < pos.count; i++) {
+        const y = pos.getY(i) / 50;
+        if (y >= 0) tmp.copy(hor).lerp(zen, Math.pow(y, 0.55)); else tmp.copy(hor).lerp(gnd, Math.min(1, -y * 4));
+        col[i * 3] = tmp.r; col[i * 3 + 1] = tmp.g; col[i * 3 + 2] = tmp.b;
+      }
+      g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+      scene.add(new THREE.Mesh(g, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide, toneMapped: false })));
+      for (const [c, k, az, el, size] of def.panels) {
+        const m = new THREE.Mesh(new THREE.CircleGeometry(size, 24), new THREE.MeshBasicMaterial({ color: new THREE.Color(c).multiplyScalar(k), side: THREE.DoubleSide, toneMapped: false }));
+        const a = THREE.MathUtils.degToRad(az), e = THREE.MathUtils.degToRad(el);
+        m.position.set(Math.sin(a) * Math.cos(e), Math.sin(e), Math.cos(a) * Math.cos(e)).multiplyScalar(40);
+        m.lookAt(0, 0, 0);
+        scene.add(m);
+      }
+    }
+    const tex = this.pmrem.fromScene(scene, def ? 0 : 0.04).texture;
+    dispose(scene);
+    this.envs[kind] = tex;
+    return tex;
   }
   /** Draw the editor view in the chosen shading mode (renders for output always use the full look). */
   renderView() {

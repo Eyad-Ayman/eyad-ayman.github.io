@@ -19,7 +19,7 @@ for dp, dn, fn in os.walk(root):
         if rel.startswith(('vendor/mediapipe/', 'vendor/onnxruntime-web/', 'vendor/three/', 'vendor/pdfjs/', 'vendor/fzstd/', 'vendor/kiwi/')):
             continue
         full = os.path.join(dp, f)
-        if rel.startswith('models/') and os.path.getsize(full) > 3_000_000:
+        if rel.startswith('models/') and os.path.getsize(full) > 400_000:
             continue
         files.append('./' + rel)
 files.sort()

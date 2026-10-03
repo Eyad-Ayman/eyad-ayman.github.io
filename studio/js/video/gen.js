@@ -12,14 +12,14 @@ onFontsChanged(() => extendFontList(TITLE_FONTS));
 
 export const GEN_TEMPLATES = {
   title: { label: 'Title', gen: { type: 'text', text: 'YOUR TITLE', font: 'Studio Oswald', size: 140, weight: 700, color: '#ffffff', align: 'center', stroke: '#000000', strokeW: 0, bg: null, bgPad: 24, shadow: true, tracking: 0, reveal: 100, lineH: 1.05, italic: false } },
-  lower: { label: 'Lower third', gen: { type: 'text', text: 'EYAD AYMAN\nDesigner · Video editor', font: 'Studio Inter', size: 54, weight: 700, color: '#ffffff', align: 'left', stroke: '#000000', strokeW: 0, bg: '#d02b2a', bgPad: 22, shadow: false, tracking: 0, reveal: 100, lineH: 1.25, italic: false }, transform: { x: -560, y: 330 } },
+  lower: { label: 'Lower third', gen: { type: 'text', text: 'EYAD AYMAN\nDesigner · Video editor', font: 'Studio Inter', size: 54, weight: 700, color: '#ffffff', align: 'left', stroke: '#000000', strokeW: 0, bg: '#111114', bgOp: 72, bgRadius: 22, bgPad: 24, shadow: false, tracking: 0, reveal: 100, lineH: 1.25, italic: false }, transform: { x: -560, y: 330 } },
   caption: { label: 'Caption', gen: { type: 'caption', text: 'Caption text', font: 'Studio Inter', size: 50, weight: 600, color: '#ffffff', align: 'center', stroke: '#000000', strokeW: 0, bg: '#000000', bgPad: 14, shadow: false, tracking: 0, reveal: 100, lineH: 1.2, italic: false }, transform: { y: 400 } },
-  rect: { label: 'Rectangle', gen: { type: 'shape', shape: 'rect', w: 600, h: 340, fill: '#d02b2a', stroke: '#ffffff', strokeW: 0, radius: 0 } },
+  rect: { label: 'Rectangle', gen: { type: 'shape', shape: 'rect', w: 600, h: 340, fill: '#f5f5f7', stroke: '#ffffff', strokeW: 0, radius: 0 } },
   ellipse: { label: 'Ellipse', gen: { type: 'shape', shape: 'ellipse', w: 400, h: 400, fill: '#f3ede1', stroke: '#ffffff', strokeW: 0, radius: 0 } },
   line: { label: 'Line', gen: { type: 'shape', shape: 'line', w: 800, h: 8, fill: '#ffffff', stroke: '#ffffff', strokeW: 0, radius: 4 } },
   matte: { label: 'Colour matte', gen: { type: 'color', color: '#0b0b0b', color2: null, angle: 90 } },
   adjust: { label: 'Adjustment layer', gen: { type: 'adjust' } },
-  gradient: { label: 'Gradient matte', gen: { type: 'color', color: '#d02b2a', color2: '#0b0b0b', angle: 135 } },
+  gradient: { label: 'Gradient matte', gen: { type: 'color', color: '#4b53c9', color2: '#0b0b10', angle: 135 } },
 };
 
 export function genLabel(g) {

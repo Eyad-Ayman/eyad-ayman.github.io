@@ -6,7 +6,7 @@
  * cached shell offline; static files = cache first, refreshed in the background.
  */
 "use strict";
-var VERSION = "637928371c";
+var VERSION = "0684d10f24";
 var CACHE = "eyad-studio-" + VERSION;
 var SHELL = [
 "./3d/",
@@ -18,6 +18,7 @@ var SHELL = [
 "./css/fonts-extra.css",
 "./css/generate.css",
 "./css/hub.css",
+"./css/image-app.css",
 "./css/image.css",
 "./css/spatial.css",
 "./css/studio.css",
@@ -92,12 +93,16 @@ var SHELL = [
 "./js/3d/viewport.js",
 "./js/3d/webm.js",
 "./js/camera/fx.js",
+"./js/camera/lenses.js",
 "./js/camera/main.js",
 "./js/camera/pro.js",
+"./js/camera/promptfx.js",
+"./js/camera/tutorial.js",
 "./js/camera/wiggle.js",
 "./js/core/ai.js",
 "./js/core/appicons.js",
 "./js/core/db.js",
+"./js/core/depth.js",
 "./js/core/docs.js",
 "./js/core/dom.js",
 "./js/core/experience.js",
@@ -187,7 +192,7 @@ var SHELL = [
 "./js/workers/psd.worker.js",
 "./manifest.webmanifest",
 "./models/blaze_face_short_range.tflite",
-"./models/deeplab_v3.tflite",
+"./models/depth_anything_v2_vits.onnx.parts.json",
 "./models/migan_pipeline_v2.onnx.parts.json",
 "./models/selfie_segmenter.tflite",
 "./projects/",

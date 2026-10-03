@@ -13,7 +13,8 @@ export class Timeline {
     const btn = (ic, label, fn, cls = '') => { const b = h('button', { class: 'studio-icon-btn t3-tl-btn ' + cls, type: 'button', 'aria-label': label, title: label, onclick: fn }, icon(ic, 16)); return b; };
     this.playBtn = btn('play', 'Play (Space)', () => app.togglePlay(), 't3-tl-play');
     this.startBtn = btn('first', 'Go to start (Shift+←)', () => app.setTime(0));
-    this.timeEl = h('span', { class: 'studio-mono t3-tl-time' });
+    this.curEl = h('span', { class: 't3-tl-cur' }); this.durEl = h('span', { class: 't3-tl-dur' });
+    this.timeEl = h('span', { class: 'studio-mono t3-tl-time' }, this.curEl, this.durEl);
     this.track = h('div', { class: 't3-tl-track', role: 'slider', tabindex: '0', 'aria-label': 'Timeline', 'aria-valuemin': '0' });
     this.ruler = h('div', { class: 't3-tl-ruler' });
     this.rowObj = h('div', { class: 't3-tl-row is-obj' });
@@ -24,7 +25,8 @@ export class Timeline {
     this.camBtn = h('button', { class: 'studio-btn is-small t3-tl-key', type: 'button', title: 'Key the active camera (or the viewport view when the scene has no camera) at the playhead (Shift+K)', onclick: () => app.keyCamera() }, icon('camera', 14), h('span', { text: 'Cam' }));
     this.autoBtn = h('button', { class: 'studio-btn is-small t3-tl-auto', type: 'button', title: 'Auto-key: moving a keyed object records a key at the playhead', onclick: () => app.setAutoKey(!app.autoKey) }, h('span', { class: 't3-rec-dot' }), h('span', { text: 'Auto' }));
     this.moreBtn = btn('dots', 'Animation options', (e) => { const r = e.currentTarget.getBoundingClientRect(); contextMenu(r.left, r.top - 8, app.animMenuItems()); });
-    host.append(h('div', { class: 't3-tl-transport' }, this.startBtn, this.playBtn, this.timeEl), this.track, h('div', { class: 't3-tl-tools' }, this.keyBtn, this.camBtn, this.autoBtn, this.moreBtn));
+    this.foldBtn = btn('chevronDown', 'Hide the timeline', () => app.setTimelineOpen(!app.timelineOpen()), 't3-tl-fold');
+    host.append(h('div', { class: 't3-tl-transport' }, this.startBtn, this.playBtn, this.timeEl), this.track, h('div', { class: 't3-tl-tools' }, this.keyBtn, this.camBtn, this.autoBtn, this.moreBtn), this.foldBtn);
     this.bindTrack();
     new ResizeObserver(() => this.update(true)).observe(this.track);
     this.update(true);
@@ -101,12 +103,13 @@ export class Timeline {
   update(full = false) {
     const app = this.app, a = app.anim;
     const t = app.time;
-    this.timeEl.textContent = `${t.toFixed(2)} / ${a.duration.toFixed(2)} s`;
+    const txt = `${t.toFixed(2)} / ${a.duration.toFixed(2)} s`;
+    if (this.timeTxt !== txt) { this.timeTxt = txt; this.curEl.textContent = t.toFixed(2); this.durEl.textContent = ` / ${a.duration.toFixed(2)} s`; }
     this.head.style.left = (clamp(t / a.duration, 0, 1) * 100) + '%';
     this.track.setAttribute('aria-valuemax', String(a.duration));
     this.track.setAttribute('aria-valuenow', t.toFixed(2));
-    this.playBtn.replaceChildren(icon(app.playing ? 'pause' : 'play', 16));
-    this.playBtn.title = app.playing ? 'Pause (Space)' : 'Play (Space)';
+    if (this.playShown !== app.playing) { this.playShown = app.playing; this.playBtn.replaceChildren(icon(app.playing ? 'pause' : 'play', 16)); this.playBtn.title = app.playing ? 'Pause (Space)' : 'Play (Space)'; this.playBtn.setAttribute('aria-label', this.playBtn.title); }
+    if (full) { const open = app.timelineOpen?.() !== false; if (this.foldOpen !== open) { this.foldOpen = open; this.foldBtn.replaceChildren(icon(open ? 'chevronDown' : 'chevronUp', 16)); this.foldBtn.title = open ? 'Hide the timeline' : 'Show the timeline'; this.foldBtn.setAttribute('aria-label', this.foldBtn.title); this.foldBtn.setAttribute('aria-expanded', String(open)); } }
     if (full || !app.playing) {
       this.diamonds(this.rowObj, app.selected ? a.tracks[app.selected.userData.eyadId] : null, 'obj');
       this.diamonds(this.rowCam, app.keysFor('cam'), 'cam');

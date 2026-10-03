@@ -31,13 +31,20 @@ export class View {
     this.hover = null;
     this.antsPhase = 0;
     this.showGrid = getSettings().showRulersGrid;
-    try { this.showRulers = localStorage.getItem('eyad-studio:image:rulers') !== '0'; } catch (e) { this.showRulers = true; }
+    // Rulers: on by default with a mouse, off by default on touch screens (every pixel of canvas counts there).
+    const coarse = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
+    this.coarse = coarse;
+    try { const r = localStorage.getItem('eyad-studio:image:rulers'); this.showRulers = r === null ? !coarse : r !== '0'; } catch (e) { this.showRulers = !coarse; }
     this.showGuides = true;
     this.snap = true;
     this.lastTap = null;
     this.frame = 0;
 
+    this.fitted = false; // true while the view is still "fit on screen" (so a rotation / window resize re-fits it)
+    this._rect = null;   // cached canvas client rect (pointer maths must not force layout per event)
     new ResizeObserver(() => this.resize()).observe(stage);
+    addEventListener('resize', () => { this._rect = null; });
+    addEventListener('scroll', () => { this._rect = null; }, { passive: true, capture: true });
     this.resize();
     this.bindPointers();
     this.antsTimer = setInterval(() => {
@@ -47,24 +54,54 @@ export class View {
 
   resize() {
     const r = this.stage.getBoundingClientRect();
-    this.dpr = Math.min(3, window.devicePixelRatio || 1);
-    this.cssW = Math.max(1, r.width); this.cssH = Math.max(1, r.height);
-    this.canvas.width = Math.round(this.cssW * this.dpr);
-    this.canvas.height = Math.round(this.cssH * this.dpr);
-    this.canvas.style.width = this.cssW + 'px';
-    this.canvas.style.height = this.cssH + 'px';
-    if (this.doc && !this.didFit) { this.fit({ max: 1 }); this.didFit = true; }
-    this.requestDraw();
+    this._rect = null; this._colors = null;
+    const w = Math.max(1, Math.round(r.width)), hh = Math.max(1, Math.round(r.height));
+    // Backing store: follow devicePixelRatio, but cap it (2× on touch devices, 3× otherwise) and
+    // cap the total pixel count so a big tablet canvas never costs more than ~4.5 MP per frame.
+    let dpr = Math.min(this.coarse ? 2 : 3, window.devicePixelRatio || 1);
+    const budget = this.coarse ? 4.5e6 : 9e6;
+    if (w * hh * dpr * dpr > budget) dpr = Math.max(1, Math.sqrt(budget / (w * hh)));
+    const bw = Math.round(w * dpr), bh = Math.round(hh * dpr);
+    const sizeChanged = w !== this.cssW || hh !== this.cssH;
+    if (!sizeChanged && bw === this.canvas.width && bh === this.canvas.height) return;
+    const oldW = this.cssW, oldH = this.cssH;
+    this.dpr = dpr; this.cssW = w; this.cssH = hh;
+    this.canvas.width = bw; this.canvas.height = bh;
+    this.canvas.style.width = w + 'px';
+    this.canvas.style.height = hh + 'px';
+    if (this.doc) {
+      if (!this.didFit) { this.fit({ max: 1 }); this.didFit = true; }
+      else if (this.fitted) this.fit({ max: 1 });            // still "fit on screen" → stay fitted (rotation, panels, keyboard)
+      else if (oldW > 1 && oldH > 1) { this.panX += (w - oldW) / 2; this.panY += (hh - oldH) / 2; this.app.onViewChange && this.app.onViewChange(); } // keep the same point centred
+    }
+    if (this.frame) { cancelAnimationFrame(this.frame); this.frame = 0; }
+    this.draw(); // synchronously: resizing clears the canvas, never show a blank frame
   }
+  /** Canvas client rect, cached between layout changes. */
+  rect() { return this._rect || (this._rect = this.canvas.getBoundingClientRect()); }
+  /** Theme colours used by draw(), read from CSS once per theme / resize. */
+  colors() {
+    if (this._colors) return this._colors;
+    const cs = getComputedStyle(this.stage);
+    this._colors = {
+      paste: cs.getPropertyValue('--st-canvas-bg').trim() || '#070708',
+      ruler: cs.getPropertyValue('--st-panel').trim() || 'rgba(30,30,34,.9)',
+      rulerText: cs.getPropertyValue('--st-dim').trim() || '#aaa',
+    };
+    return this._colors;
+  }
+  /** True while the user is actively pinching / panning / painting — draw fast, refine when idle. */
+  get busy() { return !!(this.gesture || this.panning || this.rotating || this.toolActive || this._wheeling); }
 
   setDoc(doc, state) {
     this.doc = doc;
     this.comp = null;
-    if (state && state.zoom) { this.zoom = state.zoom; this.panX = state.panX; this.panY = state.panY; this.didFit = true; }
+    if (state && state.zoom && state.w === this.cssW && state.h === this.cssH) { this.zoom = state.zoom; this.panX = state.panX; this.panY = state.panY; this.fitted = !!state.fitted; this.didFit = true; }
+    else if (state && state.zoom && !state.fitted && this.cssW > 1) { this.zoom = state.zoom; this.panX = state.panX + (this.cssW - (state.w || this.cssW)) / 2; this.panY = state.panY + (this.cssH - (state.h || this.cssH)) / 2; this.fitted = false; this.didFit = true; }
     else { this.didFit = false; if (this.cssW > 1) { this.fit({ max: 1 }); this.didFit = true; } }
     this.invalidate();
   }
-  getState() { return { zoom: this.zoom, panX: this.panX, panY: this.panY }; }
+  getState() { return { zoom: this.zoom, panX: this.panX, panY: this.panY, fitted: this.fitted, w: this.cssW, h: this.cssH }; }
 
   // ------------------------------------------------------------ coordinates
   // Rotation is applied around the stage centre after zoom/pan. rot/unrot map
@@ -82,17 +119,18 @@ export class View {
     return { x: cx + dx * c - dy * s, y: cy + dx * s + dy * c };
   }
   screenToDoc(clientX, clientY) {
-    const r = this.canvas.getBoundingClientRect();
+    const r = this.rect();
     const u = this.unrot({ x: clientX - r.left, y: clientY - r.top });
     return { x: (u.x - this.panX) / this.zoom, y: (u.y - this.panY) / this.zoom };
   }
   docToScreen(x, y) { return this.rot({ x: x * this.zoom + this.panX, y: y * this.zoom + this.panY }); }
-  clientToLocal(clientX, clientY) { const r = this.canvas.getBoundingClientRect(); return { x: clientX - r.left, y: clientY - r.top }; }
+  clientToLocal(clientX, clientY) { const r = this.rect(); return { x: clientX - r.left, y: clientY - r.top }; }
   setRotation(rad) {
     let a = rad % (Math.PI * 2); if (a > Math.PI) a -= Math.PI * 2; if (a < -Math.PI) a += Math.PI * 2;
     // snap to right angles when close
-    for (const k of [-Math.PI, -Math.PI / 2, 0, Math.PI / 2, Math.PI]) if (Math.abs(a - k) < 0.05) a = k;
+    for (const k of [-Math.PI, -Math.PI / 2, 0, Math.PI / 2, Math.PI]) if (Math.abs(a - k) < 0.07) a = k;
     this.rotation = Math.abs(a) < 1e-4 ? 0 : a;
+    if (this.rotation) this.fitted = false;
     this.changed();
   }
   rotateBy(deg) { this.setRotation(this.rotation + deg * Math.PI / 180); }
@@ -100,16 +138,28 @@ export class View {
   // ------------------------------------------------------------ zoom
   fit({ max = 64 } = {}) {
     if (!this.doc) return;
-    const pad = this.cssW < 600 ? 16 : 48;
-    const z = Math.min((this.cssW - pad * 2) / this.doc.width, (this.cssH - pad * 2) / this.doc.height, max);
+    // breathing room around the image; the rulers' strip is kept clear of it
+    const small = Math.min(this.cssW, this.cssH) < 420;
+    const pad = small ? 12 : this.cssW < 700 ? 20 : 40;
+    const inset = this.showRulers && !this.rotation ? 18 : 0;
+    const z = Math.min((this.cssW - inset - pad * 2) / this.doc.width, (this.cssH - inset - pad * 2) / this.doc.height, max);
     this.zoom = Math.max(0.01, Math.min(64, z));
+    this.rotation = 0;
     this.center();
+    this.fitted = true;
     this.changed();
   }
   actualSize() { this.setZoom(1, this.cssW / 2, this.cssH / 2); }
   center() {
-    this.panX = Math.round((this.cssW - this.doc.width * this.zoom) / 2);
-    this.panY = Math.round((this.cssH - this.doc.height * this.zoom) / 2);
+    const inset = this.showRulers && !this.rotation ? 18 : 0;
+    this.panX = Math.round(inset + (this.cssW - inset - this.doc.width * this.zoom) / 2);
+    this.panY = Math.round(inset + (this.cssH - inset - this.doc.height * this.zoom) / 2);
+  }
+  /** Rulers on/off (re-fits when the view is still fitted so the image never hides under the strip). */
+  setRulers(on) {
+    this.showRulers = !!on;
+    try { localStorage.setItem('eyad-studio:image:rulers', this.showRulers ? '1' : '0'); } catch (e) { /* ignore */ }
+    if (this.doc && this.fitted) this.fit({ max: 1 }); else this.requestDraw();
   }
   setZoom(z, cx = this.cssW / 2, cy = this.cssH / 2) {
     z = Math.max(0.01, Math.min(64, z));
@@ -118,6 +168,7 @@ export class View {
     this.zoom = z;
     this.panX = cx - dx * z;
     this.panY = cy - dy * z;
+    this.fitted = false;
     this.changed();
   }
   zoomStep(dir, cx, cy) {
@@ -179,29 +230,30 @@ export class View {
     const ctx = this.ctx, doc = this.doc;
     const d = this.dpr;
     ctx.setTransform(d, 0, 0, d, 0, 0);
-    const styles = getComputedStyle(this.stage);
     ctx.clearRect(0, 0, this.cssW, this.cssH); // the pasteboard colour may be translucent (spatial look)
-    ctx.fillStyle = styles.getPropertyValue('--st-canvas-bg').trim() || '#070708';
+    ctx.fillStyle = this.colors().paste;
     ctx.fillRect(0, 0, this.cssW, this.cssH);
     if (!doc) return;
     this.updateComposite();
     ctx.save();
     if (this.rotation) { ctx.translate(this.cssW / 2, this.cssH / 2); ctx.rotate(this.rotation); ctx.translate(-this.cssW / 2, -this.cssH / 2); }
     const x = this.panX, y = this.panY, w = doc.width * this.zoom, h = doc.height * this.zoom;
-    // shadow + checker
+    // soft edge around the document (three cheap strokes — a real canvas shadow blur costs a full-frame pass every draw)
     ctx.save();
-    ctx.shadowColor = 'rgba(0,0,0,.5)'; ctx.shadowBlur = 24; ctx.shadowOffsetY = 4;
-    ctx.fillStyle = '#888';
-    ctx.fillRect(x, y, w, h);
+    ctx.strokeStyle = 'rgba(0,0,0,.10)'; ctx.lineWidth = 9; ctx.strokeRect(x - 1, y + 1, w + 2, h + 2);
+    ctx.strokeStyle = 'rgba(0,0,0,.14)'; ctx.lineWidth = 5; ctx.strokeRect(x - 1, y, w + 2, h + 2);
+    ctx.strokeStyle = 'rgba(0,0,0,.30)'; ctx.lineWidth = 1.5; ctx.strokeRect(x - 0.5, y - 0.5, w + 1, h + 1);
     ctx.restore();
     ctx.fillStyle = this.checkerPattern(ctx);
     ctx.fillRect(x, y, w, h);
-    // composite
+    // composite — fast sampling while the user is pinching / panning / painting, best quality once idle
     ctx.save();
+    const fast = this.busy;
     ctx.imageSmoothingEnabled = this.zoom < 2;
-    ctx.imageSmoothingQuality = 'high';
+    ctx.imageSmoothingQuality = fast ? 'low' : 'high';
     ctx.drawImage(this.comp, x, y, w, h);
     ctx.restore();
+    this._drewFast = fast;
 
     if (this.showGrid) this.drawGrid(ctx);
     if (this.showGuides && doc.guides.length) this.drawGuides(ctx);
@@ -214,8 +266,8 @@ export class View {
 
   drawRulers(ctx) {
     const T = 18, z = this.zoom, W = this.cssW, H = this.cssH;
-    const cs = getComputedStyle(this.stage);
-    const bg = cs.getPropertyValue('--st-panel').trim() || 'rgba(30,30,34,.9)', fg = cs.getPropertyValue('--st-dim').trim() || '#aaa';
+    const col = this.colors();
+    const bg = col.ruler, fg = col.rulerText;
     // tick spacing: a "nice" step in document pixels that is at least ~50 screen px apart
     const raw = 50 / z, pow = Math.pow(10, Math.floor(Math.log10(raw)));
     const step = [1, 2, 5, 10].map((m) => m * pow).find((v) => v >= raw) || 10 * pow;
@@ -328,6 +380,7 @@ export class View {
 
   onDown(e) {
     if (!this.doc) return;
+    this._rect = null;
     this.canvas.focus({ preventScroll: true });
     try { this.canvas.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
     this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, type: e.pointerType, t: performance.now() });
@@ -399,13 +452,15 @@ export class View {
       const z = Math.max(0.01, Math.min(64, g.zoom * dist / Math.max(1, g.dist)));
       // two-finger rotation (only once the twist is deliberate)
       const dAng = Math.atan2(b.y - a.y, b.x - a.x) - g.ang;
-      if (Math.abs(dAng) > 0.12 || g.rotating) { g.rotating = true; this.rotation = g.rot + dAng; }
+      // (a pinch always wobbles a little — rotation only starts after a clear ~14° twist)
+      if (Math.abs(dAng) > 0.25 || g.rotating) { if (!g.rotating) { g.rotating = true; g.ang0 = dAng; } this.rotation = g.rot + dAng - g.ang0; }
       // keep the doc point under the original midpoint under the new midpoint
       const um = this.unrot(mid);
       const dx = (g.mid.x - g.panX) / g.zoom, dy = (g.mid.y - g.panY) / g.zoom;
       this.zoom = z;
       this.panX = um.x - dx * z;
       this.panY = um.y - dy * z;
+      this.fitted = false;
       this.changed();
       return;
     }
@@ -419,6 +474,7 @@ export class View {
       const dx = e.clientX - this.panning.x, dy = e.clientY - this.panning.y;
       this.panX = this.panning.panX + dx * c - dy * s;
       this.panY = this.panning.panY + dx * s + dy * c;
+      this.fitted = false;
       this.changed();
       return;
     }
@@ -450,13 +506,14 @@ export class View {
       }
     }
     if (this.gesture) {
-      if (this.pointers.size < 2) this.gesture = null;
+      if (this.pointers.size < 2) { const rotated = this.gesture.rotating; this.gesture = null; if (rotated) this.setRotation(this.rotation); else this.requestDraw(); }
       return;
     }
     if (this.panning) {
       this.panning = null;
       this.canvas.style.cursor = '';
       this.app.updateCursor && this.app.updateCursor();
+      this.requestDraw();
       return;
     }
     if (this.longPressed) { this.longPressed = false; this.toolActive = false; return; }
@@ -465,6 +522,7 @@ export class View {
       const tool = this.app.tool;
       if (cancelled) { tool.cancel && tool.cancel(); }
       else if (tool.up) tool.up(this.ptFrom(e), e);
+      this.requestDraw();
     }
     if (this._eraserFrom && e.pointerType === 'pen') { const back = this._eraserFrom; this._eraserFrom = null; setTimeout(() => this.app.selectTool(back), 0); }
     // double-tap (touch)
@@ -482,6 +540,8 @@ export class View {
     e.preventDefault();
     const p = this.clientToLocal(e.clientX, e.clientY);
     if (this.rDown) { this.rotateBy((e.deltaY > 0 ? 1 : -1) * 5); return; }
+    // wheel zoom / pan is "busy" too: draw fast, then refine once the wheel stops
+    clearTimeout(this._wheeling); this._wheeling = setTimeout(() => { this._wheeling = 0; this.requestDraw(); }, 160);
     if (e.ctrlKey || e.metaKey || e.altKey) {
       const factor = Math.exp(-e.deltaY * (e.deltaMode === 1 ? 0.05 : 0.0022));
       this.setZoom(this.zoom * factor, p.x, p.y);
@@ -491,6 +551,7 @@ export class View {
       const c = Math.cos(-this.rotation), s = Math.sin(-this.rotation);
       this.panX -= dx * c - dy * s;
       this.panY -= dx * s + dy * c;
+      this.fitted = false;
       this.changed();
     }
   }

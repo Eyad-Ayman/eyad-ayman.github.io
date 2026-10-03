@@ -34,9 +34,11 @@ function optSelect(app, tool, key, label, items) {
   s.addEventListener('change', () => { o[key] = s.value; app.saveOpts(); });
   return h('label', { class: 'img-opt' }, h('span', { class: 'img-opt-label', text: label }), s);
 }
-const note = (t) => h('span', { class: 'img-opt studio-faint', text: t });
+const note = (t) => h('span', { class: 'img-opt studio-faint vec-opt-note', text: t });
+const toastHint = (m) => toast(m, { timeout: 1800 });
 
-const dist = (app, a, b) => Math.hypot((a.x - b.x) * app.view.zoom, (a.y - b.y) * app.view.zoom);
+// screen distance, divided by the handle scale so a finger gets a bigger hit area than a mouse
+const dist = (app, a, b) => Math.hypot((a.x - b.x) * app.view.zoom, (a.y - b.y) * app.view.zoom) / (app.hk || 1);
 const snap45 = (o, p) => { const dx = p.x - o.x, dy = p.y - o.y, a = Math.round(Math.atan2(dy, dx) / (Math.PI / 4)) * (Math.PI / 4), l = Math.hypot(dx, dy); return { x: o.x + Math.cos(a) * l, y: o.y + Math.sin(a) * l }; };
 
 // ================================================================= Selection (V)
@@ -45,13 +47,15 @@ const HANDLES = [[0, 0], [0.5, 0], [1, 0], [1, 0.5], [1, 1], [0.5, 1], [0, 1], [
 const selectTool = {
   id: 'select', label: 'Selection', icon: 'cursor', key: 'V', cursor: 'default',
   hint: 'Click or drag a box to select · drag to move (Alt duplicates) · handles scale · knob rotates · double-click edits',
-  options(app) { return [note('Align & Shape Builder are in the right panel'), h('button', { class: 'studio-btn is-small', type: 'button', text: 'Group', onclick: () => app.cmd('group') }), h('button', { class: 'studio-btn is-small', type: 'button', text: 'Ungroup', onclick: () => app.cmd('ungroup') })]; },
+  options(app) { return [note('Align & Shape Builder are in the right panel'), h('button', { class: 'studio-btn is-small', type: 'button', text: 'Duplicate', onclick: () => app.duplicateSelection() }), h('button', { class: 'studio-btn is-small is-danger-ghost', type: 'button', text: 'Delete', onclick: () => app.cmd('delete') }), h('button', { class: 'studio-btn is-small', type: 'button', text: 'Group', onclick: () => app.cmd('group') }), h('button', { class: 'studio-btn is-small', type: 'button', text: 'Ungroup', onclick: () => app.cmd('ungroup') })]; },
   handleAt(app, p) {
     const b = app.selBounds(); if (!b) return null;
     const s0 = app.view.toScreen(b.x, b.y), s1 = app.view.toScreen(b.x + b.w, b.y + b.h);
-    const W = s1.x - s0.x, H = s1.y - s0.y;
-    for (let i = 0; i < HANDLES.length; i++) { const [fx, fy] = HANDLES[i]; if (Math.hypot(p.sx - (s0.x + W * fx), p.sy - (s0.y + H * fy)) < 9) return { kind: 'scale', i, fx, fy }; }
-    if (Math.hypot(p.sx - (s0.x + W / 2), p.sy - (s0.y - 26)) < 10) return { kind: 'rotate' };
+    const W = s1.x - s0.x, H = s1.y - s0.y, k = app.hk || 1;
+    // the rotate knob first on touch: its (larger) hit area must not lose to the top-centre handle
+    if (k > 1 && Math.hypot(p.sx - (s0.x + W / 2), p.sy - (s0.y - 26 * 1.4)) < 10 * k) return { kind: 'rotate' };
+    for (let i = 0; i < HANDLES.length; i++) { const [fx, fy] = HANDLES[i]; if (Math.hypot(p.sx - (s0.x + W * fx), p.sy - (s0.y + H * fy)) < 9 * k) return { kind: 'scale', i, fx, fy }; }
+    if (Math.hypot(p.sx - (s0.x + W / 2), p.sy - (s0.y - 26 * (k > 1 ? 1.4 : 1))) < 10 * k) return { kind: 'rotate' };
     return null;
   },
   down(p, e) {
@@ -134,7 +138,7 @@ const selectTool = {
 const directTool = {
   id: 'direct', label: 'Direct Selection', icon: 'select', key: 'A', cursor: 'default',
   hint: 'Click anchors (Shift adds) · drag anchors or handles (Alt breaks the pair) · Delete removes anchors',
-  options(app) { return [h('button', { class: 'studio-btn is-small', type: 'button', text: 'Corner', onclick: () => app.cmd('anchorCorner') }), h('button', { class: 'studio-btn is-small', type: 'button', text: 'Smooth', onclick: () => app.cmd('anchorSmooth') }), note('Pen tool adds/deletes anchors')]; },
+  options(app) { return [h('button', { class: 'studio-btn is-small', type: 'button', text: 'Corner', onclick: () => app.cmd('anchorCorner') }), h('button', { class: 'studio-btn is-small', type: 'button', text: 'Smooth', onclick: () => app.cmd('anchorSmooth') }), h('button', { class: 'studio-btn is-small', type: 'button', text: 'Delete anchor', onclick: () => app.cmd('deleteAnchors') }), note('Pen tool adds/deletes anchors')]; },
   targets(app) { return app.selNodesDeep().filter((n) => n.type === 'path'); },
   handleHit(app, p) {
     for (const n of this.targets(app)) n.subpaths.forEach((sp, si) => sp.pts.forEach((q, pi) => {
@@ -218,8 +222,8 @@ const directTool = {
       s += `<path class="vo-path" d="${app.screenD(n)}"/>`;
       n.subpaths.forEach((sp, si) => sp.pts.forEach((q, pi) => {
         const key = `${n.id}:${si}:${pi}`, on = app.anchorSel.has(key), a = app.view.toScreen(q.x, q.y);
-        if (on || this.neighbourOfSel(app, n, si, pi)) for (const hk of ['hi', 'ho']) if (q[hk]) { const hp = app.view.toScreen(q[hk][0], q[hk][1]); s += `<line class="vo-handle-line" x1="${a.x}" y1="${a.y}" x2="${hp.x}" y2="${hp.y}"/><circle class="vo-handle" cx="${hp.x}" cy="${hp.y}" r="3.5"/>`; }
-        s += `<rect class="vo-anchor${on ? ' is-on' : ''}" x="${a.x - 3.5}" y="${a.y - 3.5}" width="7" height="7"/>`;
+        if (on || this.neighbourOfSel(app, n, si, pi)) for (const hk of ['hi', 'ho']) if (q[hk]) { const hp = app.view.toScreen(q[hk][0], q[hk][1]); s += `<line class="vo-handle-line" x1="${a.x}" y1="${a.y}" x2="${hp.x}" y2="${hp.y}"/><circle class="vo-handle" cx="${hp.x}" cy="${hp.y}" r="${3.5 * app.hk}"/>`; }
+        s += `<rect class="vo-anchor${on ? ' is-on' : ''}" x="${a.x - 3.5 * app.hk}" y="${a.y - 3.5 * app.hk}" width="${7 * app.hk}" height="${7 * app.hk}"/>`;
       }));
     }
     if (this.marquee) { const a = app.view.toScreen(this.marquee.a.x, this.marquee.a.y), b = app.view.toScreen(this.marquee.b.x, this.marquee.b.y); s += `<rect class="vo-marquee" x="${Math.min(a.x, b.x)}" y="${Math.min(a.y, b.y)}" width="${Math.abs(a.x - b.x)}" height="${Math.abs(a.y - b.y)}"/>`; }
@@ -232,7 +236,13 @@ const directTool = {
 const penTool = {
   id: 'pen', label: 'Pen', icon: 'pen', key: 'P', cursor: 'crosshair',
   hint: 'Click for corners, drag for curves · click the first point to close · Enter/Esc finishes · on a selected path: click a segment to add, an anchor to delete, Alt-click to convert',
-  options() { return [note('Shift snaps to 45°')]; },
+  options(app) {
+    const b = (text, title, fn) => h('button', { class: 'studio-btn is-small', type: 'button', text, title, onclick: fn });
+    return [
+      b('Done', 'Finish the path, leaving it open (Enter)', () => { if (this.draw) this.finish(); else toastHint('Tap the canvas to place points first.'); }),
+      b('Close path', 'Join the last point to the first', () => { if (!this.draw) { toastHint('Tap the canvas to place points first.'); return; } const sp = this.draw.node.subpaths[this.draw.si]; if (sp.pts.length >= 3) sp.closed = true; this.finish(); }),
+      note('Tap for corners, drag for curves · Shift snaps to 45°')];
+  },
   down(p) {
     const app = this.app;
     if (!this.draw) {
@@ -316,13 +326,18 @@ const penTool = {
     let s = '';
     for (const n of app.selNodesDeep().filter((x) => x.type === 'path')) {
       s += `<path class="vo-path" d="${app.screenD(n)}"/>`;
-      n.subpaths.forEach((sp) => sp.pts.forEach((q, i) => { const a = app.view.toScreen(q.x, q.y); s += `<rect class="vo-anchor${this.draw && i === sp.pts.length - 1 ? ' is-on' : ''}" x="${a.x - 3.5}" y="${a.y - 3.5}" width="7" height="7"/>`; for (const hk of ['hi', 'ho']) if (q[hk] && this.draw) { const hp = app.view.toScreen(q[hk][0], q[hk][1]); s += `<line class="vo-handle-line" x1="${a.x}" y1="${a.y}" x2="${hp.x}" y2="${hp.y}"/><circle class="vo-handle" cx="${hp.x}" cy="${hp.y}" r="3"/>`; } }));
+      n.subpaths.forEach((sp) => sp.pts.forEach((q, i) => { const a = app.view.toScreen(q.x, q.y); s += `<rect class="vo-anchor${this.draw && i === sp.pts.length - 1 ? ' is-on' : ''}" x="${a.x - 3.5 * app.hk}" y="${a.y - 3.5 * app.hk}" width="${7 * app.hk}" height="${7 * app.hk}"/>`; for (const hk of ['hi', 'ho']) if (q[hk] && this.draw) { const hp = app.view.toScreen(q[hk][0], q[hk][1]); s += `<line class="vo-handle-line" x1="${a.x}" y1="${a.y}" x2="${hp.x}" y2="${hp.y}"/><circle class="vo-handle" cx="${hp.x}" cy="${hp.y}" r="${3 * app.hk}"/>`; } }));
     }
     if (this.draw && this.hoverPt && !this.dragging) {
       const sp = this.draw.node.subpaths[this.draw.si], last = sp.pts[sp.pts.length - 1];
       const a = app.view.toScreen(last.x, last.y), c = app.view.toScreen(last.ho ? last.ho[0] : last.x, last.ho ? last.ho[1] : last.y), b = app.view.toScreen(this.hoverPt.x, this.hoverPt.y);
       s += `<path class="vo-rubber" d="M${a.x} ${a.y}Q${c.x} ${c.y} ${b.x} ${b.y}"/>`;
-      if (sp.pts.length >= 2 && dist(app, sp.pts[0], this.hoverPt) < 8) { const f = app.view.toScreen(sp.pts[0].x, sp.pts[0].y); s += `<circle class="vo-close" cx="${f.x}" cy="${f.y}" r="7"/>`; }
+      if (sp.pts.length >= 2 && dist(app, sp.pts[0], this.hoverPt) < 8) { const f = app.view.toScreen(sp.pts[0].x, sp.pts[0].y); s += `<circle class="vo-close" cx="${f.x}" cy="${f.y}" r="${7 * app.hk}"/>`; }
+    }
+    if (this.draw && app.coarse) {
+      // touch has no hover: always ring the first anchor so it is clear where a tap closes the path
+      const sp = this.draw.node.subpaths[this.draw.si];
+      if (sp.pts.length >= 2 && !sp.closed) { const f = app.view.toScreen(sp.pts[0].x, sp.pts[0].y); s += `<circle class="vo-close" cx="${f.x}" cy="${f.y}" r="${7 * app.hk}"/>`; }
     }
     return s;
   },

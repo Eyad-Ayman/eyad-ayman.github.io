@@ -260,33 +260,16 @@ export async function matchColor(app) {
 
 // ------------------------------------------------------------------ Object Selection tool
 
-export const objectSelectTool = {
-  id: 'aiselect', label: 'Object Selection (AI)', icon: 'sparkle', key: 'W', cursor: 'crosshair',
-  hint: 'Click an object to select it with on-device AI · Shift adds · Alt subtracts',
-  options(app) {
-    return [h('span', { class: 'img-opt studio-dim', text: 'Click any object' }),
-      h('button', { class: 'studio-btn is-small', type: 'button', onclick: () => selectSubject(app) }, icon('sparkle', 14), h('span', { text: 'Select Subject' })),
-      h('button', { class: 'studio-btn is-small', type: 'button', onclick: () => selectSky(app) }, h('span', { text: 'Select Sky' }))];
-  },
-  async down(pt) {
-    const app = this.app, d = app.doc;
-    if (pt.x < 0 || pt.y < 0 || pt.x > d.width || pt.y > d.height) return;
-    const mode = modeFromEvent(pt, d.selection ? 'new' : 'new');
-    this.busy = { x: pt.x, y: pt.y }; app.view.requestDraw();
-    await withAI('Selecting object', async (status) => {
-      const m = await selectAt(source(app), pt.x / d.width, pt.y / d.height, { onStatus: status });
-      if (coverage(m) < 0.0005) { toast('Nothing distinct there — try clicking the middle of the object.', { type: 'warn' }); return; }
-      applySelection(app, maskSelection(app, m), 'Object Selection', mode);
-    });
-    this.busy = null; app.view.requestDraw();
-  },
-  overlay(ctx, view) {
-    if (!this.busy) return;
-    const s = view.docToScreen(this.busy.x, this.busy.y), t = performance.now() / 300;
-    ctx.beginPath(); ctx.arc(s.x, s.y, 14, t, t + 4.5); ctx.strokeStyle = '#d02b2a'; ctx.lineWidth = 3; ctx.stroke();
-    view.requestDraw();
-  },
-};
+/** Object Selection tool click: select the object under the pointer (the tool itself lives in tools2.js and loads this module on first use). */
+export async function objectSelectAt(app, pt) {
+  const d = app.doc;
+  const mode = modeFromEvent(pt, 'new');
+  await withAI('Selecting object', async (status) => {
+    const m = await selectAt(source(app), pt.x / d.width, pt.y / d.height, { onStatus: status });
+    if (coverage(m) < 0.0005) { toast('Nothing distinct there — try clicking the middle of the object.', { type: 'warn' }); return; }
+    applySelection(app, maskSelection(app, m), 'Object Selection', mode);
+  });
+}
 
 // ------------------------------------------------------------------ AI panel
 

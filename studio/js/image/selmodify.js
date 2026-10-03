@@ -47,7 +47,7 @@ export async function colorRange(app) {
     { key: 'color', label: 'Colour', type: 'color', value: app.fg },
     { key: 'fuzz', label: 'Fuzziness', type: 'number', value: 40, min: 0, max: 200 },
     { key: 'all', label: 'Sample all layers', type: 'checkbox', value: true },
-    { key: 'mode', label: 'Mode', type: 'select', value: 'new', options: [['new', 'New selection'], ['add', 'Add'], ['subtract', 'Subtract']] },
+    { key: 'mode', label: 'Mode', type: 'select', value: 'new', options: [{ value: 'new', label: 'New selection' }, { value: 'add', label: 'Add to selection' }, { value: 'subtract', label: 'Subtract from selection' }] },
   ] });
   if (!v) return;
   const hex = /^#[0-9a-f]{6}$/i.test(v.color) ? v.color : app.fg;

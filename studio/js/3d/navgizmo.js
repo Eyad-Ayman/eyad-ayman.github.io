@@ -24,7 +24,7 @@ export class NavGizmo {
   bind() {
     const c = this.canvas, app = this.app;
     let drag = null;
-    const local = (e) => { const r = c.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
+    const local = (e) => { const r = c.getBoundingClientRect(); const k = SIZE / (r.width || SIZE); return { x: (e.clientX - r.left) * k, y: (e.clientY - r.top) * k }; };
     const hit = (p) => { let best = -1, bd = 13; for (const q of this.pts) { const d = Math.hypot(q.x - p.x, q.y - p.y); if (d < bd) { bd = d; best = q.i; } } return best; };
     c.addEventListener('pointerdown', (e) => {
       if (e.button !== 0) return;

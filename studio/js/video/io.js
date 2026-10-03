@@ -52,7 +52,7 @@ export async function closeProject(app) {
   if (!(await confirmDiscard(app))) return;
   app.engine.pause(); app.engine.releaseAll(); app.media.release();
   app.project = null; app.projectId = null; app.history.clear();
-  app.emptyEl.hidden = false;
+  app.showStart(true);
   app.refreshAll();
   updateUrl(app);
 }
@@ -383,7 +383,7 @@ export async function boot(app) {
       if (files.length) handleFiles(app, files);
     });
   }
-  if (!app.project) app.emptyEl.hidden = false;
+  app.showStart(!app.project);
   updateUrl(app);
 }
 
