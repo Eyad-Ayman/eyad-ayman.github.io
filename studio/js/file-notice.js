@@ -18,6 +18,15 @@
     document.documentElement.setAttribute('data-studio-theme', t);
     // home / hub colour mode (poster look)
     document.documentElement.setAttribute('data-poster', /^[a-z]{2,12}$/.test(st.poster || '') ? st.poster : 'signal');
+    var FRAME = { signal: '#f4260f', night: '#0b0b0b', redroom: '#f4260f', ink: '#0d0d0d', cobalt: '#0d0d0d', sun: '#ff7a1a', forest: '#1f3a2e', lime: '#0d0d0d', blush: '#d0142c', royal: '#1b3fd6', mono: '#ffffff', clay: '#8c2f1b' };
+    window.__eyadBar = function () {
+      var hub = !/\/studio\/(image|video|vector|3d|camera)\//.test(location.pathname);
+      var col = hub ? (FRAME[document.documentElement.getAttribute('data-poster')] || '#f4260f') : '#0b0b10';
+      var m = document.querySelector('meta[name="theme-color"]');
+      if (!m) { m = document.createElement('meta'); m.name = 'theme-color'; document.head.appendChild(m); }
+      m.setAttribute('content', col);
+    };
+    window.__eyadBar();
   } catch (e) { /* storage blocked: light */ }
   // Arriving from the portfolio's "Enter Studio" transition: the portfolio
   // closed a black curtain before navigating; open it here so it reads as one move.
@@ -33,8 +42,17 @@
  * what is on screen, which cut the bottom of the editors and the camera. Every full-screen layout uses --app-h. */
 (function () {
   var de = document.documentElement, last = 0;
+  var standalone = navigator.standalone === true || (window.matchMedia && matchMedia('(display-mode: standalone), (display-mode: fullscreen)').matches);
+  var ios = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   function set() {
     var hgt = window.innerHeight || de.clientHeight;
+    // Installed on iPhone: the page covers the whole screen (viewport-fit=cover), but innerHeight is often
+    // reported short or stale right after launch / rotation. The screen size is the truth there.
+    if (ios && standalone && window.screen) {
+      var sw = screen.width, sh = screen.height, land = window.innerWidth > window.innerHeight;
+      var full = land ? Math.min(sw, sh) : Math.max(sw, sh);
+      if (full && Math.abs(full - hgt) < 140) hgt = full;
+    }
     if (!hgt || hgt === last) return; last = hgt;
     de.style.setProperty('--app-h', hgt + 'px');
   }

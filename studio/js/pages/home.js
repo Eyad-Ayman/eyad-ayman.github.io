@@ -52,7 +52,7 @@ installBtn.hidden = isStandalone();
 const nav = h('header', { class: 'po-nav' },
   h('a', { class: 'po-logo', href: ROUTES.home, 'aria-label': 'EYAD Studio' }, 'EYAD®STUDIO'),
   h('nav', { class: 'po-links po-mono', 'aria-label': 'Sections' },
-    h('a', { href: ROUTES.templates, text: 'Templates' }), h('a', { href: ROUTES.projects, text: 'Projects' }),
+    h('a', { href: ROUTES.templates, text: 'Templates' }), h('a', { href: ROUTES.moodboard, text: 'Moodboard' }), h('a', { href: ROUTES.tools, text: 'Tools' }), h('a', { href: ROUTES.projects, text: 'Projects' }),
     h('a', { href: ROUTES.settings, text: 'Settings' }), h('a', { href: ROUTES.help, text: 'Help' }),
     h('a', { href: ROUTES.portfolio, text: 'Portfolio ↗' })),
   h('div', { class: 'po-nav-r' }, installBtn, h('button', { class: 'po-pill is-fill', type: 'button', onclick: OPEN_ALL, text: 'Open a file' })));
@@ -69,7 +69,7 @@ const stage = h('section', { class: 'po-stage', 'aria-label': 'EYAD Studio' },
 
 // ---- colour modes
 const MODES = [['signal', 'Signal'], ['night', 'Night'], ['redroom', 'Red room'], ['ink', 'Ink'], ['cobalt', 'Cobalt'], ['sun', 'Sun'], ['forest', 'Forest'], ['lime', 'Lime'], ['blush', 'Blush'], ['royal', 'Royal'], ['mono', 'Mono'], ['clay', 'Clay']];
-const setMode = (id) => { document.documentElement.dataset.poster = id; setSetting('poster', id); for (const b of modes.querySelectorAll('button')) b.setAttribute('aria-pressed', String(b.dataset.mode === id)); };
+const setMode = (id) => { document.documentElement.dataset.poster = id; if (getSettings().poster !== id) setSetting('poster', id); window.__eyadBar && window.__eyadBar(); for (const b of modes.querySelectorAll('button')) b.setAttribute('aria-pressed', String(b.dataset.mode === id)); };
 const modes = h('div', { class: 'po-modes', role: 'group', 'aria-label': 'Colour mode' },
   h('span', { class: 'po-mono', text: 'Colour mode' }),
   MODES.map(([id, name]) => h('button', { class: 'po-mode', type: 'button', title: name, 'aria-label': name, dataset: { mode: id, poster: id }, onclick: () => setMode(id) })));
@@ -107,7 +107,10 @@ const below = h('div', { class: 'po-below' },
       h('button', { class: 'po-pill', type: 'button', onclick: () => openAny('Open PSD', ACCEPT.psd, 'image'), text: 'Open PSD' }),
       h('button', { class: 'po-pill', type: 'button', onclick: () => openAny('Open PDF, .ai or .fig', '.pdf,.ai,.eps,.fig,.svg', 'image'), text: 'PDF · AI · SVG' }),
       h('button', { class: 'po-pill', type: 'button', onclick: () => startTour('home', { force: true }), text: 'Take the tour' }))),
-  sec(4, 'Selected work', 'po-worksec', h('a', { class: 'po-more po-mono', href: ROUTES.portfolio, text: 'Portfolio ↗' }), work),
+  sec(4, 'Quick tools', 'po-toolsec', h('a', { class: 'po-more po-mono', href: ROUTES.tools, text: 'All tools →' }),
+    h('div', { class: 'po-quick' }, [['@mood', 'Moodboard', 'Images, colours and words on one board'], ['compress', 'Compress & convert', 'Shrink and batch-convert photos'], ['cutout', 'Remove background', 'One-tap AI cut-out'], ['palette', 'Colour palette', 'Six colours from any image'], ['qr', 'QR code', 'For links, Wi-Fi, your portfolio'], ['screen', 'Screen recorder', 'Record a tab or window']].map(([id, t, d]) =>
+      h('a', { class: 'po-size', href: id === '@mood' ? ROUTES.moodboard : ROUTES.tools + '#' + id, dataset: { q: (t + ' ' + d).toLowerCase() } }, h('b', { text: t }), h('span', { class: 'po-mono', text: d }))))),
+  sec(5, 'Selected work', 'po-worksec', h('a', { class: 'po-more po-mono', href: ROUTES.portfolio, text: 'Portfolio ↗' }), work),
   h('p', { class: 'po-foot po-mono' }, 'EYAD Studio 5 · by Eyad Ayman · your files stay on this device'));
 
 const shell = h('div', { class: 'po' }, hero, below);
@@ -119,7 +122,7 @@ addEventListener('keydown', (e) => {
   if (e.key === '/') { e.preventDefault(); search.scrollIntoView({ block: 'center' }); search.focus(); }
 });
 let recentCards = [];
-const searchable = () => [...appsGrid.children, ...createGrid.children, ...recentCards];
+const searchable = () => [...appsGrid.children, ...createGrid.children, ...recentCards, ...shell.querySelectorAll('.po-quick .po-size')];
 search.addEventListener('input', () => { const q = search.value.trim().toLowerCase(); for (const el of searchable()) el.classList.toggle('is-dim', !!q && !el.dataset.q.includes(q)); });
 search.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') { search.value = ''; search.dispatchEvent(new Event('input')); search.blur(); return; }

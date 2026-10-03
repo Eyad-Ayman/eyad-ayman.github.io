@@ -6,7 +6,7 @@
  * cached shell offline; static files = cache first, refreshed in the background.
  */
 "use strict";
-var VERSION = "ae2d1f0b63";
+var VERSION = "9f3ba1863e";
 var CACHE = "eyad-studio-" + VERSION;
 var SHELL = [
 "./3d/",
@@ -152,8 +152,10 @@ var SHELL = [
 "./js/pages/common.js",
 "./js/pages/help.js",
 "./js/pages/home.js",
+"./js/pages/moodboard.js",
 "./js/pages/projects.js",
 "./js/pages/settings.js",
+"./js/pages/tools.js",
 "./js/templates/data.js",
 "./js/templates/fonts.js",
 "./js/templates/kit.js",
@@ -196,18 +198,23 @@ var SHELL = [
 "./models/depth_anything_v2_vits.onnx.parts.json",
 "./models/migan_pipeline_v2.onnx.parts.json",
 "./models/selfie_segmenter.tflite",
+"./moodboard/",
+"./moodboard/index.html",
 "./projects/",
 "./projects/index.html",
 "./settings/",
 "./settings/index.html",
 "./templates/",
 "./templates/index.html",
+"./tools/",
+"./tools/index.html",
 "./vector/",
 "./vector/index.html",
 "./vendor/ag-psd.min.js",
 "./vendor/fflate/LICENSE",
 "./vendor/fflate/fflate.js",
 "./vendor/paper/paper-core.min.js",
+"./vendor/qrcode/qrcode.mjs",
 "./video/",
 "./video/index.html"
 ];

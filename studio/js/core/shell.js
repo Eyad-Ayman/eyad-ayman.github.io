@@ -16,6 +16,8 @@ export const ROUTES = {
   '3d': new URL('./3d/', STUDIO_ROOT).href,
   camera: new URL('./camera/', STUDIO_ROOT).href,
   templates: new URL('./templates/', STUDIO_ROOT).href,
+  tools: new URL('./tools/', STUDIO_ROOT).href,
+  moodboard: new URL('./moodboard/', STUDIO_ROOT).href,
   projects: new URL('./projects/', STUDIO_ROOT).href,
   settings: new URL('./settings/', STUDIO_ROOT).href,
   help: new URL('./help/', STUDIO_ROOT).href,
@@ -73,6 +75,8 @@ export function appSwitcher(current) {
     ['3d', '3D', 'cube'],
     ['camera', 'Kamera', 'camera'],
     ['templates', 'Templates', 'grid'],
+    ['moodboard', 'Moodboard', 'grid'],
+    ['tools', 'Tools', 'wand'],
     ['projects', 'Projects', 'folder'],
     ['settings', 'Settings', 'gear'],
   ];

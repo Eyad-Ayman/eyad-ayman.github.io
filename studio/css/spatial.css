@@ -482,5 +482,21 @@ body:has(.studio-scrim, .studio-sheet, .xp-tour) .xp-dock { opacity: 0; pointer-
 @media (max-width: 1000px) { :root .studio-app .studio-hub-header .studio-switcher { display: none; } }
 
 /* full-screen apps use the real visible height (see file-notice.js) — fixes the bottom being cut off on iPhone */
-:root body.studio-app:is(.img-app, .vid-app, .cam-app) { top: 0; left: 0; right: 0; bottom: auto; height: 100vh; height: var(--app-h, 100dvh); }
+:root body.studio-app:is(.img-app, .vid-app, .cam-app) { top: 0; left: 0; right: 0; bottom: auto; height: 100vh; height: var(--app-h, 100dvh); box-sizing: border-box; }
 html.studio-root:has(> body:is(.img-app, .vid-app, .cam-app)) { height: var(--app-h, 100dvh); overflow: hidden; overscroll-behavior: none; }
+
+/* =====================================================================
+   A touch of the poster look inside the editors (type + brand red only —
+   layouts and controls are unchanged)
+   ===================================================================== */
+@font-face { font-family: 'Poster AB'; font-display: swap; src: url('../fonts/archivo-black-latin-400-normal.woff2') format('woff2'); }
+@font-face { font-family: 'Poster BN'; font-display: swap; src: url('../fonts/bebas-neue-latin-400-normal.woff2') format('woff2'); }
+:root .studio-app:is(.is-editor, .cam-app) { --brand: #f4260f; }
+:root .studio-app:is(.is-editor, .cam-app) .studio-brand-mark { display: none; }
+:root .studio-app:is(.is-editor, .cam-app) .studio-brand-word { font: 400 15px/1 'Poster AB', sans-serif !important; letter-spacing: -.03em !important; gap: 0; color: var(--brand); }
+:root .studio-app:is(.is-editor, .cam-app) .studio-brand-word .studio-brand-app { font: inherit !important; letter-spacing: inherit !important; color: inherit; text-transform: uppercase !important; }
+:root .studio-app:is(.is-editor, .cam-app) .studio-brand-word .studio-brand-app::before { content: '®'; }
+:root .studio-app.is-editor :is(.img-empty-title, .t3-empty-title) { font: 400 clamp(54px, 9vw, 120px)/.82 'Poster BN', 'Poster AB', sans-serif !important; letter-spacing: 0 !important; text-transform: uppercase !important; color: var(--brand); }
+:root .studio-app.is-editor .t3-empty-title { font-size: clamp(40px, 6vw, 64px) !important; }
+:root .studio-app.is-editor :is(.img-empty, .vid-empty, .t3-empty-card) .studio-btn.is-primary { background: var(--brand); color: #fff; box-shadow: none; }
+:root .studio-app.is-editor ::selection { background: var(--brand); color: #fff; }

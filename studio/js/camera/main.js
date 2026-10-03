@@ -187,11 +187,15 @@ function sourceEl() {
 const mirrored = () => state.source === 'camera' && state.facing === 'user';
 const previewMax = () => Math.min(IS_TOUCH ? 1080 : 1280, Math.round(Math.max(stage.clientWidth, stage.clientHeight) * Math.min(2, devicePixelRatio || 1)));
 
-function frame() {
+let lastFrameT = 0;
+function frame(now) {
   rafId = requestAnimationFrame(frame);
   const src = sourceEl();
   if (!src || !review.hidden) return;
   const live = state.source === 'camera';
+  // 30 fps is plenty for a viewfinder and halves the GPU work (heat, battery); recording keeps every frame
+  if (live && !state.recording && now && now - lastFrameT < 31) return;
+  lastFrameT = now || 0;
   if (!live && !needsRender) return;
   needsRender = false;
   const W = live ? video.videoWidth : src.width, H = live ? video.videoHeight : src.height;
