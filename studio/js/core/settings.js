@@ -30,7 +30,8 @@ export const DEFAULTS = {
   panelSide: 'right',       // right | left  (editors' panel column)
   toolbarSide: 'left',      // left | right  (tools column)
   forceDesktop: false,      // phones: show the full desktop interface (zoomed out)
-  poster: 'signal',          // home / hub colour mode
+  poster: 'signal',          // colour mode (home, Studio pages and — with editorLook 'theme' — the editors)
+  editorLook: 'theme',       // theme (editors follow the colour mode) | studio (dark glass workspace)
   splash: 'installed',      // installed | always | never — app launch screen
   tourDone: false,
   // Pen tablet
@@ -124,9 +125,10 @@ export function applyUiSettings() {
   root.classList.toggle('xp-glass', s.translucency !== false);
   root.dataset.panels = s.panelSide === 'left' ? 'left' : 'right';
   root.dataset.tools = s.toolbarSide === 'right' ? 'right' : 'left';
-  const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.setAttribute('content', theme === 'light' ? '#dcdde1' : '#16171b');
   document.documentElement.dataset.studioTheme = theme;
+  document.documentElement.dataset.editorLook = s.editorLook === 'studio' ? 'studio' : 'theme';
+  if (/^[a-z]{2,12}$/.test(s.poster || '')) document.documentElement.dataset.poster = s.poster;
+  if (window.__eyadBar) window.__eyadBar();
 }
 
 export const isEditorPage = () => document.documentElement.hasAttribute('data-studio-editor');
@@ -139,8 +141,10 @@ export function perfLevel() {
 }
 
 /** light | dark, after resolving "portfolio" and "system". */
+const DARK_MODES = { night: 1, cobalt: 1, forest: 1 };
 export function resolvedTheme() {
   const ws = getSettings().workspaceTheme;
+  if (isEditorPage() && getSettings().editorLook !== 'studio') return DARK_MODES[getSettings().poster] ? 'dark' : 'light';
   if (isEditorPage() && (ws === 'dark' || ws === 'light')) return ws;
   const t = getSettings().theme;
   if (t === 'light' || t === 'dark') return t;

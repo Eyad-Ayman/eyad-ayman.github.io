@@ -500,3 +500,46 @@ html.studio-root:has(> body:is(.img-app, .vid-app, .cam-app)) { height: var(--ap
 :root .studio-app.is-editor .t3-empty-title { font-size: clamp(40px, 6vw, 64px) !important; }
 :root .studio-app.is-editor :is(.img-empty, .vid-empty, .t3-empty-card) .studio-btn.is-primary { background: var(--brand); color: #fff; box-shadow: none; }
 :root .studio-app.is-editor ::selection { background: var(--brand); color: #fff; }
+
+/* =====================================================================
+   COLOUR MODES everywhere. The same twelve modes as the home screen drive the
+   editors: frame, paper, type colour, readable ink, and a "pop" colour that
+   stays visible on black (Kamera). Settings ▸ Look ▸ Editors = "Studio glass"
+   switches the editors back to the dark glass workspace.
+   ===================================================================== */
+:root, [data-poster="signal"] { --po-frame: #f4260f; --po-paper: #ecebe6; --po-type: #f4260f; --po-text: #f4260f; --po-on: #ecebe6; --po-ink: #17110f; --po-pop: #f4260f; }
+[data-poster="night"]   { --po-frame: #0b0b0b; --po-paper: #0b0b0b; --po-type: #f4260f; --po-text: #e9e6df; --po-on: #0b0b0b; --po-ink: #e9e6df; --po-pop: #f4260f; }
+[data-poster="redroom"] { --po-frame: #f4260f; --po-paper: #f4260f; --po-type: #0d0d0d; --po-text: #0d0d0d; --po-on: #f4260f; --po-ink: #0d0d0d; --po-pop: #f4260f; }
+[data-poster="ink"]     { --po-frame: #0d0d0d; --po-paper: #ecebe6; --po-type: #0d0d0d; --po-text: #0d0d0d; --po-on: #ecebe6; --po-ink: #0d0d0d; --po-pop: #ecebe6; }
+[data-poster="cobalt"]  { --po-frame: #0d0d0d; --po-paper: #1b3fd6; --po-type: #ff3418; --po-text: #f1eee7; --po-on: #1b3fd6; --po-ink: #f1eee7; --po-pop: #ff3418; }
+[data-poster="sun"]     { --po-frame: #ff7a1a; --po-paper: #ff7a1a; --po-type: #f7ecd6; --po-text: #1c1206; --po-on: #ff7a1a; --po-ink: #1c1206; --po-pop: #ff7a1a; }
+[data-poster="forest"]  { --po-frame: #1f3a2e; --po-paper: #1f3a2e; --po-type: #f2c230; --po-text: #f2c230; --po-on: #1f3a2e; --po-ink: #f1ead2; --po-pop: #f2c230; }
+[data-poster="lime"]    { --po-frame: #0d0d0d; --po-paper: #d6ff3f; --po-type: #0d0d0d; --po-text: #0d0d0d; --po-on: #d6ff3f; --po-ink: #0d0d0d; --po-pop: #d6ff3f; }
+[data-poster="blush"]   { --po-frame: #d0142c; --po-paper: #f4cfd6; --po-type: #d0142c; --po-text: #d0142c; --po-on: #f4cfd6; --po-ink: #3a0b12; --po-pop: #ff5a70; }
+[data-poster="royal"]   { --po-frame: #1b3fd6; --po-paper: #ecebe6; --po-type: #1b3fd6; --po-text: #1b3fd6; --po-on: #ecebe6; --po-ink: #0f1a4a; --po-pop: #6f8cff; }
+[data-poster="mono"]    { --po-frame: #ffffff; --po-paper: #ffffff; --po-type: #0d0d0d; --po-text: #0d0d0d; --po-on: #ffffff; --po-ink: #0d0d0d; --po-pop: #ffffff; }
+[data-poster="clay"]    { --po-frame: #8c2f1b; --po-paper: #e9d9c3; --po-type: #8c2f1b; --po-text: #3a1a10; --po-on: #e9d9c3; --po-ink: #3a1a10; --po-pop: #e9d9c3; }
+
+html[data-editor-look="theme"]:has(> body.is-editor) { background: var(--po-frame); }
+html[data-editor-look="theme"]:has(> body.is-editor)::before { background: var(--po-frame); background-image: none; }
+html[data-editor-look="theme"] body.studio-app.is-editor.is-editor.is-editor {
+  --st-bg: var(--po-paper); --st-text: var(--po-ink); --st-dim: color-mix(in srgb, var(--po-ink) 68%, transparent); --st-faint: color-mix(in srgb, var(--po-ink) 44%, transparent);
+  --st-line: color-mix(in srgb, var(--po-ink) 14%, transparent); --st-line-2: color-mix(in srgb, var(--po-ink) 30%, transparent);
+  --st-panel: var(--po-paper); --st-panel-2: color-mix(in srgb, var(--po-ink) 5%, transparent); --st-raised: var(--po-paper); --st-hover: color-mix(in srgb, var(--po-ink) 9%, transparent);
+  --st-accent: var(--po-type); --st-accent-hi: var(--po-type); --st-accent-soft: color-mix(in srgb, var(--po-type) 16%, transparent); --st-accent-text: var(--po-on);
+  --st-canvas-bg: color-mix(in srgb, var(--po-paper) 84%, var(--po-ink));
+  --sp-glass: var(--po-paper); --sp-glass-strong: var(--po-paper); --sp-stroke: color-mix(in srgb, var(--po-ink) 22%, transparent);
+  --sp-ring: inset 0 0 0 1.5px color-mix(in srgb, var(--po-ink) 20%, transparent); --sp-drop: 0 0 0 transparent; --st-shadow: 0 0 0 1.5px color-mix(in srgb, var(--po-ink) 30%, transparent), 0 24px 60px -24px rgba(0, 0, 0, .45);
+  --sp-chip: color-mix(in srgb, var(--po-ink) 7%, transparent); --sp-chip-h: color-mix(in srgb, var(--po-ink) 15%, transparent);
+  --sp-solid: var(--po-type); --sp-on-solid: var(--po-on); --sp-bf: none; --sp-bf-strong: none; --sp-bf-bar: none;
+  --sp-r-card: 12px; --sp-r-win: 16px; --brand: var(--po-type);
+  color: var(--po-ink);
+}
+html[data-editor-look="theme"] body.studio-app.is-editor :is(.studio-dialog, .studio-sheet, .studio-menu, .studio-toast, .studio-palette, .xp-tour-card) { background: var(--po-paper); color: var(--po-ink); box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--po-ink) 30%, transparent), 0 24px 60px -24px rgba(0, 0, 0, .5); }
+html[data-editor-look="theme"] body.studio-app.is-editor .img-tool.is-active, html[data-editor-look="theme"] body.studio-app.is-editor .img-dock-tool.is-active { box-shadow: none; }
+html[data-editor-look="theme"] body.studio-app.is-editor :is(.img-empty, .vid-empty) { background: var(--po-paper); }
+html[data-editor-look="theme"] body.studio-app.is-editor .studio-btn.is-primary { box-shadow: none; }
+/* Kamera stays a dark room; its accent follows the colour mode */
+html[data-editor-look="theme"] body.studio-app.cam-app { --cam-y: var(--po-pop); --brand: var(--po-pop); }
+html[data-editor-look="theme"] body.studio-app.is-editor :is(.img-top, .img-options, .img-toolbar, .img-panel, .img-status, .img-dock, .img-tabs, .vid-panel, .vid-dock, .t3-hud-btn, .t3-empty-card, .t3-panels > *, .t3-rail, .t3-timeline, .vec-dock) { background-color: var(--po-paper); -webkit-backdrop-filter: none; backdrop-filter: none; }
+html[data-editor-look="theme"] body.studio-app.is-editor .img-panels { background: transparent; }

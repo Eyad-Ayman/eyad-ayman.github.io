@@ -7,11 +7,13 @@
   try {
     var st = JSON.parse(localStorage.getItem('eyad-studio:settings:v2') || '{}') || {};
     var t = st.theme || 'portfolio';
-    // Editors (Image / Vector / Video) use a pro dark workspace by default.
+    // Editors follow the colour mode (Settings ▸ Look ▸ Editors), or keep the dark glass workspace.
+    var look = st.editorLook === 'studio' ? 'studio' : 'theme';
+    document.documentElement.setAttribute('data-editor-look', look);
     if (/\/studio\/(image|video|vector|3d)\//.test(location.pathname)) {
       document.documentElement.setAttribute('data-studio-editor', '');
-      var ws = st.workspaceTheme || 'dark';
-      if (ws === 'dark' || ws === 'light') t = ws;
+      if (look === 'theme') t = ({ night: 1, cobalt: 1, forest: 1 })[st.poster] ? 'dark' : 'light';
+      else { var ws = st.workspaceTheme || 'dark'; if (ws === 'dark' || ws === 'light') t = ws; }
     }
     if (t === 'system') t = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
     else if (t !== 'light' && t !== 'dark') t = localStorage.getItem('theme') === 'dark' ? 'dark' : 'light';
@@ -20,8 +22,8 @@
     document.documentElement.setAttribute('data-poster', /^[a-z]{2,12}$/.test(st.poster || '') ? st.poster : 'signal');
     var FRAME = { signal: '#f4260f', night: '#0b0b0b', redroom: '#f4260f', ink: '#0d0d0d', cobalt: '#0d0d0d', sun: '#ff7a1a', forest: '#1f3a2e', lime: '#0d0d0d', blush: '#d0142c', royal: '#1b3fd6', mono: '#ffffff', clay: '#8c2f1b' };
     window.__eyadBar = function () {
-      var hub = !/\/studio\/(image|video|vector|3d|camera)\//.test(location.pathname);
-      var col = hub ? (FRAME[document.documentElement.getAttribute('data-poster')] || '#f4260f') : '#0b0b10';
+      var cam = /\/studio\/camera\//.test(location.pathname), studioLook = document.documentElement.getAttribute('data-editor-look') === 'studio' && /\/studio\/(image|video|vector|3d)\//.test(location.pathname);
+      var col = cam ? '#000000' : studioLook ? '#0b0b10' : (FRAME[document.documentElement.getAttribute('data-poster')] || '#f4260f');
       var m = document.querySelector('meta[name="theme-color"]');
       if (!m) { m = document.createElement('meta'); m.name = 'theme-color'; document.head.appendChild(m); }
       m.setAttribute('content', col);

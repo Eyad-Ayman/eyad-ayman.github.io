@@ -6,7 +6,7 @@
  * cached shell offline; static files = cache first, refreshed in the background.
  */
 "use strict";
-var VERSION = "33b94eaa97";
+var VERSION = "t8b94eaa97";
 var CACHE = "eyad-studio-" + VERSION;
 var SHELL = [
 "./3d/",
