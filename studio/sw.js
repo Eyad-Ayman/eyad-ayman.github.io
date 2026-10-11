@@ -6,7 +6,7 @@
  * cached shell offline; static files = cache first, refreshed in the background.
  */
 "use strict";
-var VERSION = "t8b94eaa97";
+var VERSION = "d5b8cad354";
 var CACHE = "eyad-studio-" + VERSION;
 var SHELL = [
 "./3d/",
@@ -204,8 +204,6 @@ var SHELL = [
 "./models/depth_anything_v2_vits.onnx.parts.json",
 "./models/migan_pipeline_v2.onnx.parts.json",
 "./models/selfie_segmenter.tflite",
-"./models/whisper_base_decoder.onnx.parts.json",
-"./models/whisper_base_encoder.onnx.parts.json",
 "./models/whisper_tiny_decoder.onnx.parts.json",
 "./models/whisper_tiny_encoder.onnx.parts.json",
 "./moodboard/",

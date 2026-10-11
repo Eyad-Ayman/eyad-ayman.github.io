@@ -17,7 +17,9 @@ export function chooseFiles({ title = 'Open', accept = '', multiple = true, medi
   const tile = (ic, label, sub, run, primary = false) => h('button', {
     class: 'studio-open-tile' + (primary ? ' is-primary' : ''), type: 'button',
     onclick: async () => {
-      const r = await run();
+      // run() must be called right here, synchronously in the tap: phones only open a picker from a fresh tap
+      let r;
+      try { r = await run(); } catch (e) { r = []; }
       if (r === undefined) return; // tile handled itself (keeps dialog open)
       result = r || [];
       closeFn && closeFn(true);
@@ -27,7 +29,7 @@ export function chooseFiles({ title = 'Open', accept = '', multiple = true, medi
 
   const tiles = [
     tile('folder', IS_IOS ? 'Files' : 'Browse files',
-      IS_IOS ? 'iCloud Drive, On My iPhone, Downloads, any file' : 'Choose from this device (or drop files anywhere)',
+      IS_IOS ? 'iCloud Drive, On My iPhone or iPad, Downloads — any file' : IS_TOUCH ? 'Downloads, Drive and other folders on this device' : 'Choose from this device (or drop files anywhere)',
       () => pickFiles({ accept, multiple }), true),
   ];
   if (IS_TOUCH || IS_IOS) {

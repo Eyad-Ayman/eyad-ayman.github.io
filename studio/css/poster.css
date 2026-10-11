@@ -272,3 +272,15 @@ body.xp-home .xp-recover { border-radius: 0; background: transparent; border: 1.
 .qt-cmp-tag.is-l { left: 8px; } .qt-cmp-tag.is-r { right: 8px; }
 #upscale [hidden] { display: none !important; }
 .po-quick { grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 0 16px; }
+
+/* Hub action buttons ("New image", "New video", "Import…") measure 32px tall at 390px touch: below the 40px tap target. */
+@media (pointer: coarse) { :root body.studio-app.is-hub .hub-actions .studio-btn { min-height: 44px; } }
+
+/* Project card "…" button: projects.js now forces a 44×44 box inline, but the dots glyph is 18px at ~74% ink and reads as faint on phones; give it full ink. */
+@media (pointer: coarse) { :root body.studio-app.is-hub .hub-card-menu { color: var(--po-ink, var(--st-text)); } }
+
+/* The "Your file is ready" save sheet (files.js, class .studio-save-dialog): keep it inside the iPhone safe area and above the Safari bar in landscape. */
+:root .studio-save-dialog { max-height: calc(var(--app-h, 100dvh) - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 24px); overflow: auto; -webkit-overflow-scrolling: touch; }
+
+/* The ready sheet's preview <img> must stay long-pressable on iOS ("Save to Photos"); shared chrome sets user-select/touch-callout none on dialogs. */
+:root .studio-save-dialog img { -webkit-touch-callout: default; -webkit-user-select: auto; user-select: auto; }

@@ -6,7 +6,7 @@ import { getSettings } from '../core/settings.js';
 import { chooseFiles } from '../core/open.js';
 import { detectFile, pickFiles, ACCEPT, downloadBlob, sanitizeFilename, LIMITS } from '../core/files.js';
 import { writeEyad, readEyad } from '../core/eyad.js';
-import { saveProject, loadProjectBlob, touchProject, getProject, putRecovery, listRecovery, delRecovery, putHandoff, takeHandoff, putMedia, getMedia } from '../core/db.js';
+import { saveProject, loadProjectBlob, touchProject, getProject, putRecovery, listRecovery, delRecovery, putHandoff, takeHandoff, putMedia, getMedia, autosaveGate } from '../core/db.js';
 import { ROUTES } from '../core/shell.js';
 import { showReport } from '../core/docs.js';
 import { createProject, createSequence, serializeProject, deserializeProject, seqDuration } from './model.js';
@@ -295,7 +295,7 @@ export async function downloadEyad(app) {
 // ================================================================= autosave
 
 let timer = 0, running = false;
-export function startAutosave(app) { clearInterval(timer); timer = setInterval(() => autosaveNow(app), Math.max(5, getSettings().autosaveSeconds) * 1000); }
+export function startAutosave(app) { clearInterval(timer); timer = setInterval(() => { if (autosaveGate('video')) autosaveNow(app); }, Math.max(5, getSettings().autosaveSeconds) * 1000); }
 export function markDirty(app) { app.dirtyMeta = true; if (app.history.savedSeq === app.history.currentSeq && app.project) app.history.savedSeq = -2; app.updateChrome && updateSaveIndicator(app); }
 export async function autosaveNow(app) {
   const s = getSettings();

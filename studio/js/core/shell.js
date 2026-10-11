@@ -4,7 +4,11 @@ import { icon } from './icons.js';
 import { applyUiSettings, toggleTheme, resolvedTheme, onSettings } from './settings.js';
 
 export const STUDIO_ROOT = new URL('../../', import.meta.url);       // …/studio/
-export const PORTFOLIO_ROOT = new URL('../', STUDIO_ROOT);            // site root
+export const SITE_ROOT = new URL('../', STUDIO_ROOT);                 // site root (same origin)
+// The studio lives on two homes: the portfolio (GitHub Pages) and the MADE BY EYAD store (Firebase).
+const ON_STORE = /(^|\.)madebyeyad\.(web\.app|firebaseapp\.com)$/.test(location.hostname);
+export const PORTFOLIO_ROOT = ON_STORE ? new URL('https://eyad-ayman.github.io/') : SITE_ROOT;
+export const STORE_ROOT = ON_STORE ? SITE_ROOT : new URL('https://madebyeyad.web.app/');
 
 import { windowControls, startTour, autoOfflinePack, installHint, installGuide, bugReportDialog, dock as xpDock } from './experience.js';
 
@@ -22,6 +26,7 @@ export const ROUTES = {
   settings: new URL('./settings/', STUDIO_ROOT).href,
   help: new URL('./help/', STUDIO_ROOT).href,
   portfolio: PORTFOLIO_ROOT.href,
+  store: STORE_ROOT.href,
 };
 
 export function brandMark({ app = 'STUDIO' } = {}) {

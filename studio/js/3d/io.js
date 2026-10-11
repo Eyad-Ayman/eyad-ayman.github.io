@@ -6,10 +6,10 @@ import { h, uid, formatBytes, sleep } from '../core/dom.js';
 import { toast, dialog, formDialog, promptDialog, progressDialog, alertDialog } from '../core/ui.js';
 import { getSettings } from '../core/settings.js';
 import { chooseFiles } from '../core/open.js';
-import { detectFile, sanitizeFilename, downloadBlob, baseName, extOf, pickFiles, loadImageFile } from '../core/files.js';
+import { detectFile, sanitizeFilename, downloadBlob, savedToast, baseName, extOf, pickFiles, loadImageFile } from '../core/files.js';
 import { writeEyad, EYAD_VERSION, num, str, bool, oneOf, color } from '../core/eyad.js';
 import { readZip } from '../core/zip.js';
-import { saveProject, loadProjectBlob, getProject, touchProject, putRecovery, listRecovery, delRecovery, putHandoff, takeHandoff } from '../core/db.js';
+import { saveProject, loadProjectBlob, getProject, touchProject, putRecovery, listRecovery, delRecovery, putHandoff, takeHandoff, autosaveGate } from '../core/db.js';
 import { ROUTES } from '../core/shell.js';
 import { prepareImported, createLight, LIGHTS, boundsOf, editorObjects, isAux, isCam, createCamera, camOf, ensureAreaLights } from './objects.js';
 import { validateAnim } from './anim.js';
@@ -525,7 +525,7 @@ export function updateUrl(app) {
 // ------------------------------------------------------------------ autosave / recovery
 
 export function startAutosave(app) {
-  const tick = () => { autosaveNow(app); setTimeout(tick, Math.max(10, getSettings().autosaveSeconds || 20) * 1000); };
+  const tick = () => { if (autosaveGate('3d')) autosaveNow(app); setTimeout(tick, Math.max(10, getSettings().autosaveSeconds || 20) * 1000); };
   setTimeout(tick, 20000);
 }
 export async function autosaveNow(app) {
@@ -667,8 +667,8 @@ async function renderResult(app, blob, fname, { W, H, samples, saved }) {
   ].filter(Boolean);
   try {
     const act = await dialog({ title: 'Render', width: 720, className: 't3-result-dialog', body, buttons });
-    if (act === 'save') { downloadBlob(blob, fname); toast(`Saved ${fname}`, { type: 'ok', timeout: 2000 }); }
-    else if (act === 'share') { try { await navigator.share({ files: [file], title: fname }); } catch (e) { /* cancelled */ } }
+    if (act === 'save') savedToast(downloadBlob(blob, fname), `Saved ${fname}`);
+    else if (act === 'share') { try { await navigator.share({ files: [file], title: fname }); } catch (e) { if (e && e.name === 'NotAllowedError') savedToast(downloadBlob(blob, fname)); } }
     else if (act === 'image') { const id = await putHandoff([file]); await leaveTo(app, ROUTES.image + '?handoff=' + id); }
   } finally { setTimeout(() => URL.revokeObjectURL(url), 4000); }
 }

@@ -7,7 +7,7 @@ import { getSettings } from '../core/settings.js';
 import { chooseFiles } from '../core/open.js';
 import { detectFile, sanitizeFilename, downloadBlob, LIMITS, baseName, ACCEPT } from '../core/files.js';
 import { writeEyad, readEyad } from '../core/eyad.js';
-import { saveProject, loadProjectBlob, getProject, touchProject, putRecovery, listRecovery, delRecovery, putHandoff, takeHandoff } from '../core/db.js';
+import { saveProject, loadProjectBlob, getProject, touchProject, putRecovery, listRecovery, delRecovery, putHandoff, takeHandoff, autosaveGate } from '../core/db.js';
 import { ROUTES } from '../core/shell.js';
 import { createDoc, validateDoc, exportSVG, bounds, unionBounds, transformNode, translate, walk, segments, textBox, apply, I } from './model.js';
 import { importSVG } from './pathops.js';
@@ -261,7 +261,7 @@ export function updateUrl(app) {
 // ------------------------------------------------------------------ autosave / recovery
 
 export function startAutosave(app) {
-  const tick = () => { autosaveNow(app); setTimeout(tick, Math.max(5, getSettings().autosaveSeconds || 20) * 1000); };
+  const tick = () => { if (autosaveGate('vector')) autosaveNow(app); setTimeout(tick, Math.max(5, getSettings().autosaveSeconds || 20) * 1000); };
   setTimeout(tick, 15000);
 }
 export async function autosaveNow(app) {

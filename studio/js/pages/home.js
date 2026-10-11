@@ -32,7 +32,7 @@ function launchFrom(el, href) {
 }
 
 // ---------------------------------------------------------------- poster home
-const PORTFOLIO_IMG = (p) => new URL('assets/images/' + p, ROUTES.portfolio).href;
+const PORTFOLIO_IMG = (p) => new URL('../assets/images/' + p, ROUTES.home).href; // same origin (CSP img-src 'self')
 const hideOnError = (img) => { img.addEventListener('error', () => { img.hidden = true; }, { once: true }); return img; };
 const go = (link, from) => link.addEventListener('click', (e) => { if (e.metaKey || e.ctrlKey || e.shiftKey || e.button) return; e.preventDefault(); launchFrom(from(), link.href); });
 
@@ -54,7 +54,7 @@ const nav = h('header', { class: 'po-nav' },
   h('nav', { class: 'po-links po-mono', 'aria-label': 'Sections' },
     h('a', { href: ROUTES.templates, text: 'Templates' }), h('a', { href: ROUTES.moodboard, text: 'Moodboard' }), h('a', { href: ROUTES.tools, text: 'Tools' }), h('a', { href: ROUTES.projects, text: 'Projects' }),
     h('a', { href: ROUTES.settings, text: 'Settings' }), h('a', { href: ROUTES.help, text: 'Help' }),
-    h('a', { href: ROUTES.portfolio, text: 'Portfolio ↗' })),
+    h('a', { href: ROUTES.store, text: 'Store ↗' }), h('a', { href: ROUTES.portfolio, text: 'Portfolio ↗' })),
   h('div', { class: 'po-nav-r' }, installBtn, h('button', { class: 'po-pill is-fill', type: 'button', onclick: OPEN_ALL, text: 'Open a file' })));
 
 const stage = h('section', { class: 'po-stage', 'aria-label': 'EYAD Studio' },
@@ -110,7 +110,7 @@ const below = h('div', { class: 'po-below' },
   sec(4, 'Quick tools', 'po-toolsec', h('a', { class: 'po-more po-mono', href: ROUTES.tools, text: 'All tools →' }),
     h('div', { class: 'po-quick' }, [['@mood', 'Moodboard', 'Images, colours and words on one board'], ['compress', 'Compress & convert', 'Shrink and batch-convert photos'], ['cutout', 'Remove background', 'One-tap AI cut-out'], ['palette', 'Colour palette', 'Six colours from any image'], ['qr', 'QR code', 'For links, Wi-Fi, your portfolio'], ['screen', 'Screen recorder', 'Record a tab or window'], ['upscale', 'AI upscale', 'Make a small image 4× larger']].map(([id, t, d]) =>
       h('a', { class: 'po-size', href: id === '@mood' ? ROUTES.moodboard : ROUTES.tools + '#' + id, dataset: { q: (t + ' ' + d).toLowerCase() } }, h('b', { text: t }), h('span', { class: 'po-mono', text: d }))))),
-  sec(5, 'Selected work', 'po-worksec', h('a', { class: 'po-more po-mono', href: ROUTES.portfolio, text: 'Portfolio ↗' }), work),
+  sec(5, 'Selected work', 'po-worksec', h('span', { class: 'po-more po-mono' }, h('a', { href: ROUTES.store, text: 'MADE BY EYAD store ↗' }), ' · ', h('a', { href: ROUTES.portfolio, text: 'Portfolio ↗' })), work),
   h('p', { class: 'po-foot po-mono' }, 'EYAD Studio 5 · by Eyad Ayman · your files stay on this device'));
 
 const shell = h('div', { class: 'po' }, hero, below);

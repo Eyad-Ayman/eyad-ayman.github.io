@@ -4,9 +4,9 @@ import { h, formatDate, uid } from '../core/dom.js';
 import { toast, dialog, formDialog, promptDialog, progressDialog, alertDialog } from '../core/ui.js';
 import { getSettings } from '../core/settings.js';
 import { chooseFiles } from '../core/open.js';
-import { detectFile, pickFiles, ACCEPT, downloadBlob, loadImageFile, sanitizeFilename, LIMITS, baseName } from '../core/files.js';
+import { detectFile, pickFiles, ACCEPT, downloadBlob, savedToast, loadImageFile, sanitizeFilename, LIMITS, baseName } from '../core/files.js';
 import { writeEyad, readEyad } from '../core/eyad.js';
-import { saveProject, loadProjectBlob, touchProject, getProject, putRecovery, listRecovery, delRecovery, putHandoff, takeHandoff } from '../core/db.js';
+import { saveProject, loadProjectBlob, touchProject, getProject, putRecovery, listRecovery, delRecovery, putHandoff, takeHandoff, autosaveGate } from '../core/db.js';
 import { ROUTES } from '../core/shell.js';
 import { createDoc, makeNode, serializeDoc, deserializeDoc, canvasToBlob, MAX_SIDE, MAX_AREA, makeCanvas, estimateBytes } from './doc.js';
 import { flatten } from './render.js';
@@ -332,8 +332,7 @@ async function doExport(app, format, { name, quality, scale, matte }) {
   try {
     const blob = await canvasToBlob(c, type, quality);
     if (format === 'webp' && blob.type !== 'image/webp') { toast('This browser can’t encode WebP — exported PNG instead.', { type: 'warn' }); downloadBlob(blob, sanitizeFilename(name) + '.png'); return; }
-    downloadBlob(blob, sanitizeFilename(name) + '.' + (format === 'jpeg' ? 'jpg' : format));
-    toast(`Exported ${W} × ${H} ${format.toUpperCase()}`, { type: 'ok', timeout: 1800 });
+    savedToast(downloadBlob(blob, sanitizeFilename(name) + '.' + (format === 'jpeg' ? 'jpg' : format)), `Exported ${W} × ${H} ${format.toUpperCase()}`);   // no false "Exported" when the iOS share sheet was closed
   } catch (e) { toast('Export failed', { type: 'error', detail: e.message }); }
 }
 
@@ -371,7 +370,7 @@ export async function exportPsdDialog(app) {
 let autosaveTimer = 0, running = false;
 export function startAutosave(app) {
   clearInterval(autosaveTimer);
-  autosaveTimer = setInterval(() => autosaveNow(app), Math.max(5, getSettings().autosaveSeconds) * 1000);
+  autosaveTimer = setInterval(() => { if (autosaveGate('image')) autosaveNow(app); }, Math.max(5, getSettings().autosaveSeconds) * 1000);
 }
 export function scheduleAutosave(app) {
   const rec = app.rec; if (!rec) return;

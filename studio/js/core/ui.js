@@ -3,6 +3,8 @@ import { h, clear, keyLabel, isTyping, modKey } from './dom.js';
 import { icon } from './icons.js';
 
 const root = () => document.querySelector('.studio-app') || document.body;
+// Touch screens (phones, tablets): bigger tap targets and 16px inputs (iOS zooms the page into smaller ones).
+const coarse = () => typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
 
 // ---------------------------------------------------------------- Toasts
 
@@ -104,6 +106,7 @@ export function confirmDialog(title, message, { ok = 'OK', cancel = 'Cancel', da
 
 export function promptDialog(title, label, value = '', { ok = 'OK', maxLength = 120 } = {}) {
   const input = h('input', { class: 'studio-input', type: 'text', value, maxLength, autofocus: true });
+  if (coarse()) { input.style.fontSize = '16px'; input.style.minHeight = '44px'; }
   const body = h('label', { class: 'studio-field' }, h('span', { text: label }), input);
   setTimeout(() => input.select(), 30);
   return dialog({ title, body, buttons: [{ label: 'Cancel', value: null }, { label: ok, value: () => input.value.trim(), primary: true }] });
@@ -134,6 +137,7 @@ export function buildForm(fields, onChange) {
     } else {
       input = h('input', { class: 'studio-input', type: f.type || 'text', value: f.value, min: f.min, max: f.max, step: f.step, maxLength: f.maxLength, placeholder: f.placeholder, inputMode: f.inputMode, autocomplete: f.autocomplete });
     }
+    if (coarse() && !['checkbox', 'range', 'color'].includes(f.type)) input.style.fontSize = '16px';
     inputs[f.key] = { input, f };
     const readout = f.type === 'range' ? h('output', { class: 'studio-mono studio-readout', text: fmt(f.value, f) }) : null;
     const row = h('label', { class: 'studio-field' + (f.type === 'checkbox' ? ' is-check' : '') },
@@ -328,6 +332,7 @@ export function contextMenu(x, y, items) {
   closeOpenMenu();
   const list = renderMenuList(items, () => closeOpenMenu());
   list.classList.add('is-dropdown', 'is-context');
+  if (coarse()) list.querySelectorAll('.studio-menu-item').forEach((b) => { b.style.minHeight = '44px'; });
   root().appendChild(list);
   const r = list.getBoundingClientRect();
   list.style.left = Math.max(4, Math.min(x, innerWidth - r.width - 4)) + 'px';
