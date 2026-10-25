@@ -111,3 +111,11 @@
   }
   document.querySelectorAll("[data-showreel-strip], [data-btw-track]").forEach(stripProgress);
 })();
+
+// Nothing can be copied, cut, dragged out or opened from the context menu.
+(function () {
+  "use strict";
+  ["copy", "cut", "contextmenu", "dragstart", "selectstart"].forEach(function (type) {
+    document.addEventListener(type, function (e) { e.preventDefault(); });
+  });
+})();

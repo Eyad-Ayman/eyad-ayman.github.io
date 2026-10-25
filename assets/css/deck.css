@@ -2,7 +2,7 @@
    Editorial portfolio deck. The whole page reads like a printed portfolio:
    each section is a page with a running header ("Portfolio" + the section),
    full-bleed colour pages (signal red, black, pale mint paper), tall condensed
-   display type (Anton), small [bracketed] labels, script accents (Pinyon
+   display type (Archivo Extra Condensed Black), small [bracketed] labels, script accents (Pinyon
    Script) and hairline spec tables.
 
    Loaded last. Three layers:
@@ -13,19 +13,19 @@
    ========================================================================== */
 
 :root {
-  --d-red: #f4260f;
-  --d-wine: #7d1203;
-  --d-paper: #e8f0e5;
-  --d-paper-hi: #f3f8f0;
+  --d-red: #d02b2a;
+  --d-wine: #6e1110;
+  --d-paper: #f3ede1;
+  --d-paper-hi: #fbf8f1;
   --d-ink: #0b0b0b;
   --d-cream: #f3ede1;
-  --d-display: Anton, Oswald, "Arial Narrow", sans-serif;
+  --d-display: Archivo, Oswald, "Arial Narrow", sans-serif;
   --d-script: "Pinyon Script", "Snell Roundhand", cursive;
   --d-spring: cubic-bezier(.32, .72, 0, 1);
   --d-pad: 3.4vw;
   --d-head-col: calc(31vw - var(--d-pad));
   --d-bar-h: 60px;
-  --accent-color: #f4260f;
+  --accent-color: #d02b2a;
 }
 
 /* ==========================================================================
@@ -78,7 +78,7 @@ html { scroll-padding-top: calc(var(--d-bar-h) + 4px); }
 }
 .m-bar.is-scrolled {
   pointer-events: auto;
-  background-color: rgba(232, 240, 229, .9);
+  background-color: rgba(243, 237, 225, .9);
   -webkit-backdrop-filter: saturate(150%) blur(16px);
   backdrop-filter: saturate(150%) blur(16px);
   box-shadow: 0 1px 0 rgba(0, 0, 0, .14);
@@ -1091,4 +1091,92 @@ html[data-theme="dark"] #Motion > .container { filter: invert(1) hue-rotate(180d
 @media (prefers-reduced-motion: reduce) {
   .m-bar,
   .m-index a { transition: none; }
+}
+
+/* ==========================================================================
+   Display face: Archivo at its narrowest width and heaviest weight — the
+   tight condensed grotesk of a printed portfolio.
+   ========================================================================== */
+.about-me-title,
+.showreel-title,
+.btw-title,
+.btw-step h4,
+.btw-bridge-line,
+.sp-title,
+.hero-text,
+.editorial-break-text,
+.signoff-headline,
+.intro-name,
+.intro-count,
+.m-index a,
+.m-index a b,
+.faq-item summary::before,
+.navbar.nav-open .nav-link-big,
+.navbar.nav-open .nav-link-big.is-current-section {
+  font-weight: 900;
+  font-stretch: 62%;
+  font-variation-settings: "wdth" 62, "wght" 900;
+  word-spacing: .14em;
+  letter-spacing: -.01em;
+}
+.about-me-title.arabic-text { font-stretch: normal; font-variation-settings: normal; letter-spacing: 0; }
+
+/* ==========================================================================
+   Nothing on the page can be selected, copied or dragged out.
+   ========================================================================== */
+html {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+img,
+video,
+a {
+  -webkit-user-drag: none;
+  user-drag: none;
+}
+img { pointer-events: none; }
+
+/* ==========================================================================
+   Phone: the gallery title page as a clean composition — eyebrow, title,
+   script line, a row of four prints, the lede, the name. Nothing overlaps
+   the title.
+   ========================================================================== */
+@media screen and (max-width: 767px) {
+  #Work .project-section-title-holder { min-height: 0; gap: 0; padding-bottom: 24px; }
+  #Work .section-number { order: 1; }
+  #Work .project-section-title-holder > div.reveal { order: 2; margin: 8px 0 0; text-align: left; }
+  #Work .about-me-title { font-size: calc((100vw - 36px) / 3.4); line-height: .86; }
+  #Work .handwritten-inline { margin: .05em 0 0 4%; font-size: 24px; }
+  .m-scatter {
+    order: 3;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    margin: 26px 0 22px;
+  }
+  .m-scatter img,
+  .m-scatter img:nth-child(n) {
+    position: static;
+    width: 100%;
+    aspect-ratio: 3 / 4;
+    top: auto; right: auto; bottom: auto; left: auto;
+    box-shadow: 0 8px 18px rgba(0, 0, 0, .22);
+  }
+  .m-scatter img:nth-child(1) { transform: rotate(-3deg); }
+  .m-scatter img:nth-child(2) { transform: rotate(2deg) translateY(10px); }
+  .m-scatter img:nth-child(3) { transform: rotate(-2deg); }
+  .m-scatter img:nth-child(4) { transform: rotate(3deg) translateY(10px); }
+  .m-lede { order: 4; max-width: 260px; margin: 6px 0 22px; text-align: left; }
+  #Work .project-section-title-holder::after { order: 5; }
+
+  /* cover: the signature sits under the name instead of across it */
+  .m-sign { margin: .02em 4px 0 0; font-size: 44px; }
+}
+
+/* Wide screens: the prints stay scattered but always under the title. */
+@media screen and (min-width: 768px) {
+  .m-scatter img,
+  .m-scatter img:nth-child(n) { z-index: 1; }
+  #Work .project-section-title-holder > div.reveal { z-index: 2; }
 }
