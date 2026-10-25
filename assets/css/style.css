@@ -4053,7 +4053,10 @@ footer-gta {
   font-weight: 600;
   font-size: 26px;
   letter-spacing: .5px;
-  color: rgba(0, 0, 0, .5);
+  /* white + difference reads on both the light backdrop and the black jacket */
+  color: #fff;
+  mix-blend-mode: difference;
+  opacity: .85;
   transform: rotate(-3deg);
   pointer-events: none;
 }
