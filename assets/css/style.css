@@ -4075,6 +4075,10 @@ footer-gta {
 @media (prefers-reduced-motion: reduce) {
   .hero-section-images { transform: translateY(-14%); }
 }
+/* The portrait is shown whole — its framing (headroom, the full jacket)
+   is part of the photo, so it is never oversized, shifted or cropped. */
+.hero-section-images-holder._01 { min-height: 0; align-self: start; }
+.hero-section-images._01 { display: block; height: auto; transform: none; object-fit: contain; }
 
 .divider {
   width: 100%;
