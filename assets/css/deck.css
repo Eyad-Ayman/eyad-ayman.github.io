@@ -942,7 +942,7 @@ html[data-theme="dark"] #Motion > .container { filter: invert(1) hue-rotate(180d
     right: 0;
     bottom: 0;
     width: 16vw;
-    background: url("../images/about/photo-4.jpg") 50% 50% / cover no-repeat;
+    background: url("../images/about/eyad-museum.webp") 50% 50% / cover no-repeat;
     filter: grayscale(100%) contrast(1.08);
   }
   #About .container-extra-small::after { grid-column: 2; grid-row: 3; margin-top: 2vh; font-size: 6vw; }
