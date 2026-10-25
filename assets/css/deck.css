@@ -2,7 +2,7 @@
    Editorial portfolio deck. The whole page reads like a printed portfolio:
    each section is a page with a running header ("Portfolio" + the section),
    full-bleed colour pages (signal red, black, pale mint paper), tall condensed
-   display type (Archivo Extra Condensed Black), small [bracketed] labels, script accents (Pinyon
+   display type (Anton), small [bracketed] labels, script accents (Pinyon
    Script) and hairline spec tables.
 
    Loaded last. Three layers:
@@ -19,7 +19,7 @@
   --d-paper-hi: #fbf8f1;
   --d-ink: #0b0b0b;
   --d-cream: #f3ede1;
-  --d-display: Archivo, Oswald, "Arial Narrow", sans-serif;
+  --d-display: Anton, Oswald, "Arial Narrow", sans-serif;
   --d-script: "Pinyon Script", "Snell Roundhand", cursive;
   --d-spring: cubic-bezier(.32, .72, 0, 1);
   --d-pad: 3.4vw;
@@ -1094,34 +1094,6 @@ html[data-theme="dark"] #Motion > .container { filter: invert(1) hue-rotate(180d
 }
 
 /* ==========================================================================
-   Display face: Archivo at its narrowest width and heaviest weight — the
-   tight condensed grotesk of a printed portfolio.
-   ========================================================================== */
-.about-me-title,
-.showreel-title,
-.btw-title,
-.btw-step h4,
-.btw-bridge-line,
-.sp-title,
-.hero-text,
-.editorial-break-text,
-.signoff-headline,
-.intro-name,
-.intro-count,
-.m-index a,
-.m-index a b,
-.faq-item summary::before,
-.navbar.nav-open .nav-link-big,
-.navbar.nav-open .nav-link-big.is-current-section {
-  font-weight: 900;
-  font-stretch: 62%;
-  font-variation-settings: "wdth" 62, "wght" 900;
-  word-spacing: .14em;
-  letter-spacing: -.01em;
-}
-.about-me-title.arabic-text { font-stretch: normal; font-variation-settings: normal; letter-spacing: 0; }
-
-/* ==========================================================================
    Nothing on the page can be selected, copied or dragged out.
    ========================================================================== */
 html {
@@ -1179,4 +1151,30 @@ img { pointer-events: none; }
   .m-scatter img,
   .m-scatter img:nth-child(n) { z-index: 1; }
   #Work .project-section-title-holder > div.reveal { z-index: 2; }
+}
+
+/* ==========================================================================
+   Script accents never sit on top of the display type: each one goes on its
+   own line under the title it belongs to.
+   ========================================================================== */
+.handwritten-inline { margin-top: .12em; }
+.about-me-title,
+.hero-text,
+.signoff-headline,
+.editorial-break-text { line-height: .92; }
+.signoff-headline .signoff-hand { margin-top: .12em; }
+@media screen and (max-width: 767px) {
+  .m-sign { margin: .1em 4px 0 0; }
+  #Work .about-me-title { line-height: .92; }
+  #Work .handwritten-inline { margin: .14em 0 0 4%; }
+}
+@media screen and (min-width: 768px) {
+  .m-sign { margin: .14em 0 0 22%; }
+  #Work .about-me-title { line-height: .92; }
+  #Work .handwritten-inline {
+    position: static;
+    margin: .16em 0 0;
+    text-align: center;
+  }
+  #Work .project-section-title-holder > div.reveal { margin: auto 0; }
 }
