@@ -43,10 +43,11 @@
 <link rel="stylesheet" href="./assets/css/studio-transition.css">
 <link rel="stylesheet" href="./assets/css/showreel.css">
 <link rel="stylesheet" href="./assets/css/additions.css">
+<link rel="stylesheet" href="./assets/css/deck.css">
 <link href="https://fonts.gstatic.com" rel="preconnect" crossorigin="anonymous">
 <link href="https://fonts.googleapis.com" rel="preconnect">
 <link href="https://madebyeyad.web.app" rel="preconnect">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@800;900&family=Caveat:wght@600;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Cairo:wght@800;900&family=Caveat:wght@600;700&family=Pinyon+Script&display=swap">
 <link href="./assets/images/icons/favicon.png" rel="shortcut icon" type="image/x-icon">
 <link href="./assets/images/icons/apple-touch-icon.png" rel="apple-touch-icon">
 <link rel="manifest" href="./manifest.json">
@@ -162,6 +163,13 @@
 </div>
 <noscript><style>#intro-overlay{display:none}</style></noscript>
 
+<!-- Running header, like the top line of a printed portfolio page:
+     "Portfolio" and the section you're in (Giza time on the cover). -->
+<header class="m-bar" id="m-bar">
+  <a href="#Home" class="m-bar-brand">Portfolio</a>
+  <span class="m-bar-section" id="m-bar-section" aria-hidden="true">Giza, EG</span>
+</header>
+
 <div class="cursor-dot" id="cursor-dot"></div>
 <div class="cursor-ring" id="cursor-ring"></div>
 
@@ -209,6 +217,7 @@
         <div class="perspective">
           <h1 class="hero-text">EYAD AYMAN</h1>
         </div>
+        <span class="m-sign" aria-hidden="true">Eyad Ayman</span>
         <div class="perspective _100width">
           <div class="hero-text-wrapper">
             <div class="hero-section-small-text">GRAPHICS DESIGNER</div>
@@ -244,6 +253,20 @@
     </div>
   </div>
 </div>
+
+<!-- Contents page. -->
+<nav class="m-index" aria-label="Contents">
+  <div class="m-page-head"><span>Portfolio</span><span>Contents</span></div>
+  <ol>
+    <li><a href="#About"><b>01</b>About</a></li>
+    <li><a href="#Work"><b>02</b>Work</a></li>
+    <li><a href="#Motion"><b>03</b>Motion</a></li>
+    <li><a href="#studio"><b>04</b>Studio</a></li>
+    <li><a href="#FAQ"><b>05</b>FAQ</a></li>
+    <li><a href="#mylinks"><b>06</b>Contact</a></li>
+  </ol>
+  <div class="m-page-head"><span>Eyad Ayman</span><span>Giza, Egypt</span></div>
+</nav>
 
 <div id="About" class="section" data-nav-section>
   <div class="container">
@@ -395,7 +418,14 @@
         <div class="color-palette _05"></div>
       </div>
       <span class="section-number reveal">02 — Selected Work</span>
+      <div class="m-scatter" aria-hidden="true">
+        <img src="./assets/images/behance/09-travis-scott-ft-ferrari-poster.webp" alt="" loading="lazy">
+        <img src="./assets/images/behance/02-mercedes-g63.webp" alt="" loading="lazy">
+        <img src="./assets/images/behance/170245581-redbull-poster.webp" alt="" loading="lazy">
+        <img src="./assets/images/behance/162440409-ibrahim-el-abyad-movie-unofficial-design.webp" alt="" loading="lazy">
+      </div>
       <div class="reveal"><h2 class="about-me-title">Gallery of Work<span class="handwritten-inline">Behance &amp; Instagram, mixed &rarr;</span></h2></div>
+      <p class="m-lede">Posters, campaigns, branding and reels &mdash; synced live from Behance and Instagram.</p>
     </div>
 
     <div class="gallery-tab-panel big-gallery">
@@ -518,6 +548,13 @@
           <span class="sp-title">EYAD<br>STUDIO</span>
           <span class="sp-apps"><span>Image</span><span>Vector</span><span>Video</span><span>3D</span><span>Camera</span><span>Templates</span></span>
           <span class="sp-desc">My own creative suite: layered photo editing, vector design, video, 3D, film camera and templates &mdash; right in your browser or installed as an app. PSD in and out, on-device AI, works offline. Free, and your files never leave your device.</span>
+          <span class="m-spec" aria-hidden="true">
+            <span><b>Type</b><i>Creative suite</i></span>
+            <span><b>Tools</b><i>Image, vector, video, 3D, film camera</i></span>
+            <span><b>Runs</b><i>In the browser or as an app, offline</i></span>
+            <span><b>Files</b><i>PSD in and out, never leave your device</i></span>
+            <span><b>Price</b><i>Free</i></span>
+          </span>
           <span class="sp-cta">Enter Studio <span aria-hidden="true">&#8599;</span></span>
         </span>
       </a>
@@ -529,6 +566,12 @@
           <span class="sp-title">THE<br>STORE</span>
           <span class="sp-apps"><span>Clothes</span><span>Prints</span><span>Objects</span><span>35mm Gallery</span><span>Fan Board</span></span>
           <span class="sp-desc">Heavyweight black clothes, prints and objects I design, made in Cairo. Small runs &mdash; delivery all over Egypt, cash on delivery.</span>
+          <span class="m-spec" aria-hidden="true">
+            <span><b>Type</b><i>Clothes, prints, objects</i></span>
+            <span><b>Made</b><i>In Cairo, small runs</i></span>
+            <span><b>Delivery</b><i>All over Egypt</i></span>
+            <span><b>Payment</b><i>Cash on delivery</i></span>
+          </span>
           <span class="sp-cta">Shop the Store <span aria-hidden="true">&#8599;</span></span>
         </span>
         <span class="sp-stage" aria-hidden="true">
@@ -606,7 +649,7 @@
 
     <a href="https://wa.me/201022945880" target="_blank" rel="noopener" class="whatsapp-button reveal">
       <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12.001 2c-5.514 0-9.986 4.472-9.986 9.986 0 1.76.463 3.483 1.343 5.003L2 22l5.14-1.343a9.96 9.96 0 0 0 4.861 1.24h.004c5.514 0 9.985-4.472 9.985-9.987C21.99 6.472 17.518 2 12.001 2zm5.845 15.831a8.29 8.29 0 0 1-5.845 2.42h-.003a8.27 8.27 0 0 1-4.213-1.152l-.302-.18-3.05.798.815-2.973-.197-.305a8.264 8.264 0 0 1-1.267-4.412c0-4.583 3.73-8.312 8.315-8.312 2.221 0 4.309.865 5.879 2.437a8.256 8.256 0 0 1 2.435 5.881c0 4.583-3.729 8.313-8.312 8.313z"/></svg>
-      <span>Message me on WhatsApp — +20 102 294 5880</span>
+      <span>Message me on WhatsApp<span class="wa-sep"> — </span><span class="wa-num">+20 102 294 5880</span></span>
     </a>
 
     <div class="contact-grid reveal">
@@ -641,7 +684,7 @@
 </div>
 
 <div class="signoff-block reveal">
-  <div class="signoff-headline">Let's Make<br>Something <span class="handwritten-inline signoff-hand">Great</span>.</div>
+  <div class="signoff-headline">Let's Make<br>Something <span class="handwritten-inline signoff-hand">Great</span><span class="signoff-dot">.</span></div>
   <a href="https://wa.me/201022945880" target="_blank" rel="noopener" class="signoff-cta">Say Hello &rarr;</a>
   <div class="signoff-readout">EA26 &mdash;&mdash; GIZA, EGYPT &mdash;&mdash; OPEN FOR WORK</div>
 </div>
@@ -707,5 +750,6 @@
 <script src="./assets/js/showreel.js"></script>
 <script src="./assets/js/content-loader.js"></script>
 <script src="./assets/js/additions.js"></script>
+<script src="./assets/js/deck.js"></script>
 </body>
 </html>
