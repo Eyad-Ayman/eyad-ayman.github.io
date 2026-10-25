@@ -1304,3 +1304,83 @@ html[data-theme="dark"] .studio-portal--store .sp-cta { background: var(--d-crea
 }
 .btw-step figure { position: relative; }
 .showreel-card::before { top: 12px; right: 48px; bottom: auto; }
+
+/* ==========================================================================
+   Behind The Work: one poster followed through the process, each step
+   showing the same frame at that stage — a blur of a feeling, a rough
+   line sketch, the greyscale build on guides, the cut on a timeline,
+   the frame in motion, and the finished piece in full colour.
+   ========================================================================== */
+.btw-step figure { position: relative; background: #0b0b0b; }
+.btw-step figure::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+.btw-step:nth-child(n) figure img { transition: transform .9s cubic-bezier(.2, .7, .2, 1), filter .6s ease; }
+.btw-step:nth-child(1) figure img { filter: grayscale(1) blur(12px) brightness(.75); transform: scale(1.18); }
+.btw-step:nth-child(2) figure img { filter: grayscale(1) invert(1) contrast(2.6) brightness(1.18); }
+.btw-step:nth-child(2) figure { background: #f3ede1; }
+.btw-step:nth-child(3) figure img { filter: grayscale(1) contrast(1.08); }
+.btw-step:nth-child(3) figure::before {
+  background:
+    linear-gradient(90deg, transparent calc(33.3% - 1px), rgba(208, 43, 42, .7) calc(33.3% - 1px), rgba(208, 43, 42, .7) 33.3%, transparent 33.3%, transparent calc(66.6% - 1px), rgba(208, 43, 42, .7) calc(66.6% - 1px), rgba(208, 43, 42, .7) 66.6%, transparent 66.6%),
+    linear-gradient(0deg, transparent calc(33.3% - 1px), rgba(208, 43, 42, .7) calc(33.3% - 1px), rgba(208, 43, 42, .7) 33.3%, transparent 33.3%, transparent calc(66.6% - 1px), rgba(208, 43, 42, .7) calc(66.6% - 1px), rgba(208, 43, 42, .7) 66.6%, transparent 66.6%);
+  box-shadow: inset 0 0 0 10px rgba(208, 43, 42, .18);
+}
+.btw-step:nth-child(4) figure img { filter: grayscale(.45) contrast(1.05); }
+.btw-step:nth-child(4) figure::before {
+  inset: auto 10px 30px 10px;
+  height: 22px;
+  border: 1px solid rgba(243, 237, 225, .3);
+  background:
+    linear-gradient(90deg, transparent 58%, #f3ede1 58%, #f3ede1 calc(58% + 2px), transparent calc(58% + 2px)),
+    repeating-linear-gradient(90deg, rgba(208, 43, 42, .9) 0 22%, rgba(0, 0, 0, .8) 22% 23%, rgba(243, 237, 225, .55) 23% 37%, rgba(0, 0, 0, .8) 37% 38%);
+}
+.btw-step:nth-child(5) figure img { filter: saturate(.75) contrast(1.05); animation: btwDrift 7s ease-in-out infinite alternate; }
+.btw-step:nth-child(6) figure img { filter: none; }
+@keyframes btwDrift { from { transform: scale(1.02) translate(0, 0); } to { transform: scale(1.14) translate(-3%, -2%); } }
+.btw-step:nth-child(1):hover figure img,
+.btw-step:nth-child(1).is-focus figure img { filter: grayscale(1) blur(6px) brightness(.85); }
+.btw-step:nth-child(6):hover figure img,
+.btw-step:nth-child(6).is-focus figure img { transform: scale(1.04); }
+@media (prefers-reduced-motion: reduce) { .btw-step:nth-child(5) figure img { animation: none; } }
+
+/* ==========================================================================
+   Fixes: the About photos keep the face in frame; the hire toast's script
+   line wraps inside the card instead of running out of it.
+   ========================================================================== */
+.about-me-section .about-me-image { object-position: 50% 22%; }
+.hire-toast .hire-toast-hand {
+  display: block;
+  margin: 6px 0 0;
+  font-size: 24px;
+  white-space: normal;
+  line-height: 1.1;
+  transform: rotate(-3deg);
+}
+
+/* ==========================================================================
+   Splash: the red cover sheet — name, bracketed roles, a script line.
+   No counter, no bar; the letters rise, hold, and the sheet wipes up.
+   ========================================================================== */
+.intro-sign {
+  font-family: var(--d-script);
+  font-size: clamp(40px, 5vw, 76px);
+  line-height: 1;
+  color: var(--d-cream);
+  transform: rotate(-6deg);
+  opacity: 0;
+  animation: introFade .7s ease 1.05s forwards;
+}
+.intro-roles { gap: 6px 14px; }
+.intro-roles span + span::before { content: none; }
+.intro-roles span { font-family: var(--paragraph); text-transform: none; letter-spacing: .02em; font-weight: 700; }
+@media screen and (max-width: 767px) {
+  .intro-sign { font-size: 42px; }
+}
+@media (prefers-reduced-motion: reduce) { .intro-sign { animation: none; opacity: 1; } }
+.about-me-section .about-me-image._01 { object-position: 50% 78%; }
+.intro-sign { text-transform: none; letter-spacing: 0; }
