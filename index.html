@@ -138,26 +138,20 @@
 </head>
 <body>
 
-<div id="intro-overlay" class="intro-overlay" aria-hidden="true">
+<div id="intro-overlay" class="intro-overlay intro-deck" aria-hidden="true">
   <div class="intro-grain"></div>
-
-  <div class="intro-top">
-    <span>Eyad Ayman <b>&mdash;</b> Portfolio <span class="intro-hide-sm">&copy;2026</span></span>
-    <span><i class="intro-dot"></i>Open for work</span>
-  </div>
-
-  <div class="intro-name">
-    <span class="intro-line"><span class="intro-ch" style="--i:0">E</span><span class="intro-ch" style="--i:1">Y</span><span class="intro-ch" style="--i:2">A</span><span class="intro-ch" style="--i:3">D</span></span>
-    <span class="intro-line intro-line-2"><span class="intro-ch" style="--i:4">A</span><span class="intro-ch" style="--i:5">Y</span><span class="intro-ch" style="--i:6">M</span><span class="intro-ch" style="--i:7">A</span><span class="intro-ch" style="--i:8">N</span></span>
-  </div>
-
-  <div class="intro-bottom">
-    <div>
-      <div class="intro-roles"><span>[ Graphic Design ]</span><span>[ Video Editing ]</span><span>[ 3D Art ]</span></div>
-      <div class="intro-hide-sm" style="margin-top:10px">Giza, Egypt &mdash; click to skip</div>
+  <div class="intro-head"><span>Portfolio</span><span>[ Eyad Ayman ]</span><span>Giza, Egypt</span></div>
+  <div class="intro-stage">
+    <span class="intro-word"><span>PORT</span><span>FOLIO</span></span>
+    <div class="intro-prints">
+      <img src="./assets/images/behance/12-ford-mustang-classic-poster.webp" alt="" style="--i:0;--r:-8deg;--x:-38%">
+      <img src="./assets/images/behance/170245581-redbull-poster.webp" alt="" style="--i:1;--r:6deg;--x:-12%">
+      <img src="./assets/images/about/eyad-portrait.webp" alt="" style="--i:2;--r:-3deg;--x:14%">
+      <img src="./assets/images/behance/09-travis-scott-ft-ferrari-poster.webp" alt="" style="--i:3;--r:5deg;--x:40%">
     </div>
-    <span class="intro-sign">since 2017</span>
+    <span class="intro-script">vol. 2026</span>
   </div>
+  <div class="intro-foot"><span>[ Graphic Design ]</span><span>[ Video Editing ]</span><span>[ 3D Art ]</span></div>
 </div>
 <noscript><style>#intro-overlay{display:none}</style></noscript>
 
@@ -327,7 +321,7 @@
         </div>
         <div class="hey-there-photo-collage reveal">
           <div class="collage-tile _01 gallery-tile">
-            <img src="./assets/images/about/photo-3.jpg" loading="lazy" alt="Eyad Ayman portrait" class="about-me-image">
+            <img src="./assets/images/about/eyad-night.webp" loading="lazy" alt="Eyad Ayman" class="about-me-image">
             <span class="gallery-caption">Giza, Egypt</span>
           </div>
           <div class="collage-tile _02 gallery-tile">
@@ -502,16 +496,48 @@
       <div class="btw-head reveal">
         <span class="section-number">03.5 — Process</span>
         <h3 class="btw-title">Behind<br>The Work</h3>
-        <p class="btw-lede">One poster &mdash; Travis Scott &times; Ferrari &mdash; followed from a feeling to the finished frame. Scroll sideways.</p>
+        <p class="btw-lede">One real piece &mdash; the Travis Scott &times; Ferrari poster &mdash; built step by step, the way it actually happened in Photoshop and Premiere.</p>
       </div>
-      <ol class="btw-track" data-btw-track>
-        <li class="btw-step"><figure><img src="./assets/images/behance/09-travis-scott-ft-ferrari-poster.webp" alt="" loading="lazy"></figure><span class="btw-num">01</span><h4>Idea</h4><p>It starts with a feeling, not a brief. What should this make people feel?</p></li>
-        <li class="btw-step"><figure><img src="./assets/images/behance/09-travis-scott-ft-ferrari-poster.webp" alt="" loading="lazy"></figure><span class="btw-num">02</span><h4>Sketch</h4><p>Rough shapes, type, layout. Fast and ugly on purpose.</p></li>
-        <li class="btw-step"><figure><img src="./assets/images/behance/09-travis-scott-ft-ferrari-poster.webp" alt="" loading="lazy"></figure><span class="btw-num">03</span><h4>Design</h4><p>Layers, masks, light. Building the frame piece by piece.</p></li>
-        <li class="btw-step"><figure><img src="./assets/images/behance/09-travis-scott-ft-ferrari-poster.webp" alt="" loading="lazy"></figure><span class="btw-num">04</span><h4>Edit</h4><p>Cutting to the beat. Every frame earns its place or goes.</p></li>
-        <li class="btw-step"><figure><img src="./assets/images/behance/09-travis-scott-ft-ferrari-poster.webp" alt="" loading="lazy"></figure><span class="btw-num">05</span><h4>Motion</h4><p>Timing, easing, grain. Where a still image starts to breathe.</p></li>
-        <li class="btw-step"><figure><img src="./assets/images/behance/09-travis-scott-ft-ferrari-poster.webp" alt="" loading="lazy"></figure><span class="btw-num">06</span><h4>Final</h4><p>Export, deliver, move on to the next one.</p></li>
-      </ol>
+      <div class="btw-studio reveal" data-btw-studio>
+        <ol class="btw-steps">
+          <li><button type="button" class="btw-stepbtn is-on" data-btw-go="1"><b>01</b><span><strong>Idea</strong><em>A feeling first: speed, smoke, Ferrari red. Refs pinned before a single layer exists.</em></span></button></li>
+          <li><button type="button" class="btw-stepbtn" data-btw-go="2"><b>02</b><span><strong>Sketch</strong><em>Rough lines over the refs to lock the pose, the car and where the eye goes.</em></span></button></li>
+          <li><button type="button" class="btw-stepbtn" data-btw-go="3"><b>03</b><span><strong>Design</strong><em>Cutting Travis out, placing the car, painting smoke and light, layer by layer.</em></span></button></li>
+          <li><button type="button" class="btw-stepbtn" data-btw-go="4"><b>04</b><span><strong>Edit</strong><em>Grading it all into one world: contrast, red pushed, shadows crushed.</em></span></button></li>
+          <li><button type="button" class="btw-stepbtn" data-btw-go="5"><b>05</b><span><strong>Motion</strong><em>Bringing the still to life on a timeline: drift, flicker, grain.</em></span></button></li>
+          <li><button type="button" class="btw-stepbtn" data-btw-go="6"><b>06</b><span><strong>Final</strong><em>Exported, posted, framed on the wall. On to the next one.</em></span></button></li>
+        </ol>
+        <div class="btw-app" data-step="1" aria-hidden="true">
+          <div class="btw-app-bar"><i></i><i></i><i></i><span>travis-x-ferrari.psd &mdash; 100% (RGB/16)</span><em data-btw-status>Moodboard</em></div>
+          <div class="btw-app-body">
+            <div class="btw-tools"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+            <div class="btw-canvas">
+              <div class="btw-refs">
+                <img src="./assets/images/behance/12-ford-mustang-classic-poster.webp" alt="" loading="lazy">
+                <img src="./assets/images/behance/170245581-redbull-poster.webp" alt="" loading="lazy">
+                <img src="./assets/images/behance/02-mercedes-g63.webp" alt="" loading="lazy">
+                <span class="btw-note">speed.<br>smoke.<br>ferrari red.</span>
+              </div>
+              <img class="btw-art" src="./assets/images/behance/09-travis-scott-ft-ferrari-poster.webp" alt="" loading="lazy">
+              <span class="btw-guides"></span>
+              <span class="btw-marquee"></span>
+              <span class="btw-split"><b>Before</b><b>After</b></span>
+              <span class="btw-export">&#10003; Exported &mdash; travis-x-ferrari.jpg</span>
+            </div>
+            <div class="btw-layers">
+              <span class="btw-layers-head">Layers</span>
+              <span data-l="5">Grain &amp; motion</span>
+              <span data-l="4">Curves &mdash; grade</span>
+              <span data-l="3">Smoke</span>
+              <span data-l="3">Travis &mdash; cutout</span>
+              <span data-l="3">Ferrari F1</span>
+              <span data-l="2">Sketch</span>
+              <span data-l="1">Moodboard</span>
+            </div>
+          </div>
+          <div class="btw-timeline"><i></i><i></i><i></i><i></i><u></u></div>
+        </div>
+      </div>
       <div class="btw-bridge reveal">
         <p class="btw-bridge-line">Made with the same tools I use to create.</p>
         <a href="https://madebyeyad.web.app/" class="btw-bridge-cta" data-portal="studio">Enter EYAD Studio <span aria-hidden="true">&#8599;</span></a>

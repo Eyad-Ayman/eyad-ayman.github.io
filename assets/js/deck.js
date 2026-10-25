@@ -142,3 +142,51 @@
     if (sel && sel.rangeCount && !sel.isCollapsed) sel.removeAllRanges();
   });
 })();
+
+// Behind The Work: step through the poster being made. Plays on its own
+// while in view; picking a step stops the autoplay on that step.
+(function () {
+  "use strict";
+  var studio = document.querySelector("[data-btw-studio]");
+  if (!studio) return;
+  var app = studio.querySelector(".btw-app");
+  var btns = Array.prototype.slice.call(studio.querySelectorAll("[data-btw-go]"));
+  var layers = Array.prototype.slice.call(studio.querySelectorAll(".btw-layers [data-l]"));
+  var status = studio.querySelector("[data-btw-status]");
+  var STATUS = ["", "Moodboard", "Sketching", "Cutout + layers", "Colour grade", "Timeline", "Exported ✓"];
+  var step = 1, timer = 0, visible = false, paused = false;
+  var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  function show(n) {
+    step = n;
+    app.setAttribute("data-step", String(n));
+    btns.forEach(function (b, i) {
+      b.classList.remove("is-on");
+      if (i + 1 === n) { void b.offsetWidth; b.classList.add("is-on"); }
+    });
+    layers.forEach(function (l) {
+      var at = +l.getAttribute("data-l");
+      l.classList.toggle("is-on", at <= n);
+      l.classList.toggle("is-active", at === n);
+    });
+    if (status) status.textContent = STATUS[n];
+  }
+  function schedule() {
+    clearTimeout(timer);
+    if (paused || !visible || reduce) return;
+    timer = setTimeout(function () { show(step % btns.length + 1); schedule(); }, 3600);
+  }
+  btns.forEach(function (b) {
+    b.addEventListener("click", function () {
+      paused = true;
+      studio.classList.add("is-paused");
+      clearTimeout(timer);
+      show(+b.getAttribute("data-btw-go"));
+    });
+  });
+  if ("IntersectionObserver" in window) {
+    new IntersectionObserver(function (e) { visible = e[0].isIntersecting; schedule(); }, { threshold: 0.35 }).observe(studio);
+  }
+  if (reduce) studio.classList.add("is-paused");
+  show(1);
+})();
