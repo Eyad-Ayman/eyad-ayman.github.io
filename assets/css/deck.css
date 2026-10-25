@@ -1759,3 +1759,316 @@ html[data-theme="dark"] .studio-portal--store .sp-cta { background: var(--d-crea
   .intro-word span { text-align: center; }
   @keyframes introDealSm { to { opacity: 1; transform: translate(calc(-50% + var(--x) * 1.75), -50%) rotate(var(--r)); } }
 }
+
+/* ==========================================================================
+   Getting hired: the cover call to action, the teams & brands list, and the
+   project brief that turns three taps into a WhatsApp message.
+   ========================================================================== */
+.hero-cta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin-top: 4vh;
+}
+.hero-cta-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--paragraph);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .02em;
+  color: var(--d-ink);
+}
+.hero-cta-status i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #1fbf5b;
+  box-shadow: 0 0 0 3px rgba(31, 191, 91, .25);
+  animation: introPulse 1.6s ease-in-out infinite;
+}
+.hero-cta-row { display: flex; gap: 8px; }
+.hero-cta-main,
+.hero-cta-alt {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  padding: 0 24px;
+  font-family: var(--headings);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  text-decoration: none;
+  transition: background-color .2s ease, color .2s ease, transform .25s var(--d-spring);
+}
+.hero-cta-main { background: var(--d-ink); color: var(--d-cream); }
+.hero-cta-alt { border: 2px solid var(--d-ink); color: var(--d-ink); }
+.hero-cta-main:hover { background: var(--d-cream); color: var(--d-ink); }
+.hero-cta-alt:hover { background: var(--d-ink); color: var(--d-cream); }
+.hero-cta-main:active,
+.hero-cta-alt:active { transform: scale(.97); }
+
+.worked-with { margin-top: 4vh; }
+.worked-with > span {
+  display: block;
+  margin-bottom: 10px;
+  font-family: var(--paragraph);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--d-red);
+}
+.worked-with ul { list-style: none; margin: 0; padding: 0; border-top: 1px solid rgba(243, 237, 225, .2); }
+.worked-with li {
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(243, 237, 225, .12);
+  font-family: var(--headings);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--d-cream);
+}
+
+.brief {
+  margin: 24px 0 8px;
+  padding: 22px 22px 24px;
+  border: 2px solid var(--d-ink);
+  background: var(--d-paper-hi);
+}
+.brief-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 0 0 16px;
+  font-family: var(--paragraph);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: none;
+}
+.brief-head span:first-child { color: var(--d-red); }
+.brief-head span:last-child { color: rgba(0, 0, 0, .45); }
+.brief-q { display: block; margin-bottom: 16px; }
+.brief-label {
+  display: block;
+  margin-bottom: 8px;
+  font-family: var(--headings);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--d-ink);
+}
+.brief-opts { display: flex; flex-wrap: wrap; gap: 6px; }
+.brief-opts button {
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid rgba(0, 0, 0, .35);
+  background: transparent;
+  color: var(--d-ink);
+  font-family: var(--paragraph);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color .2s ease, color .2s ease, border-color .2s ease, transform .2s var(--d-spring);
+}
+.brief-opts button:hover { border-color: var(--d-ink); }
+.brief-opts button:active { transform: scale(.96); }
+.brief-opts button.is-on { background: var(--d-ink); border-color: var(--d-ink); color: var(--d-cream); }
+.brief-name input {
+  width: 100%;
+  min-height: 46px;
+  padding: 0 12px;
+  border: 1px solid rgba(0, 0, 0, .35);
+  border-radius: 0;
+  background: #fff;
+  color: var(--d-ink);
+  font-family: var(--paragraph);
+  font-size: 16px;
+  -webkit-user-select: text !important;
+  user-select: text !important;
+}
+.brief-name input:focus { outline: 2px solid var(--d-red); outline-offset: 0; border-color: var(--d-red); }
+.brief-send {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 56px;
+  margin-top: 6px;
+  background: rgba(0, 0, 0, .55);
+  color: #fff;
+  font-family: var(--headings);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  text-decoration: none;
+  transition: background-color .25s ease;
+}
+.brief.is-ready .brief-send { background: var(--d-red); }
+.brief-send:hover { background: var(--d-ink); }
+
+html[data-theme="dark"] .brief { border-color: var(--d-cream); }
+html[data-theme="dark"] .brief-label,
+html[data-theme="dark"] .brief-opts button { color: var(--d-cream); }
+html[data-theme="dark"] .brief-opts button { border-color: rgba(243, 237, 225, .35); }
+html[data-theme="dark"] .brief-opts button.is-on { background: var(--d-cream); color: var(--d-ink); }
+html[data-theme="dark"] .brief-head span:last-child { color: rgba(243, 237, 225, .5); }
+html[data-theme="dark"] .brief-name input { background: #0b0b0b; color: var(--d-cream); border-color: rgba(243, 237, 225, .35); }
+
+/* running header once it is sampling the page colour (phones) */
+.m-bar.is-sampled,
+.m-bar.is-sampled.is-scrolled {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  box-shadow: none;
+  transition: background-color .25s ease, color .25s ease;
+}
+.intro-deck { padding-top: calc(22px + env(safe-area-inset-top)); padding-bottom: calc(26px + env(safe-area-inset-bottom)); }
+
+/* ==========================================================================
+   Phone = the PC deck, page for page. Same pages in the same order with
+   the same compositions, re-flowed for a narrow screen.
+   ========================================================================== */
+@media screen and (max-width: 767px) {
+  /* ---- cover: red title page on top, the portrait on paper below it,
+     the way the PC cover splits red | paper side by side ---- */
+  #Home .container { padding-bottom: 0; }
+  .hero-cta { margin-top: 22px; align-items: stretch; }
+  .hero-cta-status { justify-content: flex-start; }
+  .hero-cta-row > a { flex: 1; }
+  .hero-section-images-wrapper { display: flex; flex-direction: column; margin-top: 26px; }
+  .hero-section-images-wrapper > .hero-text-wrapper { order: -1; padding-top: 0; margin-bottom: 26px; }
+  .hero-section-images-grid {
+    position: relative;
+    margin: 0 calc(-1 * var(--d-pad));
+    padding: 30px var(--d-pad) 0;
+    background: var(--d-paper);
+  }
+  .hero-section-images-holder._02 { display: none; }
+  .hero-section-images-holder._01 { border: 0; }
+  .hero-section-images._01 { width: 100%; }
+  .hero-section-images-holder._01 .handwritten-note { top: auto; bottom: 22%; right: 0; }
+
+  /* ---- contents: the red index page, as on PC ---- */
+  .m-index { background-color: var(--d-red); color: var(--d-ink); }
+  .m-index a { color: var(--d-ink); }
+  .m-index a b { color: var(--d-cream); }
+  .m-index a:active { color: var(--d-cream); }
+
+  /* ---- [THAT'S ME]: title and Arabic line on one row, then the four
+     photos whole, two by two, the second column dropped like the PC row ---- */
+  .about-sliced { display: none; }
+  .about-me-section {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    column-gap: 8px;
+    row-gap: 8px;
+    align-items: start;
+    padding: 34px 0 52px;
+  }
+  .about-me-section > .about-me-grid,
+  .about-me-section .about-me-image-holder { display: contents; }
+  .about-me-section > .section-number { grid-column: 1 / -1; grid-row: 1; margin-bottom: 18px; }
+  .about-me-section .about-me-image-holder > .reveal { grid-column: 1 / -1; grid-row: 2; justify-self: start; align-self: end; }
+  .about-me-section .about-me-title { font-size: 12vw; margin: 0 0 18px; }
+  .about-me-section .about-me-title._02 {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    justify-self: end;
+    align-self: end;
+    position: static;
+    width: auto;
+    margin: 0 0 22px;
+    font-size: 26px;
+    text-align: right;
+    color: var(--d-red);
+  }
+  .about-me-section .about-me-image-wrapper,
+  .about-me-section .about-me-image-wrapper._01,
+  .about-me-section .about-me-image-wrapper._02 {
+    display: block;
+    width: 100%;
+    aspect-ratio: 3 / 4;
+    overflow: hidden;
+  }
+  .about-me-section .about-me-image,
+  .about-me-section .about-me-image._01 { width: 100%; height: 100%; object-fit: cover; object-position: 50% 40%; }
+  .about-me-section .about-me-image-wrapper._01 { grid-column: 1; grid-row: 3; }
+  .about-me-section .about-me-image-wrapper._02 { grid-column: 2; grid-row: 3; transform: translateY(44px); }
+  .about-me-section > .about-me-grid + .about-me-grid .about-me-image-holder:first-child .about-me-image-wrapper { grid-column: 1; grid-row: 4; }
+  .about-me-section > .about-me-grid + .about-me-grid .about-me-image-holder:last-child .about-me-image-wrapper { grid-column: 2; grid-row: 4; transform: translateY(44px); }
+
+  /* ---- "Hey there!": title and bio only, as on PC ---- */
+  .hey-there-photo-collage { display: none; }
+  .hey-there-layout { padding-top: 40px; }
+
+  /* ---- experience: black page; the PC's photo strip becomes a banner ---- */
+  #About .container-extra-small::before {
+    content: "";
+    display: block;
+    height: 58vw;
+    margin: -30px calc(-1 * var(--d-pad)) 28px;
+    background: url("../images/about/eyad-museum.webp") 50% 30% / cover no-repeat;
+    filter: grayscale(100%) contrast(1.08);
+  }
+  .worked-with { margin: 6px 0 22px; }
+
+  /* ---- gallery title page: the PC spread — prints in the corners, the
+     title in the middle, nothing overlapping ---- */
+  #Work .project-section-title-holder {
+    min-height: max(760px, 100svh);
+    padding-bottom: 22px;
+  }
+  #Work .m-scatter { display: block; position: static; margin: 0; }
+  #Work .m-scatter img:nth-child(n) {
+    position: absolute;
+    z-index: 1;
+    width: 30vw;
+    aspect-ratio: 3 / 4;
+    top: auto; right: auto; bottom: auto; left: auto;
+    box-shadow: 0 12px 26px rgba(0, 0, 0, .28);
+  }
+  #Work .m-scatter img:nth-child(1) { top: 66px; left: -10px; transform: rotate(-5deg); }
+  #Work .m-scatter img:nth-child(2) { top: 86px; right: 12px; width: 26vw; aspect-ratio: 4 / 5; transform: rotate(4deg); }
+  #Work .m-scatter img:nth-child(3) { bottom: 66px; left: 14px; width: 26vw; aspect-ratio: 4 / 5; transform: rotate(3deg); }
+  #Work .m-scatter img:nth-child(4) { bottom: 40px; right: -10px; transform: rotate(-4deg); }
+  #Work .project-section-title-holder > div.reveal { order: 2; margin: auto 0 0; text-align: center; }
+  #Work .handwritten-inline { margin: .1em auto 0; text-align: center; }
+  #Work .m-lede { order: 3; margin: 14px auto auto; max-width: 230px; text-align: center; }
+
+  /* ---- contact: the brief, full width ---- */
+  .brief { margin: 20px 0 6px; padding: 18px 16px 20px; }
+
+  /* ---- the hire nudge as a slim black strip instead of a big card ---- */
+  .hire-toast,
+  .hire-toast.is-visible {
+    left: 10px;
+    right: 10px;
+    bottom: calc(10px + env(safe-area-inset-bottom));
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 48px 12px 16px;
+    background: var(--d-ink);
+    border: 0;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, .3);
+  }
+  .hire-toast-text { margin: 0; font-size: 13px; color: var(--d-cream); }
+  .hire-toast-text br,
+  .hire-toast .hire-toast-hand { display: none; }
+  .hire-toast-cta { margin-left: auto; min-height: 36px; white-space: nowrap; color: #ff5a4a; border-color: #ff5a4a; }
+  .hire-toast-close { color: var(--d-cream); }
+}
+@media screen and (max-width: 767px) {
+  .worked-with ul { display: grid; grid-template-columns: 1fr 1fr; column-gap: 14px; }
+  .worked-with li { font-size: 12.5px; }
+}
+@media screen and (max-width: 767px) { .scroll-hint { display: none; } }
+@media screen and (min-width: 768px) { #mylinks .brief { grid-column: 2; } }
