@@ -1178,3 +1178,129 @@ img { pointer-events: none; }
   }
   #Work .project-section-title-holder > div.reveal { margin: auto 0; }
 }
+
+/* ==========================================================================
+   Dark mode for the deck. The old whole-page invert turned the black pages
+   white and the red pages muddy, so here it is switched off and the paper
+   pages are re-coloured directly: paper goes near-black, ink goes cream,
+   and the red and black pages stay exactly as they are.
+   ========================================================================== */
+html[data-theme="dark"] {
+  --d-paper: #121110;
+  --d-paper-hi: #1b1a18;
+  filter: none;
+  background: #121110;
+}
+/* every counter-invert from the old approach comes off */
+html[data-theme="dark"] iframe,
+html[data-theme="dark"] .noise-texture,
+html[data-theme="dark"] .hero-section-images-holder,
+html[data-theme="dark"] .about-me-image-wrapper,
+html[data-theme="dark"] .collage-tile,
+html[data-theme="dark"] .project-photo,
+html[data-theme="dark"] .intro-overlay,
+html[data-theme="dark"] .auto-slide,
+html[data-theme="dark"] .full-bleed-break,
+html[data-theme="dark"] .showreel-strip-wrap,
+html[data-theme="dark"] .showreel-card,
+html[data-theme="dark"] .logo-link,
+html[data-theme="dark"] .btw,
+html[data-theme="dark"] .studio-portal,
+html[data-theme="dark"] .eyad-veil,
+html[data-theme="dark"] .m-scatter img,
+html[data-theme="dark"] #Motion > .container { filter: none; }
+html[data-theme="dark"] .about-sliced span { filter: grayscale(100%) contrast(106%); }
+html[data-theme="dark"] .about-sliced.is-focus span { filter: none; }
+html[data-theme="dark"] .contact-map { filter: grayscale(75%) contrast(105%) brightness(.85); }
+html[data-theme="dark"] .contact-map:hover,
+html[data-theme="dark"] .contact-map.is-focus { filter: brightness(.9); }
+
+html[data-theme="dark"] body { background-color: var(--d-paper); color: var(--d-cream); }
+html[data-theme="dark"] body::before { mix-blend-mode: screen; opacity: .04; }
+
+/* running header + nav */
+html[data-theme="dark"] .m-bar,
+html[data-theme="dark"] .nav-link-big,
+html[data-theme="dark"] .nav-link-big:hover,
+html[data-theme="dark"] .nav-link-big.is-current-section { color: var(--d-cream); }
+html[data-theme="dark"] .m-bar.is-scrolled { background-color: rgba(18, 17, 16, .9); box-shadow: 0 1px 0 rgba(243, 237, 225, .14); }
+html[data-theme="dark"] .menu-button { box-shadow: inset 0 0 0 1px rgba(243, 237, 225, .3); }
+html[data-theme="dark"] .navbar.nav-open .nav-link-big { color: var(--d-ink); }
+
+/* type on the paper pages */
+html[data-theme="dark"] .about-me-title,
+html[data-theme="dark"] .project-name,
+html[data-theme="dark"] .contact-card-label,
+html[data-theme="dark"] .contact-card:hover .contact-card-label,
+html[data-theme="dark"] .footer-title { color: var(--d-cream); }
+html[data-theme="dark"] #Work .about-me-title,
+html[data-theme="dark"] .navbar.nav-open .nav-link-big { color: var(--d-ink); }
+html[data-theme="dark"] .about-me-title._02 { color: var(--d-red); }
+html[data-theme="dark"] [data-about-bio] { color: rgba(243, 237, 225, .86); }
+html[data-theme="dark"] .contact-lede,
+html[data-theme="dark"] .faq-item-answer { color: rgba(243, 237, 225, .7); }
+html[data-theme="dark"] .project-grid img:not(.is-loaded) { background-color: #222; }
+
+/* rules, tables, buttons */
+html[data-theme="dark"] .faq-list,
+html[data-theme="dark"] .contact-grid { border-top-color: var(--d-cream); }
+html[data-theme="dark"] .faq-item,
+html[data-theme="dark"] .contact-card,
+html[data-theme="dark"] .contact-card:hover { border-bottom-color: rgba(243, 237, 225, .18); }
+html[data-theme="dark"] .faq-item summary::after { color: var(--d-cream); }
+html[data-theme="dark"] #mylinks > .container { border-top-color: var(--d-cream); }
+html[data-theme="dark"] #mylinks > .container::before { background: var(--d-cream); }
+html[data-theme="dark"] .contact-card-icon { filter: invert(1); }
+html[data-theme="dark"] .contact-card:active { background-color: rgba(243, 237, 225, .06); }
+html[data-theme="dark"] .whatsapp-button,
+html[data-theme="dark"] .behance-cta-wrap .download-button { background: var(--d-cream); border-color: var(--d-cream); color: var(--d-ink); }
+html[data-theme="dark"] .whatsapp-button::after { color: var(--d-ink); }
+html[data-theme="dark"] .whatsapp-button:hover,
+html[data-theme="dark"] .behance-cta-wrap .download-button:hover { background: var(--d-red); border-color: var(--d-red); color: #fff; }
+html[data-theme="dark"] .hero-section-images-holder._01 { border-color: var(--d-ink); }
+
+/* the Store card is the light card of the pair; in dark it matches the Studio */
+html[data-theme="dark"] .studio-portal--store { background: #0b0b0b; color: var(--d-cream); }
+html[data-theme="dark"] .studio-portal--store .sp-chrome { background: rgba(0, 0, 0, .55); border-bottom-color: rgba(243, 237, 225, .12); color: rgba(243, 237, 225, .55); }
+html[data-theme="dark"] .studio-portal--store .sp-chrome i { background: rgba(243, 237, 225, .25); }
+html[data-theme="dark"] .studio-portal--store .sp-chrome i:first-child { background: var(--d-red); }
+html[data-theme="dark"] .studio-portal--store .sp-shot { background: #1a1a1a; border-color: rgba(243, 237, 225, .15); }
+html[data-theme="dark"] .studio-portal--store .sp-title { color: var(--d-cream); }
+html[data-theme="dark"] .studio-portal--store .sp-desc { color: rgba(243, 237, 225, .65); }
+html[data-theme="dark"] .studio-portal--store .m-spec { border-top-color: rgba(243, 237, 225, .3); }
+html[data-theme="dark"] .studio-portal--store .m-spec > span { border-bottom-color: rgba(243, 237, 225, .18); }
+html[data-theme="dark"] .studio-portal--store .m-spec b { color: rgba(243, 237, 225, .55); }
+html[data-theme="dark"] .studio-portal--store .m-spec i { color: var(--d-cream); }
+html[data-theme="dark"] .studio-portal--store .sp-cta { background: var(--d-cream); color: #000; }
+
+/* ==========================================================================
+   Copy protection, hardened: nothing highlights even if a selection is
+   forced, and every photo carries a small credit mark.
+   ========================================================================== */
+*,
+*::before,
+*::after {
+  -webkit-user-select: none !important;
+  user-select: none !important;
+}
+::selection { background: transparent; color: inherit; }
+.project-photo::after,
+.collage-tile::after,
+.btw-step figure::after,
+.showreel-card::before {
+  content: "\00a9 Eyad Ayman";
+  position: absolute;
+  z-index: 3;
+  right: 8px;
+  bottom: 7px;
+  font-family: var(--headings);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, .78);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, .55);
+  pointer-events: none;
+}
+.btw-step figure { position: relative; }
+.showreel-card::before { top: 12px; right: 48px; bottom: auto; }

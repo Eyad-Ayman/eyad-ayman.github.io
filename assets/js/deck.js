@@ -112,10 +112,33 @@
   document.querySelectorAll("[data-showreel-strip], [data-btw-track]").forEach(stripProgress);
 })();
 
-// Nothing can be copied, cut, dragged out or opened from the context menu.
+// Copy protection: no selecting, right-click, dragging or copy shortcuts.
+// Anything that still reaches the clipboard carries the credit instead.
 (function () {
   "use strict";
-  ["copy", "cut", "contextmenu", "dragstart", "selectstart"].forEach(function (type) {
+  var CREDIT = "© Eyad Ayman — eyad-ayman.github.io";
+  ["contextmenu", "dragstart", "selectstart"].forEach(function (type) {
     document.addEventListener(type, function (e) { e.preventDefault(); });
+  });
+  ["copy", "cut"].forEach(function (type) {
+    document.addEventListener(type, function (e) {
+      e.preventDefault();
+      if (e.clipboardData) e.clipboardData.setData("text/plain", CREDIT);
+    });
+  });
+  // Ctrl/Cmd + A, C, X, S, U, P and the devtools shortcuts.
+  document.addEventListener("keydown", function (e) {
+    var k = (e.key || "").toLowerCase();
+    var mod = e.ctrlKey || e.metaKey;
+    if (k === "f12" ||
+        (mod && ["a", "c", "x", "s", "u", "p"].indexOf(k) !== -1) ||
+        (mod && e.shiftKey && ["i", "j", "c"].indexOf(k) !== -1)) {
+      e.preventDefault();
+    }
+  });
+  // Drop any selection that slips through (e.g. long-press on some phones).
+  document.addEventListener("selectionchange", function () {
+    var sel = window.getSelection && window.getSelection();
+    if (sel && sel.rangeCount && !sel.isCollapsed) sel.removeAllRanges();
   });
 })();
