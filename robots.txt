@@ -1,5 +1,4 @@
 User-agent: *
 Allow: /
-Disallow: /tools/project-manager/
 
 Sitemap: https://eyad-ayman.github.io/sitemap.xml

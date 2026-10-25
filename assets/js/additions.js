@@ -1,16 +1,9 @@
 // Portfolio additions: Behind The Work reveal/drag, the Studio portal's video
-// preview, and the cinematic portfolio <-> EYAD STUDIO transition.
+// preview, and the curtain transition out to the Studio / Store.
 (function () {
   "use strict";
 
   var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  function ss(key, val) {
-    try {
-      if (val === undefined) return sessionStorage.getItem(key);
-      if (val === null) sessionStorage.removeItem(key); else sessionStorage.setItem(key, val);
-    } catch (e) { return null; }
-    return null;
-  }
 
   // ------------------------------------------------------------ Behind The Work
   var track = document.querySelector("[data-btw-track]");
@@ -75,22 +68,14 @@
     return c;
   }
 
-  function isStudioLink(a) {
-    if (!a || !a.href) return false;
-    try {
-      var u = new URL(a.href, location.href);
-      return u.origin === location.origin && /\/studio\/(index\.html)?$/.test(u.pathname);
-    } catch (e) { return false; }
-  }
-
+  // Studio and Store live at madebyeyad.web.app — play the curtain, then go.
+  var PORTAL_WORDS = { studio: "EYAD<br><em>STUDIO</em>", store: "THE<br><em>STORE</em>" };
   document.addEventListener("click", function (e) {
     if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
-    var a = e.target.closest && e.target.closest("a[data-studio-link], a[href$='studio/']");
-    if (!a || a.target === "_blank" || !isStudioLink(a)) return;
+    var a = e.target.closest && e.target.closest("a[data-portal]");
+    if (!a || a.target === "_blank") return;
     e.preventDefault();
     var href = a.href;
-    ss("eyad:return", JSON.stringify({ y: window.scrollY, t: Date.now() }));
-    ss("eyad:enter", "1");
     if (reduce) {
       var f = curtain("is-fade");
       requestAnimationFrame(function () { f.classList.add("is-run"); });
@@ -98,7 +83,7 @@
       return;
     }
     var c = curtain();
-    c.querySelector(".eyad-curtain-word").innerHTML = "EYAD<br><em>STUDIO</em>";
+    c.querySelector(".eyad-curtain-word").innerHTML = PORTAL_WORDS[a.getAttribute("data-portal")] || PORTAL_WORDS.studio;
     // Fly the clicked card's artwork up to fill the screen before the curtain closes.
     var src = a.querySelector("img");
     if (src && src.complete && src.naturalWidth) {
@@ -108,7 +93,7 @@
       im.src = src.currentSrc || src.src;
       im.alt = "";
       im.style.cssText = "left:" + r.left + "px;top:" + r.top + "px;width:" + r.width + "px;height:" + r.height + "px;";
-      c.insertBefore(im, c.querySelector('.eyad-curtain-word'));
+      c.insertBefore(im, c.querySelector(".eyad-curtain-word"));
       requestAnimationFrame(function () {
         im.style.transition = "all .55s cubic-bezier(.7,0,.2,1)";
         im.style.left = "0px"; im.style.top = "0px"; im.style.width = "100vw"; im.style.height = "100vh";
@@ -119,25 +104,16 @@
     setTimeout(function () { location.href = href; }, 720);
   });
 
-  // Coming back from the Studio: lift the curtain and return to where you were.
-  function arrive(persisted) {
+  // The back button restores this page from the back/forward cache with
+  // the curtain still closed over it — lift it away.
+  window.addEventListener("pageshow", function (e) {
     var stale = document.querySelector(".eyad-curtain");
-    if (stale) stale.remove();
-    if (ss("eyad:return-anim") !== "1") return;
-    ss("eyad:return-anim", null);
-    var saved = null;
-    try { saved = JSON.parse(ss("eyad:return") || "null"); } catch (e) { saved = null; }
-    if (!persisted && saved && Date.now() - saved.t < 6 * 3600e3) {
-      var y = saved.y;
-      // Content above (gallery, reels) loads async; restore now and once more after it settles.
-      window.scrollTo(0, y);
-      setTimeout(function () { window.scrollTo(0, y); }, 400);
-    }
-    if (reduce) return;
+    if (!stale) return;
+    stale.remove();
+    if (!e.persisted || reduce) return;
     var c = curtain("is-lift");
     c.querySelector(".eyad-curtain-word").remove();
     requestAnimationFrame(function () { requestAnimationFrame(function () { c.classList.add("is-go"); }); });
     setTimeout(function () { c.remove(); }, 900);
-  }
-  window.addEventListener("pageshow", function (e) { arrive(e.persisted); });
+  });
 })();

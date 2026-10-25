@@ -1,6 +1,6 @@
 /* ==========================================================================
-   Portfolio additions — Behind The Work, the EYAD STUDIO portal card and the
-   portfolio <-> Studio transition curtain. Loaded after style.css; nothing
+   Portfolio additions — Behind The Work, the Studio / Store portal cards and
+   the transition curtain out to madebyeyad.web.app. Loaded after style.css; nothing
    here restyles existing sections.
    ========================================================================== */
 
@@ -139,10 +139,52 @@ html[data-theme="dark"] .studio-portal { filter: invert(1) hue-rotate(180deg); }
 .eyad-curtain.is-fade .eyad-curtain-bg { transform: none; opacity: 0; }
 .eyad-curtain.is-fade.is-run .eyad-curtain-bg { transition: opacity .18s linear; opacity: 1; }
 
-/* the Tools section's decorative side photo sits BEHIND the Studio card (it used to cover its top edge) */
-@media screen and (min-width: 1300px) {
-  .tools-container .tools-side-photo { z-index: 1; top: -26px; right: -18px; transform: rotate(4deg); }
-}
 .sp-chrome em { display: inline-flex; align-items: center; gap: 6px; }
 .sp-chrome em::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; animation: sp-live 1.6s ease-in-out infinite; }
 @keyframes sp-live { 50% { opacity: .25; } }
+
+/* ---------------------------------------------------------------- Store portal card
+   Same build as the Studio card, mirrored: copy on the left, a lookbook of
+   tagged photos on the right, and a running ticker instead of a timeline. */
+.portals-container { padding-top: 10px; }
+.studio-portal--store { grid-template-columns: 1fr 1.25fr; margin-top: 40px; box-shadow: -10px 10px 0 #d02b2a; }
+.studio-portal--store:hover { transform: translate(3px, -3px); box-shadow: -16px 16px 0 #d02b2a; }
+.studio-portal--store .sp-copy { padding: 64px 12px 40px 40px; }
+
+.st-a { width: 38%; height: 58%; left: 8%; top: 13%; transform: rotate(-5deg); z-index: 3; animation: sp-drift 10s ease-in-out infinite alternate; }
+.st-b { width: 34%; height: 62%; left: 40%; top: 8%; transform: rotate(3deg); z-index: 2; animation: sp-drift 12s ease-in-out -4s infinite alternate; }
+.st-c { width: 26%; height: 40%; left: 70%; top: 40%; transform: rotate(7deg); z-index: 4; }
+.st-d { width: 24%; height: 34%; left: 4%; top: 50%; transform: rotate(-9deg); z-index: 1; animation: sp-drift 11s ease-in-out -2s infinite alternate; }
+.st-c img { object-position: 50% 30%; }
+.st-b .st-tag { left: 50%; top: 8px; bottom: auto; transform: translateX(-50%); }
+.studio-portal--store:hover .st-a { transform: rotate(-8deg) translate(-12px, -8px) scale(1.04); }
+.studio-portal--store:hover .st-b { transform: rotate(5deg) translate(6px, -14px) scale(1.04); }
+.studio-portal--store:hover .st-c { transform: rotate(11deg) translate(12px, 8px); }
+.studio-portal--store:hover .st-d { transform: rotate(-13deg) translate(-8px, 8px); }
+
+.st-tag {
+  position: absolute; left: 8px; bottom: 8px; z-index: 2;
+  padding: 5px 8px; background: #f3ede1; color: #000;
+  font: 700 10px/1 var(--headings); letter-spacing: .12em; text-transform: uppercase;
+  transition: background .25s ease, color .25s ease;
+}
+.studio-portal--store:hover .st-tag { background: #d02b2a; color: #fff; }
+
+.st-ticker {
+  position: absolute; z-index: 5; left: 0; right: 0; bottom: 16px;
+  display: flex; width: max-content; padding: 7px 0;
+  background: #d02b2a; color: #fff;
+  font: 700 12px/1 var(--headings); letter-spacing: .14em; text-transform: uppercase; white-space: nowrap;
+  animation: st-ticker 30s linear infinite;
+}
+.st-ticker span { padding-right: 0; }
+@keyframes st-ticker { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+
+@media screen and (max-width: 900px) {
+  .studio-portal--store { grid-template-columns: 1fr; box-shadow: -7px 7px 0 #d02b2a; }
+  .studio-portal--store .sp-stage { order: -1; }
+  .studio-portal--store .sp-copy { padding: 8px 22px 28px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .st-ticker { animation: none !important; }
+}

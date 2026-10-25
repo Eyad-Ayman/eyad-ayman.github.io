@@ -1,6 +1,6 @@
-# Local preview server for eyad-ayman.github.io (portfolio + EYAD STUDIO).
+# Local preview server for eyad-ayman.github.io.
 # Browsers block module scripts, fetch() and fonts on file:// pages, so the
-# gallery feeds and the Studio only work when served over http:// — exactly
+# gallery feeds only work when served over http:// — exactly
 # like GitHub Pages does. This tiny server needs nothing installed.
 param([int]$Port = 8080)
 
@@ -34,7 +34,6 @@ if (-not $listener) { Write-Host 'Could not start a local server (all ports busy
 $url = "http://localhost:$Port/"
 Write-Host ''
 Write-Host "  Portfolio:   $url" -ForegroundColor Green
-Write-Host "  EYAD STUDIO: ${url}studio/" -ForegroundColor Green
 Write-Host ''
 Write-Host '  Keep this window open while previewing. Press Ctrl+C to stop.'
 Write-Host ''

@@ -50,15 +50,20 @@
     });
   })();
 
-  // ---- Install-as-app support (PWA) ----------------------------------------
-  // Registers the offline/shell service worker so browsers offer "Add to
-  // Home Screen" / "Install app", and the site keeps working (from cache)
-  // with no signal. Same-origin script under the CSP's default-src 'self',
-  // no extra allowlist entry needed.
+  // ---- Retire old service workers ------------------------------------------
+  // The Studio used to live here and registered workers at / and /studio/
+  // that cache whole pages. It now lives at madebyeyad.web.app, so drop any
+  // registration and cache a returning visitor still has — otherwise they
+  // keep seeing a stale cached copy of this site.
   if ("serviceWorker" in navigator) {
-    window.addEventListener("load", function () {
-      navigator.serviceWorker.register("./sw.js").catch(function () {});
-    });
+    navigator.serviceWorker.getRegistrations().then(function (regs) {
+      regs.forEach(function (r) { r.unregister(); });
+    }).catch(function () {});
+    if (window.caches) {
+      caches.keys().then(function (keys) {
+        keys.forEach(function (k) { caches.delete(k); });
+      }).catch(function () {});
+    }
   }
 
   // ---- Hero portrait/video parallax (subtle depth while scrolling) --------
@@ -177,28 +182,47 @@
       intro.remove();
     } else {
       var dismissed = false;
-
-      // Film-leader style frame counter ticking up while the sequence plays.
-      var counterEl = document.getElementById("intro-frame-counter");
-      var counterTimer = null;
-      if (counterEl) {
-        var frame = 1;
-        counterTimer = setInterval(function () {
-          frame += Math.floor(Math.random() * 4) + 1;
-          counterEl.textContent = String(frame).padStart(3, "0");
-        }, 90);
-      }
+      var countEl = document.getElementById("intro-count");
+      var barEl = document.getElementById("intro-progress-bar");
+      var introReduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      // The counter tracks the real page load: it can't pass 90% until the
+      // window "load" event fires, and never shows for less than MIN_MS so
+      // the name animation gets to finish. MAX_MS caps a slow connection.
+      var MIN_MS = introReduce ? 500 : 1700;
+      var MAX_MS = 4000;
+      var pageLoaded = document.readyState === "complete";
+      var introStart = performance.now();
+      var shown = 0;
+      window.addEventListener("load", function () { pageLoaded = true; });
 
       function dismissIntro() {
         if (dismissed) return;
         dismissed = true;
-        if (counterTimer) clearInterval(counterTimer);
         try { sessionStorage.setItem("introSeen", "1"); } catch (e) {}
-        intro.classList.add("intro-hidden");
-        setTimeout(function () { intro.remove(); }, 750);
+        if (countEl) countEl.textContent = "100";
+        if (barEl) barEl.style.transform = "scaleX(1)";
+        intro.classList.add("is-leaving");
+        document.removeEventListener("keydown", dismissIntro);
+        setTimeout(function () { intro.remove(); }, introReduce ? 350 : 1250);
       }
+
+      function tickIntro(now) {
+        if (dismissed) return;
+        var elapsed = now - introStart;
+        var ready = pageLoaded || elapsed > MAX_MS;
+        var target = Math.min(elapsed / MIN_MS, ready ? 1 : 0.9);
+        shown += (target - shown) * 0.18;
+        if (target === 1 && shown > 0.995) shown = 1;
+        if (countEl) countEl.textContent = String(Math.round(shown * 100)).padStart(3, "0");
+        if (barEl) barEl.style.transform = "scaleX(" + shown + ")";
+        if (shown >= 1) { setTimeout(dismissIntro, 180); return; }
+        requestAnimationFrame(tickIntro);
+      }
+      requestAnimationFrame(tickIntro);
+      // rAF pauses in throttled/background tabs; never leave the splash stuck.
+      setTimeout(dismissIntro, MAX_MS + 1000);
       intro.addEventListener("click", dismissIntro);
-      setTimeout(dismissIntro, 2400);
+      document.addEventListener("keydown", dismissIntro);
     }
   }
 
@@ -328,7 +352,7 @@
         cursorDot.classList.remove("is-hidden");
         cursorRing.classList.remove("is-hidden");
       });
-      var hoverTargets = "a, button, .gallery-tile, .project-tile, .tools-launcher-card, .contact-card, .faq-item summary, .service-card, input, textarea, select";
+      var hoverTargets = "a, button, .gallery-tile, .project-tile, .studio-portal, .contact-card, .faq-item summary, input, textarea, select";
       document.addEventListener("mouseover", function (e) {
         if (e.target.closest && e.target.closest(hoverTargets)) {
           cursorDot.classList.add("is-hover");
@@ -342,6 +366,33 @@
         }
       });
     }
+  }
+
+  // ---- Magnetic buttons (desktop / fine-pointer only) ---------------------
+  // Pulls the button a fraction of the way toward the cursor while it's
+  // hovered, then springs back on leave. Scoped to the standalone CTA
+  // buttons (not the gallery grid — too many nodes, and it reads better
+  // on isolated buttons than on a wall of cards).
+  if (window.matchMedia && window.matchMedia("(pointer: fine)").matches) {
+    var magneticEls = document.querySelectorAll(".whatsapp-button, .signoff-cta, .hire-toast-cta, .btw-bridge-cta");
+    var magneticStrength = 0.3;
+    magneticEls.forEach(function (el) {
+      // Standalone `translate` appended to the element's own transition
+      // list, so its CSS hover colors and transform effects keep working.
+      var baseTransition = getComputedStyle(el).transition || "";
+      var join = baseTransition ? baseTransition + ", " : "";
+      el.addEventListener("mousemove", function (e) {
+        var rect = el.getBoundingClientRect();
+        var relX = (e.clientX - (rect.left + rect.width / 2)) * magneticStrength;
+        var relY = (e.clientY - (rect.top + rect.height / 2)) * magneticStrength;
+        el.style.transition = join + "translate .08s linear";
+        el.style.translate = relX + "px " + relY + "px";
+      });
+      el.addEventListener("mouseleave", function () {
+        el.style.transition = join + "translate .5s cubic-bezier(.34,1.56,.64,1)";
+        el.style.translate = "0px 0px";
+      });
+    });
   }
 
   // ---- Mobile nav toggle ---------------------------------------------
@@ -398,38 +449,4 @@
     );
     sections.forEach(function (s) { sectionObserver.observe(s); });
   }
-
-  // ---- Tools modal (one tool at a time, no tab clutter) ------------------
-  var toolsModal = document.getElementById("tools-modal");
-  var toolFrame = document.getElementById("active-tool-frame");
-  var toolTitle = document.getElementById("tools-modal-title");
-
-  document.querySelectorAll("[data-tool-src]").forEach(function (trigger) {
-    trigger.addEventListener("click", function () {
-      if (!toolsModal || !toolFrame) return;
-      var src = trigger.getAttribute("data-tool-src");
-      var title = trigger.getAttribute("data-tool-title") || "Tool";
-      if (toolFrame.getAttribute("src") !== src) toolFrame.setAttribute("src", src);
-      toolFrame.setAttribute("title", title);
-      if (toolTitle) toolTitle.textContent = title;
-      toolsModal.classList.add("is-open");
-    });
-  });
-  document.querySelectorAll("[data-close-modal]").forEach(function (trigger) {
-    trigger.addEventListener("click", function () {
-      trigger.closest(".tools-modal").classList.remove("is-open");
-    });
-  });
-  document.querySelectorAll(".tools-modal").forEach(function (modal) {
-    modal.addEventListener("click", function (e) {
-      if (e.target === modal) modal.classList.remove("is-open");
-    });
-  });
-  document.addEventListener("keyup", function (e) {
-    if (e.key === "Escape") {
-      document.querySelectorAll(".tools-modal.is-open").forEach(function (modal) {
-        modal.classList.remove("is-open");
-      });
-    }
-  });
 })();
