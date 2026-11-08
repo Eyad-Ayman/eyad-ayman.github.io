@@ -2271,3 +2271,98 @@ html[data-theme="dark"] .clients-title,
 html[data-theme="dark"] .clients-group li { color: var(--d-cream); }
 html[data-theme="dark"] .clients-group { border-top-color: var(--d-cream); }
 .clients-group li { unicode-bidi: isolate; }
+
+/* ==========================================================================
+   Clients as a logo wall: each client is a white card with its real logo
+   (or its name set as a wordmark where there is no logo file) and a
+   bracketed caption. Cards lift with a red offset shadow on hover / focus,
+   the same move as the Studio card.
+   ========================================================================== */
+.clients-group { grid-template-columns: var(--d-head-col) 1fr; }
+.clients-group ul.clients-wall {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+.clients-wall .client,
+.clients-wall .client:hover {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 3 / 2;
+  padding: 14% 12% 18%;
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, .12);
+  font-size: 0;
+  color: var(--d-ink);
+  transition: transform .3s var(--d-spring), box-shadow .3s var(--d-spring);
+}
+.clients-wall .client::after { content: none !important; }
+.clients-wall .client img {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  pointer-events: none;
+}
+.clients-wall .client > span {
+  position: absolute;
+  left: 10px;
+  bottom: 8px;
+  font-family: var(--paragraph);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .02em;
+  text-transform: none;
+  color: rgba(0, 0, 0, .45);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: calc(100% - 20px);
+}
+.clients-wall .client > span::before { content: "[ "; }
+.clients-wall .client > span::after { content: " ]"; }
+.clients-wall .client-word b {
+  font-family: var(--d-display);
+  font-weight: 400;
+  font-size: clamp(22px, 2.3vw, 40px);
+  line-height: .95;
+  text-align: center;
+  text-transform: uppercase;
+  color: var(--d-ink);
+}
+.clients-wall .client-ar b {
+  font-family: 'Cairo', 'Segoe UI', Tahoma, sans-serif;
+  font-weight: 900;
+  font-size: clamp(24px, 2.4vw, 42px);
+  line-height: 1.2;
+  text-transform: none;
+}
+@media (hover: hover) {
+  .clients-wall .client:hover { transform: translate(-3px, -3px); box-shadow: 6px 6px 0 var(--d-red); }
+}
+.clients-wall .client.is-focus { transform: translate(-3px, -3px); box-shadow: 6px 6px 0 var(--d-red); }
+html[data-theme="dark"] .clients-wall .client { border-color: transparent; }
+html[data-theme="dark"] .clients-wall .client-word b { color: var(--d-ink); }
+
+@media screen and (max-width: 991px) {
+  .clients-group ul.clients-wall { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media screen and (max-width: 767px) {
+  .clients-group { grid-template-columns: 1fr; }
+  .clients-group ul.clients-wall { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .clients-wall .client { padding: 16% 14% 22%; }
+  .clients-wall .client-word b { font-size: 24px; }
+  .clients-wall .client > span { font-size: 9.5px; left: 8px; bottom: 6px; }
+}
+.clients-wall .client,
+.clients-wall .client:hover { overflow: hidden; min-height: 0; }
+.clients-wall .client img { width: 100%; height: 100%; max-width: none; max-height: none; }
+.clients-wall .client.is-focus { transform: none; box-shadow: none; }
+.clients-wall .client-word b { font-size: clamp(20px, 2vw, 34px); }
+@media screen and (max-width: 767px) {
+  .clients-wall .client-word b { font-size: 22px; }
+}
