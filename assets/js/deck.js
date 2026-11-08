@@ -284,3 +284,30 @@
   if (nameEl) nameEl.addEventListener("input", build);
   build();
 })();
+
+// Phone cover: replay the entrance as the splash lifts (it played unseen
+// underneath), and drive the name / portrait depth from the scroll position.
+(function () {
+  "use strict";
+  var home = document.getElementById("Home");
+  if (!home) return;
+  var intro = document.getElementById("intro-overlay");
+  if (intro && "MutationObserver" in window) {
+    new MutationObserver(function () {
+      if (intro.classList.contains("is-leaving")) home.classList.add("cover-replay");
+    }).observe(intro, { attributes: true, attributeFilter: ["class"] });
+  }
+  if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  var ticking = false;
+  function depth() {
+    ticking = false;
+    if (window.innerWidth > 767) { home.style.removeProperty("--cv"); return; }
+    var p = Math.min(1, Math.max(0, window.scrollY / Math.max(1, home.offsetHeight)));
+    home.style.setProperty("--cv", p.toFixed(3));
+  }
+  window.addEventListener("scroll", function () {
+    if (!ticking) { ticking = true; requestAnimationFrame(depth); }
+  }, { passive: true });
+  window.addEventListener("resize", depth);
+  depth();
+})();
