@@ -182,7 +182,7 @@
       // The counter tracks the real page load: it can't pass 90% until the
       // window "load" event fires, and never shows for less than MIN_MS so
       // the name animation gets to finish. MAX_MS caps a slow connection.
-      var MIN_MS = introReduce ? 500 : 1700;
+      var MIN_MS = introReduce ? 500 : 2500;
       var MAX_MS = 4000;
       var pageLoaded = document.readyState === "complete";
       var introStart = performance.now();

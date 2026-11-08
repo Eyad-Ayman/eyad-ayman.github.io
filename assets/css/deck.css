@@ -2522,3 +2522,130 @@ html[data-theme="dark"] .clients-wall .client-word b { color: var(--d-ink); }
   #Home .hero-section-text-holder ._100width, #Home .hero-cta { animation: none !important; }
   #Home .hero-text, #Home .hero-section-images-grid { translate: none; scale: none; }
 }
+
+/* ==========================================================================
+   Splash, "the edit": the red cover sheet. EYAD rises above a frame, AYMAN
+   below it, and inside the frame the work hard-cuts like a video edit
+   (seven pieces, 0.14s each) and lands on the portrait on paper; then
+   "since 2017" writes itself across the corner. No counter, no bar. On
+   exit the name lifts away, the frame pushes in and the sheet wipes up.
+   ========================================================================== */
+.intro-cut {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  padding: calc(22px + env(safe-area-inset-top)) var(--d-pad) calc(24px + env(safe-area-inset-bottom));
+  background: var(--d-red);
+  color: var(--d-ink);
+}
+.intro-cut .intro-stack {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.6vh;
+  min-height: 0;
+  --name: min(17vw, 24vh);
+  --frame-h: min(34vh, 62vw);
+}
+.intro-cut .intro-l1,
+.intro-cut .intro-l2 {
+  display: block;
+  font-family: var(--d-display);
+  line-height: .82;
+  letter-spacing: 0;
+  text-transform: uppercase;
+  animation: introRise .95s cubic-bezier(.16, 1, .3, 1) both;
+}
+.intro-cut .intro-l1 { font-size: var(--name); color: var(--d-ink); animation-delay: .1s; }
+.intro-cut .intro-l2 { font-size: calc(var(--name) * .686); color: var(--d-cream); animation-delay: .22s; }
+
+.intro-cut .intro-frame {
+  position: relative;
+  height: var(--frame-h);
+  aspect-ratio: 4 / 5;
+}
+.intro-cut .intro-reel {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: var(--d-cream);
+  box-shadow: 0 22px 44px rgba(0, 0, 0, .35);
+  animation: introOpen .6s cubic-bezier(.7, 0, .2, 1) .3s both;
+}
+.intro-cut .intro-reel img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  animation: introCut .01s steps(1) both;
+  animation-delay: calc(.55s + var(--k) * .14s);
+}
+.intro-cut .intro-reel img.intro-last {
+  object-fit: contain;
+  object-position: 50% 100%;
+  background: var(--d-cream);
+  filter: grayscale(1) contrast(1.05);
+}
+.intro-cut .intro-script {
+  position: absolute;
+  z-index: 3;
+  right: -34%;
+  bottom: 8%;
+  font-family: var(--d-script);
+  font-size: calc(var(--frame-h) * .2);
+  line-height: 1;
+  white-space: nowrap;
+  color: var(--d-cream);
+  text-shadow: 0 2px 14px rgba(0, 0, 0, .4);
+  transform: rotate(-7deg);
+  animation: cvWrite .9s cubic-bezier(.6, 0, .2, 1) 1.65s both;
+}
+@keyframes introOpen { from { clip-path: inset(50% 0 50% 0); } to { clip-path: inset(0 0 0 0); } }
+@keyframes introCut { from { opacity: 0; } to { opacity: 1; } }
+
+.intro-cut .intro-head { animation-delay: .15s; }
+.intro-cut .intro-foot { display: flex; flex-wrap: wrap; gap: 4px 14px; animation-delay: .9s; }
+
+/* exit */
+.intro-cut.is-leaving .intro-l1,
+.intro-cut.is-leaving .intro-l2 { animation: introChOut .5s cubic-bezier(.7, 0, .3, 1) forwards; }
+.intro-cut.is-leaving .intro-l2 { animation-delay: .05s; }
+.intro-cut.is-leaving .intro-frame { transition: transform .7s cubic-bezier(.7, 0, .3, 1), opacity .5s ease .15s; transform: scale(1.18); opacity: 0; }
+.intro-cut.is-leaving .intro-head,
+.intro-cut.is-leaving .intro-foot { transition: opacity .25s ease; opacity: 0 !important; }
+
+@media screen and (max-width: 767px) {
+  .intro-cut .intro-stack { --name: calc((100vw - 36px) / 1.81); --frame-h: min(34svh, 64vw); gap: 12px; }
+  .intro-cut .intro-l2 { font-size: calc((100vw - 36px) / 2.64); }
+  .intro-cut .intro-head { grid-template-columns: 1fr auto; }
+  .intro-cut .intro-head span:last-child { display: none; }
+  .intro-cut .intro-script { right: -26%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .intro-cut .intro-l1, .intro-cut .intro-l2, .intro-cut .intro-reel,
+  .intro-cut .intro-reel img, .intro-cut .intro-script { animation: none !important; }
+  .intro-cut .intro-reel img { opacity: 0; }
+  .intro-cut .intro-reel img.intro-last { opacity: 1; }
+}
+
+/* Splash fixes: the script line was held at opacity 0 by the old splash
+   rule; the last cut fills the frame; wide screens set EYAD, the frame and
+   AYMAN in one row across the full width. */
+.intro-cut .intro-script { opacity: 1; top: auto; left: auto; }
+.intro-cut .intro-reel img.intro-last { object-fit: cover; object-position: 42% 100%; }
+@media screen and (min-width: 768px) {
+  .intro-cut .intro-stack {
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 2vw;
+    --name: min(calc((100vw - 2 * var(--d-pad)) / 6.1), 30vh);
+    --frame-h: calc(var(--name) * 1.4);
+  }
+  .intro-cut .intro-l2 { font-size: var(--name); }
+  .intro-cut .intro-script { right: -18%; bottom: -10%; }
+}
