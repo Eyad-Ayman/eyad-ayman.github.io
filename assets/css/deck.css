@@ -2176,3 +2176,98 @@ html[data-theme="dark"] .hero-section-images-holder._01 .artist-signature { colo
 @media screen and (min-width: 768px) {
   .hero-section-images-holder._01 { align-self: stretch; justify-self: stretch; height: 100%; }
 }
+
+/* ==========================================================================
+   Clients — a credits page. Each group is a ruled row: the [ label ] in the
+   running-header column, then the names set inline in display type with a
+   red slash between them.
+   ========================================================================== */
+.clients {
+  position: relative;
+  padding: calc(var(--d-bar-h) + 10px) var(--d-pad) 12vh;
+  background: var(--d-paper);
+  color: var(--d-ink);
+}
+.clients-head {
+  display: grid;
+  grid-template-columns: var(--d-head-col) 1fr;
+  gap: 8px;
+  align-items: end;
+  margin: 2vh 0 7vh;
+}
+.clients-title {
+  margin: 0;
+  font-family: var(--d-display);
+  font-weight: 400;
+  font-size: clamp(46px, 6.2vw, 120px);
+  line-height: .9;
+  letter-spacing: 0;
+  text-transform: uppercase;
+  color: var(--d-ink);
+}
+.clients-script {
+  font-family: var(--d-script);
+  font-size: clamp(30px, 3vw, 54px);
+  line-height: 1;
+  color: var(--d-red);
+  transform: rotate(-4deg);
+  justify-self: start;
+}
+.clients-group {
+  display: grid;
+  grid-template-columns: var(--d-head-col) 1fr;
+  gap: 8px;
+  padding: 20px 0 26px;
+  border-top: 2px solid var(--d-ink);
+}
+.clients-label {
+  padding-top: 6px;
+  font-family: var(--paragraph);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--d-red);
+}
+.clients-group ul {
+  display: flex;
+  flex-wrap: wrap;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.clients-group li {
+  font-family: var(--d-display);
+  font-size: clamp(30px, 3.6vw, 64px);
+  line-height: 1.04;
+  text-transform: uppercase;
+  color: var(--d-ink);
+  transition: color .2s ease;
+}
+.clients-group li:not(:last-child)::after {
+  content: "/";
+  margin: 0 .24em;
+  color: var(--d-red);
+}
+.clients-group li.clients-ar {
+  font-family: 'Cairo', 'Segoe UI', Tahoma, sans-serif;
+  font-weight: 900;
+  font-size: clamp(26px, 3vw, 54px);
+  line-height: 1.25;
+}
+@media (hover: hover) {
+  .clients-group li:hover { color: var(--d-red); }
+}
+@media screen and (max-width: 767px) {
+  .clients { padding: 40px var(--d-pad) 56px; }
+  .clients-head { grid-template-columns: 1fr; gap: 10px; margin: 0 0 30px; }
+  .clients-title { font-size: clamp(46px, 15vw, 72px); }
+  .clients-script { font-size: 30px; margin-left: 12%; }
+  .clients-group { grid-template-columns: 1fr; gap: 10px; padding: 16px 0 20px; }
+  .clients-label { padding-top: 0; }
+  .clients-group li { font-size: 30px; }
+  .clients-group li.clients-ar { font-size: 26px; }
+}
+html[data-theme="dark"] .clients { color: var(--d-cream); }
+html[data-theme="dark"] .clients-title,
+html[data-theme="dark"] .clients-group li { color: var(--d-cream); }
+html[data-theme="dark"] .clients-group { border-top-color: var(--d-cream); }
+.clients-group li { unicode-bidi: isolate; }

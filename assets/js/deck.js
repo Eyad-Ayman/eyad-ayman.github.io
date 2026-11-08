@@ -40,6 +40,7 @@
     About: "01 — About",
     Work: "02 — Work",
     Motion: "03 — Motion",
+    clients: "01.5 — Clients",
     studio: "04 — Studio",
     FAQ: "05 — Questions",
     mylinks: "06 — Contact"
