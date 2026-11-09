@@ -76,7 +76,16 @@ async function scrapeProjects() {
         const a = article ? article.querySelector('a[href*="/gallery/"]') : null;
         if (!a || seen.has(a.href)) return;
         seen.add(a.href);
-        out.push({ title: img.alt, url: a.href, image: img.src });
+        // The largest candidate the card itself offers (srcset), falling
+        // back to the plain src.
+        let best = img.currentSrc || img.src;
+        let bestW = 0;
+        (img.srcset || "").split(",").forEach((part) => {
+          const [u, d] = part.trim().split(/\s+/);
+          const w = parseFloat(d) * (/x$/.test(d || "") ? 1000 : 1) || 0;
+          if (u && w > bestW) { bestW = w; best = u; }
+        });
+        out.push({ title: img.alt, url: a.href, image: best });
       });
       return out;
     });
@@ -96,16 +105,45 @@ function galleryId(url) {
 
 // Behance serves these cover thumbnails as plain, largely-uncompressed
 // JPEG/PNG — re-encoding to WebP measured 70-80% smaller at the same
-// visual quality with zero resizing needed (Behance's own thumbnails are
-// already grid-sized), which is most of why the gallery used to feel slow
-// to load. Quality 82 matches the same setting fetch-instagram.mjs uses.
+// visual quality. Quality 82 matches the same setting fetch-instagram.mjs
+// uses.
 const IMAGE_QUALITY = 82;
 
+// The grid hands out 404px-wide covers, which look soft on a phone or a
+// retina screen. The same cover exists at larger sizes on Behance's CDN
+// under a different size folder (/projects/404/ -> /projects/808/ etc.),
+// so try those first, largest first, and fall back to what the page gave.
+const COVER_SIZES = ["max_808", "808", "original"];
+const MAX_WIDTH = 1200;
+
+function coverCandidates(url) {
+  const out = [];
+  if (/\/projects\/[^/]+\//.test(url)) {
+    COVER_SIZES.forEach((size) => out.push(url.replace(/\/projects\/[^/]+\//, `/projects/${size}/`)));
+  }
+  out.push(url);
+  return [...new Set(out)];
+}
+
 async function download(url, dest) {
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`Failed to download ${url}: ${res.status}`);
-  const buf = Buffer.from(await res.arrayBuffer());
-  await sharp(buf).webp({ quality: IMAGE_QUALITY }).toFile(dest);
+  let lastErr;
+  for (const candidate of coverCandidates(url)) {
+    try {
+      const res = await fetch(candidate);
+      if (!res.ok) throw new Error(`${res.status}`);
+      const buf = Buffer.from(await res.arrayBuffer());
+      const img = sharp(buf);
+      const meta = await img.metadata();
+      await img
+        .resize({ width: Math.min(meta.width || MAX_WIDTH, MAX_WIDTH), withoutEnlargement: true })
+        .webp({ quality: IMAGE_QUALITY })
+        .toFile(dest);
+      return meta.width || 0;
+    } catch (err) {
+      lastErr = err;
+    }
+  }
+  throw new Error(`Failed to download ${url}: ${lastErr && lastErr.message}`);
 }
 
 async function main() {
@@ -147,16 +185,26 @@ async function main() {
 
     const existing = previousById.get(id);
     let file = existing ? existing.file : null;
+    let hd = existing ? existing.hd || 0 : 0;
 
     if (!file) {
       // Always .webp now — download() re-encodes every source format to
       // WebP, so the destination extension no longer follows Behance's own.
       file = `${id}-${slugify(p.title)}.webp`;
-      await download(p.image, path.join(IMAGES_DIR, file));
-      console.log("Downloaded new project:", p.title);
+      hd = await download(p.image, path.join(IMAGES_DIR, file));
+      console.log("Downloaded new project:", p.title, hd + "px");
+    } else if (hd < 800) {
+      // Covers saved before the large-size download: fetch them again
+      // once, at full size. A failure keeps the existing file.
+      try {
+        hd = await download(p.image, path.join(IMAGES_DIR, file));
+        console.log("Upgraded cover:", p.title, hd + "px");
+      } catch (err) {
+        console.warn("Could not upgrade cover:", p.title, err.message);
+      }
     }
     keepFiles.add(file);
-    current.push({ id, title: p.title, url: p.url, file });
+    current.push({ id, title: p.title, url: p.url, file, hd });
   }
 
   // Clean up images for projects that are no longer published.

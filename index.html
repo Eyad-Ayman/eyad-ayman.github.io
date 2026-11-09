@@ -16,7 +16,7 @@
      pulled straight from Webflow's asset host) confirmed by testing this
      policy and watching what it actually blocked, not guessed in advance.
      Everything else is a real allowlist, not a wildcard. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com https://assets.website-files.com; img-src 'self' data:; media-src 'self' https://*.cdninstagram.com https://*.fbcdn.net; frame-src 'self' https://maps.google.com https://www.google.com; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com https://assets.website-files.com; img-src 'self' data: https://eyadayman.goatcounter.com; media-src 'self' https://*.cdninstagram.com https://*.fbcdn.net; frame-src 'self' https://maps.google.com https://www.google.com; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self';">
 <title>Eyad Ayman | Graphic Designer in Egypt — Video Editor & 3D Artist</title>
 <meta name="description" content="Eyad Ayman is a graphic designer in Giza, Egypt, working in branding, motion banners, video editing, and 3D art. Browse real client work and get in touch for freelance projects.">
 <link rel="canonical" href="https://eyad-ayman.github.io/">
@@ -167,6 +167,7 @@
 <header class="m-bar" id="m-bar">
   <a href="#Home" class="m-bar-brand">Portfolio</a>
   <span class="m-bar-section" id="m-bar-section" aria-hidden="true">Giza, EG</span>
+  <button type="button" class="m-bar-lang lang-toggle" data-lang-toggle aria-label="التبديل للعربي">ع</button>
 </header>
 
 <div class="cursor-dot" id="cursor-dot"></div>
@@ -194,6 +195,7 @@
               <div class="nav-links"><a href="https://madebyeyad.web.app/" class="nav-link-big w-nav-link" data-portal="studio" title="EYAD STUDIO — image, vector, video &amp; 3D editor">Studio ↗</a></div>
               <div class="nav-links"><a href="https://madebyeyad.web.app/store/" class="nav-link-big w-nav-link" data-portal="store" title="MADEBYEYAD — the store">Store ↗</a></div>
               <div class="nav-links"><button type="button" class="nav-link-big theme-toggle" id="theme-toggle" aria-label="Toggle dark mode"><span id="theme-toggle-label">Dark</span></button></div>
+              <div class="nav-links nav-lang"><button type="button" class="nav-link-big lang-toggle" data-lang-toggle aria-label="التبديل للعربي">ع</button></div>
             </div>
           </div>
         </nav>
@@ -477,6 +479,12 @@
     </div>
 
     <div class="gallery-tab-panel big-gallery">
+    <div class="work-view" data-work-view>
+      <span class="work-view-label">[ View ]</span>
+      <button type="button" class="is-on" data-view="grid">Grid</button>
+      <button type="button" data-view="index">Index</button>
+    </div>
+    <ol class="work-index" data-work-index hidden></ol>
     <div class="project-grid" data-behance-grid data-mixed-gallery>
       <a href="https://www.behance.net/gallery/251534335/MASTER-BROCHURE" target="_blank" rel="noopener" title="MASTER BROCHURE — View on Behance" class="project-tile gallery-tile"><span class="gallery-index">01</span><img src="./assets/images/behance/01-master-brochure.webp" loading="lazy" alt="MASTER BROCHURE"><span class="gallery-caption">MASTER BROCHURE</span></a>
       <a href="https://www.behance.net/gallery/207092303/mercedes-g63-photo-manipulation" target="_blank" rel="noopener" title="mercedes g63 | photo manipulation — View on Behance" class="project-tile gallery-tile"><span class="gallery-index">02</span><img src="./assets/images/behance/02-mercedes-g63.webp" loading="lazy" alt="mercedes g63 | photo manipulation"><span class="gallery-caption">mercedes g63 | photo manipulation</span></a>
@@ -859,6 +867,7 @@
   </div>
 </div>
 
+<script src="./assets/js/i18n.js"></script>
 <script src="./assets/js/main.js"></script>
 <script src="./assets/js/media-loader.js"></script>
 <script src="./assets/js/mini-game.js"></script>

@@ -2649,3 +2649,269 @@ html[data-theme="dark"] .clients-wall .client-word b { color: var(--d-ink); }
   .intro-cut .intro-l2 { font-size: var(--name); }
   .intro-cut .intro-script { right: -18%; bottom: -10%; }
 }
+
+/* ==========================================================================
+   Gallery view switch + Index view. The index is the deck's table look:
+   number, title in display type, type, [ source ], arrow. The cover rides
+   next to the cursor on desktop (.work-peek); phones get a thumbnail.
+   ========================================================================== */
+.work-view { display: flex; align-items: center; gap: 6px; margin: 0 0 18px; }
+.work-view-label {
+  margin-inline-end: 8px;
+  font-family: var(--paragraph);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--d-red);
+}
+.work-view button {
+  min-height: 38px;
+  padding: 0 18px;
+  border: 1px solid rgba(0, 0, 0, .35);
+  background: transparent;
+  color: var(--d-ink);
+  font-family: var(--headings);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background-color .2s ease, color .2s ease, border-color .2s ease;
+}
+.work-view button.is-on { background: var(--d-ink); border-color: var(--d-ink); color: var(--d-cream); }
+.project-grid.is-off { display: none; }
+.work-index[hidden] { display: none !important; }
+.work-index { list-style: none; margin: 0 0 30px; padding: 0; border-top: 2px solid var(--d-ink); }
+.work-index a {
+  display: grid;
+  grid-template-columns: 54px minmax(0, 1fr) minmax(0, 240px) 110px 22px;
+  align-items: baseline;
+  gap: 16px;
+  padding: 14px 0;
+  border-bottom: 1px solid rgba(0, 0, 0, .18);
+  color: var(--d-ink);
+  text-decoration: none;
+  transition: padding .3s var(--d-spring), color .2s ease;
+}
+.work-index b { font-family: var(--d-display); font-weight: 400; font-size: 18px; color: var(--d-red); }
+.work-index .wi-thumb { display: none; }
+.work-index .wi-title {
+  font-family: var(--d-display);
+  font-size: clamp(22px, 2.3vw, 38px);
+  line-height: 1.05;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.work-index .wi-kind,
+.work-index .wi-src {
+  font-family: var(--paragraph);
+  font-size: 12px;
+  font-weight: 700;
+  color: rgba(0, 0, 0, .55);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.work-index .wi-src::before { content: "[ "; }
+.work-index .wi-src::after { content: " ]"; }
+.work-index i { font-style: normal; color: var(--d-red); }
+@media (hover: hover) {
+  .work-index a:hover { padding-inline-start: 16px; color: var(--d-red); }
+}
+.work-peek {
+  position: fixed;
+  z-index: 60;
+  top: 0;
+  left: 0;
+  width: 270px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity .2s ease;
+}
+.work-peek.is-on { opacity: 1; }
+.work-peek img {
+  display: block;
+  width: 100%;
+  height: auto;
+  transform: translateY(-50%) rotate(-2deg);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, .35);
+  transition: transform .3s var(--d-spring);
+}
+@media screen and (max-width: 767px) {
+  .work-index a {
+    grid-template-columns: 26px 64px minmax(0, 1fr);
+    grid-template-areas: "n t title" "n t src";
+    align-items: center;
+    gap: 2px 12px;
+    padding: 10px 0;
+  }
+  .work-index b { grid-area: n; font-size: 14px; }
+  .work-index .wi-thumb { display: block; grid-area: t; width: 64px; height: 64px; object-fit: cover; }
+  .work-index .wi-title { grid-area: title; font-size: 22px; }
+  .work-index .wi-src { grid-area: src; font-size: 11px; }
+  .work-index .wi-kind,
+  .work-index i { display: none; }
+}
+html[data-theme="dark"] .work-view button { color: var(--d-cream); border-color: rgba(243, 237, 225, .35); }
+html[data-theme="dark"] .work-view button.is-on { background: var(--d-cream); color: var(--d-ink); border-color: var(--d-cream); }
+html[data-theme="dark"] .work-index { border-top-color: var(--d-cream); }
+html[data-theme="dark"] .work-index a { color: var(--d-cream); border-bottom-color: rgba(243, 237, 225, .18); }
+html[data-theme="dark"] .work-index .wi-kind,
+html[data-theme="dark"] .work-index .wi-src { color: rgba(243, 237, 225, .55); }
+.work-peek img { transform: translate(40px, -50%) rotate(-2deg); }
+.work-index .wi-title:dir(rtl),
+.work-index .wi-title[dir="rtl"] { font-family: 'Cairo', 'Segoe UI', Tahoma, sans-serif; font-weight: 900; text-transform: none; }
+.work-index .wi-title[dir="rtl"] { text-align: left; unicode-bidi: plaintext; }
+
+/* ==========================================================================
+   Arabic (html.is-ar, set by i18n.js). Arabic body text in Cairo, display
+   lines in Cairo Black so the deck keeps its weight, and the page mirrored
+   right-to-left. The name EYAD AYMAN, the logos and the media stay as they
+   are.
+   ========================================================================== */
+.lang-toggle {
+  font-family: 'Cairo', 'Segoe UI', Tahoma, sans-serif;
+  font-weight: 900;
+  cursor: pointer;
+}
+.m-bar-lang { display: none; }
+@media screen and (max-width: 991px) {
+  .nav-lang { display: none; }
+  .m-bar-lang {
+    display: inline-flex;
+    position: absolute;
+    top: calc(env(safe-area-inset-top) + 8px);
+    right: 106px;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border: 1.5px solid currentColor;
+    background: transparent;
+    color: inherit;
+    font-size: 17px;
+    line-height: 1;
+    pointer-events: auto;
+  }
+  html.is-ar .m-bar-lang { font-family: var(--headings); font-size: 12px; letter-spacing: .08em; }
+  .m-bar { padding-right: 160px; }
+}
+
+html.is-ar body,
+html.is-ar p,
+html.is-ar .contact-lede,
+html.is-ar [data-about-bio],
+html.is-ar .process-desc,
+html.is-ar .faq-item-answer,
+html.is-ar .btw-lede,
+html.is-ar .btw-stepbtn em,
+html.is-ar .m-lede,
+html.is-ar .brief-opts button,
+html.is-ar .brief-head,
+html.is-ar .hero-section-small-text,
+html.is-ar .section-number,
+html.is-ar .m-page-head,
+html.is-ar .m-bar,
+html.is-ar .nav-link-big,
+html.is-ar .clients-label,
+html.is-ar .work-view-label,
+html.is-ar .project-index,
+html.is-ar .small-title,
+html.is-ar .process-detail,
+html.is-ar .faq-item summary,
+html.is-ar .contact-card-label,
+html.is-ar .sp-kicker,
+html.is-ar .m-spec,
+html.is-ar .intro-head,
+html.is-ar .intro-foot,
+html.is-ar .whatsapp-button,
+html.is-ar .brief-label,
+html.is-ar .brief-send,
+html.is-ar .hero-cta-main,
+html.is-ar .hero-cta-alt,
+html.is-ar .signoff-cta,
+html.is-ar .signoff-readout,
+html.is-ar .download-button,
+html.is-ar .btw-bridge-cta,
+html.is-ar .sp-cta,
+html.is-ar .work-view button,
+html.is-ar .hire-toast,
+html.is-ar .clients-wall .client > span,
+html.is-ar .footer-link {
+  font-family: 'Cairo', 'Segoe UI', Tahoma, sans-serif;
+  letter-spacing: 0;
+}
+
+/* display lines: Cairo Black, a touch smaller than the Latin display face */
+html.is-ar .about-me-title,
+html.is-ar .clients-title,
+html.is-ar .showreel-title,
+html.is-ar .btw-title,
+html.is-ar .btw-step h4,
+html.is-ar .btw-stepbtn strong,
+html.is-ar .btw-bridge-line,
+html.is-ar .sp-title,
+html.is-ar .editorial-break-text,
+html.is-ar .signoff-headline,
+html.is-ar .m-index a,
+html.is-ar .navbar.nav-open .nav-link-big {
+  font-family: 'Cairo', 'Segoe UI', Tahoma, sans-serif;
+  font-weight: 900;
+  letter-spacing: 0;
+  line-height: 1.15;
+}
+html.is-ar .clients-title { font-size: clamp(40px, 5.2vw, 100px); }
+html.is-ar .signoff-headline { line-height: 1.1; }
+html.is-ar .m-index a { font-size: clamp(40px, min(5.6vw, 11vh), 120px); line-height: 1.2; }
+html.is-ar .navbar.nav-open .nav-link-big { font-size: clamp(34px, 11vw, 64px); line-height: 1.25; }
+
+/* the name and the script lines stay Latin */
+html.is-ar .hero-text,
+html.is-ar .intro-l1,
+html.is-ar .intro-l2,
+html.is-ar .m-sign,
+html.is-ar .intro-script,
+html.is-ar .clients-script,
+html.is-ar .handwritten-inline,
+html.is-ar .handwritten-note { direction: ltr; }
+html.is-ar .handwritten-inline,
+html.is-ar .handwritten-note,
+html.is-ar .clients-script,
+html.is-ar .btw-note { font-family: 'Cairo', 'Segoe UI', Tahoma, sans-serif; font-weight: 800; }
+html.is-ar .handwritten-inline { font-size: 24px; direction: rtl; }
+html.is-ar .clients-script { font-size: clamp(22px, 2.2vw, 38px); direction: rtl; }
+html.is-ar .handwritten-note { direction: rtl; font-size: 20px; }
+html.is-ar .btw-note { font-size: 16px; line-height: 1.3; }
+
+/* mirrored bits */
+html.is-ar .btw-stepbtn,
+html.is-ar .brief-head,
+html.is-ar .work-index a { text-align: right; }
+html.is-ar .contact-card::after { content: "\2196"; margin-left: 0; margin-right: auto; }
+html.is-ar .whatsapp-button { padding-left: 54px; padding-right: 20px; }
+html.is-ar .whatsapp-button::after { content: "\2190"; right: auto; left: 20px; }
+html.is-ar .process-block,
+html.is-ar .process-block:first-child { border-left: 0; border-right: 1px solid rgba(243, 237, 225, .35); }
+html.is-ar .process-block-current { border-right-color: var(--d-red); }
+@media screen and (max-width: 767px) {
+  html.is-ar .process-block,
+  html.is-ar .process-block:first-child { padding: 16px 22px 18px 0; margin: 0 5px 0 0; }
+  html.is-ar .process-block::before { left: auto; right: -6px; }
+}
+html.is-ar .faq-item summary { padding: 17px 40px 17px 40px; }
+html.is-ar .faq-item summary::before { left: auto; right: 0; }
+html.is-ar .faq-item summary::after { right: auto; left: 4px; }
+html.is-ar .faq-item-answer { padding: 0 40px 20px 6px; }
+html.is-ar .hero-section-images-wrapper > .hero-text-wrapper .right-align { text-align: left; }
+html.is-ar .work-index .wi-title[dir="ltr"] { text-align: right; }
+html.is-ar .section-number::before { content: "بورتفوليو"; }
+@media screen and (min-width: 768px) {
+  html.is-ar #Home { background: linear-gradient(270deg, var(--d-paper) 50%, var(--d-red) 50%); }
+}
+html.is-ar .about-me-title .handwritten-inline { margin-top: 1.5em; line-height: 1.4; }
+html.is-ar .hero-section-text-holder > .perspective:first-child .hero-section-small-text::before { content: "[ المصمم ]"; font-family: 'Cairo', 'Segoe UI', Tahoma, sans-serif; }
+@media screen and (max-width: 991px) {
+  .m-bar { grid-template-columns: auto 1fr; column-gap: 16px; padding-right: 158px; }
+}

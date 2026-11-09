@@ -6,56 +6,80 @@
       "title": "Freelance Graphic Designer & Video Editor",
       "desc": "Delivered branding, print, social media, and video projects.",
       "icon": "case",
-      "current": false
+      "current": false,
+      "period_ar": "٢٠١٨ — ٢٠٢٢",
+      "title_ar": "جرافيك ديزاينر ومونتير فريلانس",
+      "desc_ar": "مشاريع براندينج وطباعة وسوشيال ميديا وفيديو."
     },
     {
       "period": "November 2022 — June 2023",
       "title": "Graphic Designer & Video Editor · Ontrend ADV",
       "desc": "Produced campaigns across digital and outdoor channels.",
       "icon": "video",
-      "current": false
+      "current": false,
+      "period_ar": "نوفمبر ٢٠٢٢ — يونيو ٢٠٢٣",
+      "title_ar": "جرافيك ديزاينر ومونتير · Ontrend ADV",
+      "desc_ar": "حملات على الديجيتال والإعلانات الخارجية."
     },
     {
       "period": "June 2023 — September 2024",
       "title": "Lead Designer · Quicksupply Print",
       "desc": "Led design team and reduced revision cycles by 30%.",
       "icon": "pen",
-      "current": false
+      "current": false,
+      "period_ar": "يونيو ٢٠٢٣ — سبتمبر ٢٠٢٤",
+      "title_ar": "قائد فريق التصميم · Quicksupply Print",
+      "desc_ar": "قدت فريق التصميم وقللت دورات التعديل بنسبة ٣٠٪."
     },
     {
       "period": "July 2024 — Present",
       "title": "Graphic Designer · Ministry of Youth and Sports",
       "desc": "Designed visual assets for national campaigns and communications.",
       "icon": "pen",
-      "current": false
+      "current": false,
+      "period_ar": "يوليو ٢٠٢٤ — الآن",
+      "title_ar": "جرافيك ديزاينر · وزارة الشباب والرياضة",
+      "desc_ar": "تصميمات لحملات واتصالات قومية."
     },
     {
       "period": "September 2024 — Present",
       "title": "Graphic Designer · Transsion Holding Egypt",
       "desc": "Develop and execute visual content across multiple Transsion brands.",
       "icon": "pen",
-      "current": false
+      "current": false,
+      "period_ar": "سبتمبر ٢٠٢٤ — الآن",
+      "title_ar": "جرافيك ديزاينر · Transsion Holding مصر",
+      "desc_ar": "تصميم وتنفيذ المحتوى المرئي لكذا براند من براندات Transsion."
     },
     {
       "period": "December 2024 — Present",
       "title": "Graphic Designer · Infinix Egypt",
       "desc": "Shape and maintain the visual identity of Infinix Egypt across digital and physical touchpoints.",
       "icon": "pen",
-      "current": false
+      "current": false,
+      "period_ar": "ديسمبر ٢٠٢٤ — الآن",
+      "title_ar": "جرافيك ديزاينر · Infinix مصر",
+      "desc_ar": "بشكّل وبحافظ على الهوية البصرية لـ Infinix مصر على الديجيتال وعلى الأرض."
     },
     {
       "period": "December 2024 — Present",
       "title": "Vice President of Multimedia & Creative Director · Enactus Cairo University",
       "desc": "Lead and manage 40+ photographers, video editors, scriptwriters, presenters, and content creators. Direct creative strategy, multimedia production, branding initiatives, and team development.",
       "icon": "star",
-      "current": false
+      "current": false,
+      "period_ar": "ديسمبر ٢٠٢٤ — الآن",
+      "title_ar": "نائب رئيس الملتيميديا والمدير الإبداعي · Enactus جامعة القاهرة",
+      "desc_ar": "بقود وبدير أكتر من ٤٠ مصور ومونتير وكاتب سكريبت ومذيع وصانع محتوى. بوجّه الاستراتيجية الإبداعية وإنتاج الملتيميديا والبراندينج وتطوير الفريق."
     },
     {
       "period": "July 2025 — Present",
       "title": "Video Editing Leader · Ministry of Youth and Sports",
       "desc": "Lead editing operations and multimedia content production.",
       "icon": "video",
-      "current": true
+      "current": true,
+      "period_ar": "يوليو ٢٠٢٥ — الآن",
+      "title_ar": "قائد فريق المونتاج · وزارة الشباب والرياضة",
+      "desc_ar": "بقود عمليات المونتاج وإنتاج محتوى الملتيميديا."
     }
   ]
 }
