@@ -86,9 +86,6 @@
     "Behance & Instagram, mixed →": "من بيهانس وإنستجرام ←",
     "Posters, campaigns, branding and reels — synced live from Behance and Instagram.": "بوسترات وحملات وبراندينج وريلز — بتتحدّث لوحدها من بيهانس وإنستجرام.",
     "See Full Portfolio on Behance →": "البورتفوليو كامل على بيهانس ←",
-    "[ View ]": "[ العرض ]",
-    "Grid": "شبكة",
-    "Index": "قائمة",
     "photo manipulation": "فوتو مانيبوليشن",
     "campaign": "حملة",
     "Logo": "لوجو",
@@ -244,7 +241,7 @@
   var originals = new WeakMap(); // text node -> English text
   var attrOriginals = [];         // [element, attribute, English]
   var current = "en";
-  var SKIP = "script, style, noscript, svg, [data-mixed-gallery] .project-name, [data-showreel-strip] .showreel-caption, [data-work-index] .wi-title, [data-no-i18n]";
+  var SKIP = "script, style, noscript, svg, [data-mixed-gallery] .project-name, [data-showreel-strip] .showreel-caption, [data-no-i18n]";
 
   function normalise(s) { return s.replace(/\s+/g, " ").trim(); }
 

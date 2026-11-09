@@ -38,7 +38,11 @@
     if (!bioEl || !about) return;
     var paras = pick(about, "paragraphs");
     if (!Array.isArray(paras) || paras.length === 0) return;
-    bioEl.innerHTML = paras.map(escapeHtml).join("<br><br>");
+    // first paragraph is the lead, the last one the closing line
+    bioEl.innerHTML = paras.map(function (t, i) {
+      var cls = i === 0 ? "bio-lead" : i === paras.length - 1 && paras.length > 2 ? "bio-close" : "bio-p";
+      return "<p class=\"" + cls + "\">" + escapeHtml(t) + "</p>";
+    }).join("");
   }
 
   function renderExp() {

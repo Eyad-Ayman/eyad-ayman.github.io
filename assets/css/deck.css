@@ -2651,120 +2651,6 @@ html[data-theme="dark"] .clients-wall .client-word b { color: var(--d-ink); }
 }
 
 /* ==========================================================================
-   Gallery view switch + Index view. The index is the deck's table look:
-   number, title in display type, type, [ source ], arrow. The cover rides
-   next to the cursor on desktop (.work-peek); phones get a thumbnail.
-   ========================================================================== */
-.work-view { display: flex; align-items: center; gap: 6px; margin: 0 0 18px; }
-.work-view-label {
-  margin-inline-end: 8px;
-  font-family: var(--paragraph);
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--d-red);
-}
-.work-view button {
-  min-height: 38px;
-  padding: 0 18px;
-  border: 1px solid rgba(0, 0, 0, .35);
-  background: transparent;
-  color: var(--d-ink);
-  font-family: var(--headings);
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: .1em;
-  text-transform: uppercase;
-  cursor: pointer;
-  transition: background-color .2s ease, color .2s ease, border-color .2s ease;
-}
-.work-view button.is-on { background: var(--d-ink); border-color: var(--d-ink); color: var(--d-cream); }
-.project-grid.is-off { display: none; }
-.work-index[hidden] { display: none !important; }
-.work-index { list-style: none; margin: 0 0 30px; padding: 0; border-top: 2px solid var(--d-ink); }
-.work-index a {
-  display: grid;
-  grid-template-columns: 54px minmax(0, 1fr) minmax(0, 240px) 110px 22px;
-  align-items: baseline;
-  gap: 16px;
-  padding: 14px 0;
-  border-bottom: 1px solid rgba(0, 0, 0, .18);
-  color: var(--d-ink);
-  text-decoration: none;
-  transition: padding .3s var(--d-spring), color .2s ease;
-}
-.work-index b { font-family: var(--d-display); font-weight: 400; font-size: 18px; color: var(--d-red); }
-.work-index .wi-thumb { display: none; }
-.work-index .wi-title {
-  font-family: var(--d-display);
-  font-size: clamp(22px, 2.3vw, 38px);
-  line-height: 1.05;
-  text-transform: uppercase;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.work-index .wi-kind,
-.work-index .wi-src {
-  font-family: var(--paragraph);
-  font-size: 12px;
-  font-weight: 700;
-  color: rgba(0, 0, 0, .55);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.work-index .wi-src::before { content: "[ "; }
-.work-index .wi-src::after { content: " ]"; }
-.work-index i { font-style: normal; color: var(--d-red); }
-@media (hover: hover) {
-  .work-index a:hover { padding-inline-start: 16px; color: var(--d-red); }
-}
-.work-peek {
-  position: fixed;
-  z-index: 60;
-  top: 0;
-  left: 0;
-  width: 270px;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity .2s ease;
-}
-.work-peek.is-on { opacity: 1; }
-.work-peek img {
-  display: block;
-  width: 100%;
-  height: auto;
-  transform: translateY(-50%) rotate(-2deg);
-  box-shadow: 0 18px 40px rgba(0, 0, 0, .35);
-  transition: transform .3s var(--d-spring);
-}
-@media screen and (max-width: 767px) {
-  .work-index a {
-    grid-template-columns: 26px 64px minmax(0, 1fr);
-    grid-template-areas: "n t title" "n t src";
-    align-items: center;
-    gap: 2px 12px;
-    padding: 10px 0;
-  }
-  .work-index b { grid-area: n; font-size: 14px; }
-  .work-index .wi-thumb { display: block; grid-area: t; width: 64px; height: 64px; object-fit: cover; }
-  .work-index .wi-title { grid-area: title; font-size: 22px; }
-  .work-index .wi-src { grid-area: src; font-size: 11px; }
-  .work-index .wi-kind,
-  .work-index i { display: none; }
-}
-html[data-theme="dark"] .work-view button { color: var(--d-cream); border-color: rgba(243, 237, 225, .35); }
-html[data-theme="dark"] .work-view button.is-on { background: var(--d-cream); color: var(--d-ink); border-color: var(--d-cream); }
-html[data-theme="dark"] .work-index { border-top-color: var(--d-cream); }
-html[data-theme="dark"] .work-index a { color: var(--d-cream); border-bottom-color: rgba(243, 237, 225, .18); }
-html[data-theme="dark"] .work-index .wi-kind,
-html[data-theme="dark"] .work-index .wi-src { color: rgba(243, 237, 225, .55); }
-.work-peek img { transform: translate(40px, -50%) rotate(-2deg); }
-.work-index .wi-title:dir(rtl),
-.work-index .wi-title[dir="rtl"] { font-family: 'Cairo', 'Segoe UI', Tahoma, sans-serif; font-weight: 900; text-transform: none; }
-.work-index .wi-title[dir="rtl"] { text-align: left; unicode-bidi: plaintext; }
-
-/* ==========================================================================
    Arabic (html.is-ar, set by i18n.js). Arabic body text in Cairo, display
    lines in Cairo Black so the deck keeps its weight, and the page mirrored
    right-to-left. The name EYAD AYMAN, the logos and the media stay as they
@@ -2816,7 +2702,6 @@ html.is-ar .m-page-head,
 html.is-ar .m-bar,
 html.is-ar .nav-link-big,
 html.is-ar .clients-label,
-html.is-ar .work-view-label,
 html.is-ar .project-index,
 html.is-ar .small-title,
 html.is-ar .process-detail,
@@ -2836,7 +2721,6 @@ html.is-ar .signoff-readout,
 html.is-ar .download-button,
 html.is-ar .btw-bridge-cta,
 html.is-ar .sp-cta,
-html.is-ar .work-view button,
 html.is-ar .hire-toast,
 html.is-ar .clients-wall .client > span,
 html.is-ar .footer-link {
@@ -2888,7 +2772,6 @@ html.is-ar .btw-note { font-size: 16px; line-height: 1.3; }
 /* mirrored bits */
 html.is-ar .btw-stepbtn,
 html.is-ar .brief-head,
-html.is-ar .work-index a { text-align: right; }
 html.is-ar .contact-card::after { content: "\2196"; margin-left: 0; margin-right: auto; }
 html.is-ar .whatsapp-button { padding-left: 54px; padding-right: 20px; }
 html.is-ar .whatsapp-button::after { content: "\2190"; right: auto; left: 20px; }
@@ -2905,7 +2788,6 @@ html.is-ar .faq-item summary::before { left: auto; right: 0; }
 html.is-ar .faq-item summary::after { right: auto; left: 4px; }
 html.is-ar .faq-item-answer { padding: 0 40px 20px 6px; }
 html.is-ar .hero-section-images-wrapper > .hero-text-wrapper .right-align { text-align: left; }
-html.is-ar .work-index .wi-title[dir="ltr"] { text-align: right; }
 html.is-ar .section-number::before { content: "بورتفوليو"; }
 @media screen and (min-width: 768px) {
   html.is-ar #Home { background: linear-gradient(270deg, var(--d-paper) 50%, var(--d-red) 50%); }
@@ -2915,3 +2797,31 @@ html.is-ar .hero-section-text-holder > .perspective:first-child .hero-section-sm
 @media screen and (max-width: 991px) {
   .m-bar { grid-template-columns: auto 1fr; column-gap: 16px; padding-right: 158px; }
 }
+
+/* Bio: a large lead line, body paragraphs, and the closing line set as a
+   red display headline. */
+[data-about-bio] p { margin: 0 0 1.1em; font: inherit; color: inherit; text-transform: none; break-inside: avoid; }
+[data-about-bio] .bio-lead {
+  font-family: var(--paragraph);
+  font-size: 1.45em;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--d-ink);
+}
+[data-about-bio] .bio-close {
+  margin: .4em 0 0;
+  font-family: var(--d-display);
+  font-size: clamp(30px, 2.6vw, 46px);
+  line-height: 1;
+  text-transform: uppercase;
+  color: var(--d-red);
+}
+html[data-theme="dark"] [data-about-bio] .bio-lead { color: var(--d-cream); }
+html.is-ar [data-about-bio] .bio-lead { font-family: 'Cairo', 'Segoe UI', Tahoma, sans-serif; font-weight: 700; }
+html.is-ar [data-about-bio] .bio-close { font-family: 'Cairo', 'Segoe UI', Tahoma, sans-serif; font-weight: 900; line-height: 1.3; }
+@media screen and (min-width: 768px) {
+  [data-about-bio] .bio-lead { column-span: all; max-width: 34em; margin-bottom: 1.2em; }
+}
+[data-about-bio] .bio-close { margin-bottom: 0; }
+[data-about-bio] { padding-bottom: 6px; }
+@media screen and (max-width: 767px) { .hey-there-layout { padding-bottom: 36px; } }

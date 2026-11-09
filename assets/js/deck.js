@@ -315,118 +315,6 @@
   depth();
 })();
 
-// Gallery Index view: every piece as a ruled row (number, title, type,
-// source). On a desktop the cover follows the cursor while you hover a
-// row; on a phone each row carries a small thumbnail instead.
-(function () {
-  "use strict";
-  var grid = document.querySelector("[data-mixed-gallery]");
-  var list = document.querySelector("[data-work-index]");
-  var sw = document.querySelector("[data-work-view]");
-  if (!grid || !list || !sw) return;
-
-  function build() {
-    var tiles = Array.prototype.slice.call(grid.querySelectorAll(".project-tile"));
-    tiles.sort(function (a, b) { return (a.__order || 0) - (b.__order || 0); });
-    var frag = document.createDocumentFragment();
-    tiles.forEach(function (t, i) {
-      var media = t.querySelector("img, video");
-      var src = media ? (media.tagName === "VIDEO" ? media.getAttribute("poster") : media.getAttribute("src")) : "";
-      var nameEl = t.querySelector(".project-name, .gallery-caption");
-      var raw = ((nameEl && nameEl.textContent) || t.title || "").trim();
-      var parts = raw.split("|");
-      var badge = t.querySelector(".project-index");
-      var from = badge ? badge.textContent.trim() : (t.classList.contains("gallery-tile-instagram") ? "Instagram" : "Behance");
-
-      var a = document.createElement("a");
-      a.href = t.href;
-      a.target = "_blank";
-      a.rel = "noopener noreferrer";
-      a.setAttribute("data-peek", src || "");
-      var num = document.createElement("b");
-      num.textContent = String(i + 1).padStart(2, "0");
-      var thumb = document.createElement("img");
-      thumb.className = "wi-thumb";
-      thumb.alt = "";
-      thumb.loading = "lazy";
-      if (src) thumb.setAttribute("src", src);
-      var title = document.createElement("span");
-      title.className = "wi-title";
-      title.dir = /[؀-ۿ]/.test(parts[0]) ? "rtl" : "ltr";
-      title.textContent = parts[0].trim() || from;
-      var kind = document.createElement("span");
-      kind.className = "wi-kind";
-      kind.textContent = (parts[1] || "").trim();
-      var source = document.createElement("span");
-      source.className = "wi-src";
-      source.textContent = from;
-      var arrow = document.createElement("i");
-      arrow.setAttribute("aria-hidden", "true");
-      arrow.textContent = "↗";
-      [num, thumb, title, kind, source, arrow].forEach(function (el) { a.appendChild(el); });
-      var li = document.createElement("li");
-      li.appendChild(a);
-      frag.appendChild(li);
-    });
-    list.replaceChildren(frag);
-  }
-
-  var timer = 0;
-  new MutationObserver(function () {
-    clearTimeout(timer);
-    timer = setTimeout(build, 120);
-  }).observe(grid, { childList: true });
-  build();
-
-  sw.addEventListener("click", function (e) {
-    var b = e.target.closest("[data-view]");
-    if (!b) return;
-    var showIndex = b.getAttribute("data-view") === "index";
-    sw.querySelectorAll("[data-view]").forEach(function (x) { x.classList.toggle("is-on", x === b); });
-    grid.classList.toggle("is-off", showIndex);
-    list.hidden = !showIndex;
-  });
-
-  // cursor preview (mouse only)
-  if (!(window.matchMedia && window.matchMedia("(hover: hover) and (pointer: fine)").matches)) return;
-  var peek = document.createElement("div");
-  peek.className = "work-peek";
-  peek.setAttribute("aria-hidden", "true");
-  var pimg = document.createElement("img");
-  pimg.alt = "";
-  peek.appendChild(pimg);
-  document.body.appendChild(peek);
-  var x = 0, y = 0, cx = 0, cy = 0, on = false, raf = 0;
-  function step() {
-    cx += (x - cx) * 0.2;
-    cy += (y - cy) * 0.2;
-    // to the right of the row titles, never over them
-    var left = Math.max(cx, window.innerWidth * 0.5);
-    if (left > window.innerWidth - 330) left = window.innerWidth - 330;
-    peek.style.transform = "translate(" + left + "px," + cy + "px)";
-    if (on) raf = requestAnimationFrame(step);
-  }
-  list.addEventListener("pointermove", function (e) {
-    x = e.clientX;
-    y = e.clientY;
-    var a = e.target.closest && e.target.closest("a[data-peek]");
-    if (!a || !a.getAttribute("data-peek")) { if (on) { on = false; peek.classList.remove("is-on"); } return; }
-    if (pimg.getAttribute("src") !== a.getAttribute("data-peek")) pimg.setAttribute("src", a.getAttribute("data-peek"));
-    if (!on) {
-      on = true;
-      cx = x;
-      cy = y;
-      peek.classList.add("is-on");
-      cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(step);
-    }
-  });
-  list.addEventListener("pointerleave", function () {
-    on = false;
-    peek.classList.remove("is-on");
-  });
-})();
-
 // Visit counter (GoatCounter: no cookies, nothing personal stored). Counts
 // page views with where people came from (add ?ref=instagram or
 // ?ref=linkedin to the link in each bio so in-app browsers are told apart),
@@ -467,7 +355,7 @@
     ["[data-portal=\"store\"]", "store"],
     [".behance-cta-wrap a", "behance-all"],
     [".contact-card", "contact"],
-    [".project-tile, .work-index a", "work"],
+    [".project-tile", "work"],
     [".showreel-card", "reel"],
     ["[data-lang-toggle]", "language"],
     ["#theme-toggle", "theme"],
