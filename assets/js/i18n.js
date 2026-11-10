@@ -171,7 +171,7 @@
     "What kind of projects do you take on?": "بتاخد مشاريع إيه؟",
     "Branding and print, photo manipulation and digital art, motion graphics and video editing, and social media campaigns.": "براندينج وطباعة، فوتو مانيبوليشن وديجيتال آرت، موشن جرافيك ومونتاج، وحملات سوشيال ميديا.",
     "Is it just graphic design, or video and 3D too?": "جرافيك بس، ولا فيديو وثري دي كمان؟",
-    "All three, genuinely — graphic design, video editing, and 3D art with Blender. Currently leading video editing operations at the Ministry of Youth and Sports while still doing design and motion work on the side.": "التلاتة بجد — جرافيك ديزاين ومونتاج وثري دي على بلندر. حالياً بقود المونتاج في وزارة الشباب والرياضة، وبرضه بعمل تصميم وموشن جنبها.",
+    "All three, genuinely — graphic design, video editing, and 3D art with Blender. I led video editing at the Ministry of Youth and Sports, and today I design for Infinix and Transsion with motion work alongside.": "التلاتة بجد — جرافيك ديزاين ومونتاج وثري دي على بلندر. قدت المونتاج في وزارة الشباب والرياضة، والنهارده بصمم لـ إنفينكس وترانشن ومعاهم شغل موشن.",
     "What software do you work in?": "بتشتغل على برامج إيه؟",
     "Photoshop, Illustrator, and Premiere Pro day to day, plus Blender for 3D.": "فوتوشوب وإليستريتور وبريمير بشكل يومي، وبلندر للثري دي.",
     "What are EYAD Studio and the Store?": "يعني إيه استوديو إياد والاستور؟",

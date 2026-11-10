@@ -2,12 +2,12 @@
   "_comment": "Edit this file to update your Work Experience timeline — no code needed. Add a new job by copying one of the blocks below (keep the commas between entries). Fields: 'period' is the date range shown, 'title' is the role/company line, 'desc' is the one-line description, 'icon' picks the little icon (one of: case, video, pen, star), 'current' (true/false) highlights it as your current role with the accent border. Save the file and refresh the page to see the change.",
   "roles": [
     {
-      "period": "2018 — 2022",
+      "period": "2018 — Present",
       "title": "Freelance Graphic Designer & Video Editor",
       "desc": "Delivered branding, print, social media, and video projects.",
       "icon": "case",
       "current": false,
-      "period_ar": "٢٠١٨ — ٢٠٢٢",
+      "period_ar": "٢٠١٨ — الآن",
       "title_ar": "جرافيك ديزاينر ومونتير فريلانس",
       "desc_ar": "مشاريع براندينج وطباعة وسوشيال ميديا وفيديو."
     },
@@ -32,12 +32,12 @@
       "desc_ar": "قدت فريق التصميم وقللت دورات التعديل بنسبة ٣٠٪."
     },
     {
-      "period": "July 2024 — Present",
+      "period": "July 2024 — October 2026",
       "title": "Graphic Designer · Ministry of Youth and Sports",
       "desc": "Designed visual assets for national campaigns and communications.",
       "icon": "pen",
       "current": false,
-      "period_ar": "يوليو ٢٠٢٤ — الآن",
+      "period_ar": "يوليو ٢٠٢٤ — أكتوبر ٢٠٢٦",
       "title_ar": "جرافيك ديزاينر · وزارة الشباب والرياضة",
       "desc_ar": "تصميمات لحملات واتصالات قومية."
     },
@@ -54,32 +54,52 @@
     {
       "period": "December 2024 — Present",
       "title": "Graphic Designer · Infinix Egypt",
-      "desc": "Shape and maintain the visual identity of Infinix Egypt across digital and physical touchpoints.",
+      "desc": "Shape the visual identity of Infinix Egypt across digital and physical touchpoints, including co-branded campaigns with Noon, Amazon, Vodafone, PUBG Mobile and Google Labs.",
       "icon": "pen",
       "current": false,
       "period_ar": "ديسمبر ٢٠٢٤ — الآن",
       "title_ar": "جرافيك ديزاينر · Infinix مصر",
-      "desc_ar": "بشكّل وبحافظ على الهوية البصرية لـ Infinix مصر على الديجيتال وعلى الأرض."
+      "desc_ar": "بشكّل الهوية البصرية لـ Infinix مصر على الديجيتال وعلى الأرض، ومنها حملات مشتركة مع نون وأمازون وفودافون وببجي موبايل وجوجل لابز."
     },
     {
-      "period": "December 2024 — Present",
-      "title": "Vice President of Multimedia & Creative Director · Enactus Cairo University",
+      "period": "December 2024 — August 2025",
+      "title": "Multimedia Member · Enactus Cairo University",
+      "desc": "Content, video and design for the team's projects and competitions.",
+      "icon": "star",
+      "current": false,
+      "title_ar": "عضو فريق الملتيميديا · Enactus جامعة القاهرة",
+      "desc_ar": "محتوى وفيديو وتصميم لمشاريع الفريق ومسابقاته.",
+      "period_ar": "ديسمبر ٢٠٢٤ — أغسطس ٢٠٢٥"
+    },
+    {
+      "period": "September 2025 — August 2026",
+      "title": "Multimedia Vice President · Enactus Cairo University",
       "desc": "Lead and manage 40+ photographers, video editors, scriptwriters, presenters, and content creators. Direct creative strategy, multimedia production, branding initiatives, and team development.",
       "icon": "star",
       "current": false,
-      "period_ar": "ديسمبر ٢٠٢٤ — الآن",
-      "title_ar": "نائب رئيس الملتيميديا والمدير الإبداعي · Enactus جامعة القاهرة",
+      "period_ar": "سبتمبر ٢٠٢٥ — أغسطس ٢٠٢٦",
+      "title_ar": "نائب رئيس الملتيميديا · Enactus جامعة القاهرة",
       "desc_ar": "بقود وبدير أكتر من ٤٠ مصور ومونتير وكاتب سكريبت ومذيع وصانع محتوى. بوجّه الاستراتيجية الإبداعية وإنتاج الملتيميديا والبراندينج وتطوير الفريق."
     },
     {
-      "period": "July 2025 — Present",
+      "period": "July 2025 — October 2026",
       "title": "Video Editing Leader · Ministry of Youth and Sports",
       "desc": "Lead editing operations and multimedia content production.",
       "icon": "video",
-      "current": true,
-      "period_ar": "يوليو ٢٠٢٥ — الآن",
+      "current": false,
+      "period_ar": "يوليو ٢٠٢٥ — أكتوبر ٢٠٢٦",
       "title_ar": "قائد فريق المونتاج · وزارة الشباب والرياضة",
       "desc_ar": "بقود عمليات المونتاج وإنتاج محتوى الملتيميديا."
+    },
+    {
+      "period": "November 2026 — Present",
+      "title": "Senior Graphic Designer, AIoT · Infinix Hub",
+      "desc": "Leading visual design for Infinix's AIoT line — smart devices and the ecosystem around the phones.",
+      "icon": "pen",
+      "current": true,
+      "title_ar": "سينيور جرافيك ديزاينر، AIoT · Infinix Hub",
+      "desc_ar": "بقود التصميم البصري لخط AIoT من Infinix — الأجهزة الذكية والمنظومة اللي حوالين الموبايلات.",
+      "period_ar": "نوفمبر ٢٠٢٦ — الآن"
     }
   ]
 }
